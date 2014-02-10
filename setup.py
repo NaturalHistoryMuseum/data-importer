@@ -7,11 +7,10 @@ except:
     from distutils.core import setup
 
 from distutils.core import Command
-from ke2psql.model import *
-from ke2psql import config
-from sqlalchemy.engine.url import URL
-from sqlalchemy import create_engine, text
-
+from ConfigParser import ConfigParser
+from ke2psql.model.keemu import *
+from ke2psql.model import meta
+from sqlalchemy import text
 
 class InitDBCommand(Command):
 
@@ -26,19 +25,18 @@ class InitDBCommand(Command):
 
     def run(self):
 
-        url_params = dict(config.items('postgres'))
-        url_params['drivername'] = 'postgresql'
-        engine = create_engine(URL(**url_params))
+        config = ConfigParser()
+        config.read(os.path.join(os.path.dirname(__file__), 'config.cfg'))
 
         # Create the actual DB schema if it doesn't already exist
         # CREATE SCHEMA IF NOT EXISTS is PG 9.3
-        result = engine.execute(text(u'SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = \'%s\')' % KEEMU_SCHEMA))
+        result = meta.engine.execute(text(u'SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = \'%s\')' % KEEMU_SCHEMA))
 
         if not result.scalar():
-            engine.execute(text(u'CREATE SCHEMA %s AUTHORIZATION %s' % (KEEMU_SCHEMA, config.get('postgres', 'username'))))
+            meta.engine.execute(text(u'CREATE SCHEMA %s AUTHORIZATION %s' % (KEEMU_SCHEMA, config.get('database', 'username'))))
 
         # Create all the tables
-        Base.metadata.create_all(engine)
+        Base.metadata.create_all(meta.engine)
 
         print 'Created database tables'
 
