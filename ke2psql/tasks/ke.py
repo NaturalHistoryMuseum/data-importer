@@ -13,6 +13,7 @@ from ke2psql import log, config
 from keparser import KEParser
 import abc
 from ke2psql.model.keemu import *
+from ke2psql.model import meta
 
 from sqlalchemy.orm import class_mapper, sessionmaker
 from sqlalchemy import create_engine, and_, UniqueConstraint, String
@@ -25,7 +26,6 @@ class KEFileTask(luigi.ExternalTask):
     # TODO: Date param
     # TODO: Data param & schedule
     # TODO: Email errors
-    # TODO: Test log error - not working
     # TODO: Cat dependency?
 
     file_name = luigi.Parameter()
@@ -43,14 +43,16 @@ class KEDataTask(luigi.postgres.CopyToTable):
     """
     Import taxonomy
     """
-    host = config.get('postgres', 'host', 'localhost')
-    database = config.get('postgres', 'database')
-    user = config.get('postgres', 'username')
-    password = config.get('postgres', 'password')
+    host = config.get('database', 'host', 'localhost')
+    database = config.get('database', 'database')
+    user = config.get('database', 'username')
+    password = config.get('database', 'password')
     # No table; we're going to use SQLAlchemy
     table = None
 
-    keemu_schema = config.get('keemu', 'schema')
+    keemu_schema_file = config.get('keemu', 'schema')
+
+    session = meta.session
 
     @abc.abstractproperty
     def model_class(self):
@@ -60,20 +62,12 @@ class KEDataTask(luigi.postgres.CopyToTable):
     def file_name(self):
         return None
 
-    def get_session(self):
-        # Setup an engine and session using the PostgresTarget connection as creator
-        engine = create_engine('postgresql+psycopg2://', creator=self.output().connect)
-        self.connection = engine.connect()
-        Session = sessionmaker(bind=self.connection)
-        return Session()
-
     def requires(self):
         return KEFileTask(self.file_name)
 
     def run(self):
 
-        self.session = self.get_session()
-        ke_data = KEParser(self.input().open('r'), schema_file=self.keemu_schema, input_file_path=self.input().path)
+        ke_data = KEParser(self.input().open('r'), schema_file=self.keemu_schema_file, input_file_path=self.input().path)
 
         for data in ke_data:
 
@@ -86,7 +80,7 @@ class KEDataTask(luigi.postgres.CopyToTable):
 
         # Mark this task as complete
         # TODO: Put back with date
-        # self.output().touch()
+        self.output().touch()
 
     def process(self, data):
 

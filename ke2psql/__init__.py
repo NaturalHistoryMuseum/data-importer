@@ -8,13 +8,9 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 import sys
 import os
 import logging
-from ConfigParser import ConfigParser
+from ke2psql.handlers import SQLAlchemyHandler
 
-__ALL__ = ['config', 'log']
-
-config = ConfigParser()
-config.read(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.cfg'))
-
+__ALL__ = ['log']
 
 def get_logger(name, level=logging.DEBUG):
     logger = logging.getLogger(name)
@@ -32,6 +28,12 @@ def get_logger(name, level=logging.DEBUG):
     stream_handler.setLevel(logging.DEBUG)
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
+
+    # Add DB log handler
+    db_handler = SQLAlchemyHandler()
+    db_handler.setLevel(logging.CRITICAL)
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(db_handler)
 
     if level:
         logger.setLevel(level)

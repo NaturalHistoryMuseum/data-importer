@@ -6,8 +6,8 @@ Created by 'Ben Scott' on 2013-06-21.
 
 import logging
 import traceback
-import ckan.model as model
-from ke2psql.model import Log
+from ke2psql.model.log import Log
+from ke2psql.model import meta
 
 
 class SQLAlchemyHandler(logging.Handler):
@@ -27,5 +27,5 @@ class SQLAlchemyHandler(logging.Handler):
             args=record.args
         )
 
-        model.Session.add(log)
-        model.Session.commit()
+        meta.session.add(log)
+        meta.session.commit()
