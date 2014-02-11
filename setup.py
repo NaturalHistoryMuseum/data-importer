@@ -40,7 +40,6 @@ class InitDBCommand(Command):
 
         print 'Created database tables'
 
-
 version = '0.1'
 
 setup(
