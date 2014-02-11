@@ -1,0 +1,15 @@
+[database]
+drivername = postgresql
+host = localhost
+database = example
+username = username
+password = asdf
+
+[keemu]
+# The directory where the keemu export files are deposited
+export_dir = /vagrant/exports
+# Location of the keemu schema
+schema = /vagrant/exports/schema.pl
+
+[core]
+error-email: test@test.com
