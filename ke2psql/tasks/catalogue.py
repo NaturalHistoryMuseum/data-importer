@@ -28,17 +28,12 @@ class CatalogueTask(KEDataTask):
 
     def requires(self):
         # Catalogue is dependent on all other modules
-        return [
-            CollectionEventsTask(self.date),
-            MultimediaTask(self.date),
-            SitesTask(self.date),
-            TaxonomyTask(self.date),
-            StratigraphyTask(self.date)
-        ]
+        req = [CollectionEventsTask(self.date), MultimediaTask(self.date), SitesTask(self.date), TaxonomyTask(self.date), StratigraphyTask(self.date)]
+        # And add the usual KE EMU file dependency too
+        req.append(super(CatalogueTask, self).requires()[0])
+        return req
 
     def process(self, data):
-
-        log.critical('TEST')
 
         # Try and get the model class
         self.model_class = self.get_model_class(data)
@@ -72,9 +67,6 @@ class CatalogueTask(KEDataTask):
         # TODO: Test
         if data['ColRecordType'] == 'Artefact' and 'ArtKind' not in data and 'ArtName' not in data:
             return None
-
-        # Try
-
 
         # Process determinations
         determinations = data.get('EntIdeTaxonRef', None) or data.get('EntIndIndexLotTaxonNameLocalRef', None)

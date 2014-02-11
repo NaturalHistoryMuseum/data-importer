@@ -28,16 +28,17 @@ class KEFileTask(luigi.ExternalTask):
 
     # TODO: Ensure delete works
 
-    # TODO: Data param & schedule
 
+    # After main run:
+    # TODO: Data param & schedule
     # TODO: Email errors
 
-
     module = luigi.Parameter()
-    # Is the file compressed? (False is only for testing)
-    compressed = luigi.Parameter(default=True)
     date = luigi.DateParameter(default=None)
     keemu_export_dir = config.get('keemu', 'export_dir')
+
+    # Is the file compressed? (False is only for testing)
+    compressed = True
 
     def output(self):
 
@@ -84,23 +85,29 @@ class KEDataTask(luigi.postgres.CopyToTable):
         return None
 
     def requires(self):
-        return KEFileTask(module=self.module, date=self.date)
+        return [KEFileTask(module=self.module, date=self.date)]
 
     def run(self):
 
-        ke_data = KEParser(self.input().open('r'), schema_file=self.keemu_schema_file, input_file_path=self.input().path)
+        for input in self.input():
+            # Only process files
+            # Allows for other dependencies (eg: Catalogue)
+            if isinstance(input, luigi.file.File):
 
-        for data in ke_data:
+                ke_data = KEParser(input.open('r'), schema_file=self.keemu_schema_file, input_file_path=input.path)
 
-            status = ke_data.get_status()
+                for data in ke_data:
 
-            if status:
-                log.info(status)
+                    status = ke_data.get_status()
 
-            self.process(data)
+                    if status:
+                        log.info(status)
 
-        # Mark this task as complete
-        self.output().touch()
+                    self.process(data)
+
+                # Mark this task as complete
+                self.output().touch()
+
 
     def process(self, data):
 
