@@ -7,9 +7,11 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 
 __author__ = 'Ben Scott'
 
-import catalogue
-import collection_events
-import multimedia
-import sites
-import taxonomy
-import stratigraphy
+# __all__ = ['CatalogueTask', 'CollectionEventsTask', 'MultimediaTask', 'SitesTask', 'TaxonomyTask', 'StratigraphyTask']
+
+from catalogue import CatalogueTask
+from collection_events import CollectionEventsTask
+from multimedia import MultimediaTask
+from sites import SitesTask
+from taxonomy import TaxonomyTask
+from stratigraphy import StratigraphyTask
