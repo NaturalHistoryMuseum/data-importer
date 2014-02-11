@@ -26,7 +26,7 @@ class InitDBCommand(Command):
     def run(self):
 
         config = ConfigParser()
-        config.read(os.path.join(os.path.dirname(__file__), 'config.cfg'))
+        config.read(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ke2psql/config.cfg'))
 
         # Create the actual DB schema if it doesn't already exist
         # CREATE SCHEMA IF NOT EXISTS is PG 9.3
