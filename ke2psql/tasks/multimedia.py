@@ -12,7 +12,7 @@ from ke2psql.model.keemu import *
 class MultimediaTask(KEDataTask):
 
     model_class = MultimediaModel
-    file_name = 'emultimedia'
+    module = 'emultimedia'
 
     def process(self, data):
 

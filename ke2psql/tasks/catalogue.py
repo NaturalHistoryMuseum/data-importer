@@ -9,17 +9,32 @@ import re
 from ke2psql.tasks.ke import KEDataTask
 from ke2psql.model.keemu import *
 from ke2psql import log
-
+from collection_events import CollectionEventsTask
+from multimedia import MultimediaTask
+from sites import SitesTask
+from taxonomy import TaxonomyTask
+from stratigraphy import StratigraphyTask
 
 class CatalogueTask(KEDataTask):
 
-    model_class = None # Will be set dynamically based on the data values
-    file_name = 'ecatalogue'
+    model_class = None  # Will be set dynamically based on the data values
+    module = 'ecatalogue'
 
     # Regular expression for extracting year,month,day from PalDetDate
     re_date = re.compile('^([0-9]{4})-?([0-9]{2})?-?([0-9]{2})?')
     # Regular expression for finding model name
     re_model = re.compile('[a-zA-Z &]+')
+
+
+    def requires(self):
+        # Catalogue is dependent on all other modules
+        return [
+            CollectionEventsTask(self.date),
+            MultimediaTask(self.date),
+            SitesTask(self.date),
+            TaxonomyTask(self.date),
+            StratigraphyTask(self.date)
+        ]
 
     def process(self, data):
 

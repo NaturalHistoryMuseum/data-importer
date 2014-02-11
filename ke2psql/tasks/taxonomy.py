@@ -12,7 +12,7 @@ from ke2psql.model.keemu import *
 class TaxonomyTask(KEDataTask):
 
     model_class = TaxonomyModel
-    file_name = 'etaxonomy'
+    module = 'etaxonomy'
 
     def process(self, data):
 

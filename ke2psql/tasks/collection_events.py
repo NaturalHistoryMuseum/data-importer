@@ -12,7 +12,7 @@ from ke2psql.model.keemu import *
 class CollectionEventsTask(KEDataTask):
 
     model_class = CollectionEventModel
-    file_name = 'ecollectionevents'
+    module = 'ecollectionevents'
 
 
 

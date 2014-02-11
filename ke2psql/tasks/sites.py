@@ -12,7 +12,7 @@ from ke2psql.model.keemu import *
 class SitesTask(KEDataTask):
 
     model_class = SiteModel
-    file_name = 'esites'
+    module = 'esites'
 
     def process(self, data):
 

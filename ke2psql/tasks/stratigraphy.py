@@ -12,7 +12,7 @@ from sqlalchemy.exc import ProgrammingError
 class StratigraphyTask(KEDataTask):
 
     model_class = StratigraphyModel
-    file_name = 'enhmstratigraphy'
+    module = 'enhmstratigraphy'
 
     def process(self, data):
 

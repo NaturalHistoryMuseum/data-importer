@@ -9,40 +9,61 @@ import sys
 import os
 import luigi.postgres
 from luigi.format import Gzip
-from ke2psql import log, config
+from ke2psql import log
 from keparser import KEParser
 import abc
-from ke2psql.model.keemu import *
-from ke2psql.model import meta
 
-from sqlalchemy.orm import class_mapper, sessionmaker
-from sqlalchemy import create_engine, and_, UniqueConstraint, String
+from sqlalchemy.orm import class_mapper
+from sqlalchemy import and_, UniqueConstraint, String
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.exc import ProgrammingError, DataError
 from sqlalchemy.schema import CreateSchema
 
+from ke2psql.model.keemu import *
+from ke2psql.model import meta
+from ke2psql.model.meta import config
+
+
 class KEFileTask(luigi.ExternalTask):
 
-    # TODO: Date param
+    # TODO: Ensure delete works
+
     # TODO: Data param & schedule
+
     # TODO: Email errors
-    # TODO: Cat dependency?
 
-    file_name = luigi.Parameter()
-    file_extension = 'export'
 
+    module = luigi.Parameter()
+    # Is the file compressed? (False is only for testing)
+    compressed = luigi.Parameter(default=True)
+    date = luigi.DateParameter(default=None)
     keemu_export_dir = config.get('keemu', 'export_dir')
 
     def output(self):
-        import_file_path = os.path.join(self.keemu_export_dir, '.'.join([self.file_name, self.file_extension]))
+
+        file_name = [self.module, 'export']
+        if self.date:
+            file_name.append(self.date.strftime('%Y%m%d'))
+        if self.compressed:
+            file_name.append('gz')
+
+
+        import_file_path = os.path.join(self.keemu_export_dir, '.'.join(file_name))
         file_format = Gzip if '.gz' in import_file_path else None
-        return luigi.LocalTarget(import_file_path, format=file_format)
+        target = luigi.LocalTarget(import_file_path, format=file_format)
+        if not target.exists():
+            raise Exception('Export file %s for %s does not exist (Path: %s).' % (self.module, self.date, target.path))
+        return target
+
 
 
 class KEDataTask(luigi.postgres.CopyToTable):
     """
     Import taxonomy
     """
+
+    date = luigi.DateParameter(default=None)
+
     host = config.get('database', 'host', 'localhost')
     database = config.get('database', 'database')
     user = config.get('database', 'username')
@@ -59,11 +80,11 @@ class KEDataTask(luigi.postgres.CopyToTable):
         return None
 
     @abc.abstractproperty
-    def file_name(self):
+    def module(self):
         return None
 
     def requires(self):
-        return KEFileTask(self.file_name)
+        return KEFileTask(module=self.module, date=self.date)
 
     def run(self):
 
@@ -79,7 +100,6 @@ class KEDataTask(luigi.postgres.CopyToTable):
             self.process(data)
 
         # Mark this task as complete
-        # TODO: Put back with date
         self.output().touch()
 
     def process(self, data):
