@@ -27,14 +27,13 @@ from ke2psql.model.meta import config
 class KEFileTask(luigi.ExternalTask):
 
     # TODO: Ensure delete works
-
-
     # After main run:
     # TODO: Data param & schedule
     # TODO: Email errors
 
     module = luigi.Parameter()
     date = luigi.DateParameter(default=None)
+    file_name = luigi.Parameter(default='export')
     keemu_export_dir = config.get('keemu', 'export_dir')
 
     # Is the file compressed? (False is only for testing)
@@ -42,12 +41,11 @@ class KEFileTask(luigi.ExternalTask):
 
     def output(self):
 
-        file_name = [self.module, 'export']
+        file_name = [self.module, self.file_name]
         if self.date:
             file_name.append(self.date.strftime('%Y%m%d'))
         if self.compressed:
             file_name.append('gz')
-
 
         import_file_path = os.path.join(self.keemu_export_dir, '.'.join(file_name))
         file_format = Gzip if '.gz' in import_file_path else None
@@ -55,7 +53,6 @@ class KEFileTask(luigi.ExternalTask):
         if not target.exists():
             raise Exception('Export file %s for %s does not exist (Path: %s).' % (self.module, self.date, target.path))
         return target
-
 
 
 class KEDataTask(luigi.postgres.CopyToTable):
@@ -108,10 +105,9 @@ class KEDataTask(luigi.postgres.CopyToTable):
                 # Mark this task as complete
                 self.output().touch()
 
-
     def process(self, data):
 
-        log.debug('Processing %s record %s', self.__class__.__name__.lower(), data['irn'])
+        log.debug('Processing %s record %s', self.model_class.__name__.lower(), data['irn'])
 
         try:
 
@@ -129,11 +125,11 @@ class KEDataTask(luigi.postgres.CopyToTable):
                 # If this has a child table, insert the IRN so updates will work
                 if self.model_class.__mapper__.local_table.name != 'specimen':
                     # And create empty row in the polymorphic table
-                    self.datastore_db_session.execute('INSERT INTO %s.%s (irn) VALUES (:irn)' % (KEEMU_SCHEMA, self.model_class.__mapper__.local_table.name), {'irn': data.get('irn')})
+                    self.session.execute('INSERT INTO %s.%s (irn) VALUES (:irn)' % (KEEMU_SCHEMA, self.model_class.__mapper__.local_table.name), {'irn': data.get('irn')})
 
                 # Commit & expunge so the item can be reloaded
-                self.datastore_db_session.commit()
-                self.datastore_db_session.expunge(record)
+                self.session.commit()
+                self.session.expunge(record)
                 record = self.session.query(CatalogueModel).filter_by(irn=data.get('irn')).one()
 
             # Process the relationships
@@ -241,7 +237,7 @@ class KEDataTask(luigi.postgres.CopyToTable):
                                         filters.append(col.__eq__(field_list[alias]))
 
                                     # Run the query
-                                    data[prop.key].append(self.datastore_db_session.query(child_model).filter(and_(*filters)).one())
+                                    data[prop.key].append(self.session.query(child_model).filter(and_(*filters)).one())
 
                                 except NoResultFound:
                                     # Not found, create a new one
