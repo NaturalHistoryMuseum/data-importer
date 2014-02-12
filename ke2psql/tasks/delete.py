@@ -15,6 +15,7 @@ from ke2psql.model.keemu import *
 from ke2psql.tasks.ke import KEFileTask, KEDataTask
 from ke2psql.tasks import *
 from sqlalchemy.orm.exc import NoResultFound
+from datetime import datetime, timedelta
 
 class DeleteTask(luigi.postgres.CopyToTable):
 
@@ -35,7 +36,6 @@ class DeleteTask(luigi.postgres.CopyToTable):
     def requires(self):
         # TODO: Make dependent on catalogue task
         return KEFileTask(module=self.module, date=self.date, file_name=self.file_name)
-
 
     def run(self):
 
@@ -66,7 +66,18 @@ class DeleteTask(luigi.postgres.CopyToTable):
                     log.debug('Deleting record %s(%s)' % (model, irn))
 
                 except NoResultFound:
-                    log.error('Record %s(%s) not found for deletion' % (model, irn))
+
+                    # We cannot delete this record as it doesn't exist
+                    # There are a lot of records being inserted and then deleted again
+                    # So will never appear on the insert exports
+                    date_inserted = datetime.strptime(data.get('AdmDateInserted'),"%Y-%m-%d")
+                    date_deleted = datetime.strptime(data.get('AudDate'),"%Y-%m-%d")
+
+                     # If date deleted is within 7 days of the insert date, do not flag an error
+                    if date_deleted - timedelta(days=7) < date_inserted:
+                        log.debug('Record %s(%s) not found for deletion, but within date threshold (inserted: %s deleted: %s)' % (model.__name__, irn, date_inserted, date_deleted))
+                    else:
+                        log.error('Record %s(%s) not found for deletion' % (model, irn))
 
         # TODO: Mark this task as complete
         # self.output().touch()
