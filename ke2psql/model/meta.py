@@ -14,7 +14,7 @@ from sqlalchemy.engine.url import URL
 from ConfigParser import ConfigParser
 
 config = ConfigParser()
-config.read(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.cfg'))
+config.read(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'client.cfg'))
 
 __all__ = ['engine', 'session']
 

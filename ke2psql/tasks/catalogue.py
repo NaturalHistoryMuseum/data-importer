@@ -6,14 +6,15 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 """
 
 import re
-from ke2psql.tasks.ke import KEDataTask
-from ke2psql.model.keemu import *
 from ke2psql import log
-from collection_events import CollectionEventsTask
-from multimedia import MultimediaTask
-from sites import SitesTask
-from taxonomy import TaxonomyTask
-from stratigraphy import StratigraphyTask
+from ke2psql.model.keemu import *
+from ke2psql.tasks.ke import KEDataTask
+from ke2psql.tasks.collection_events import CollectionEventsTask
+from ke2psql.tasks.multimedia import MultimediaTask
+from ke2psql.tasks.sites import SitesTask
+from ke2psql.tasks.taxonomy import TaxonomyTask
+from ke2psql.tasks.stratigraphy import StratigraphyTask
+
 
 class CatalogueTask(KEDataTask):
 

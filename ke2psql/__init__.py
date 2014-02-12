@@ -19,7 +19,13 @@ def get_logger(name, level=logging.DEBUG):
     formatter = logging.Formatter('%(levelname)s: %(message)s')
 
     # Output to both log file and stdout
-    file_handler = logging.FileHandler('/var/log/ke2psql.log')
+    file_handler = logging.FileHandler('/var/log/ke2psql.debug.log')
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+        # Output to both log file and stdout
+    file_handler = logging.FileHandler('/var/log/ke2psql.error.log')
     file_handler.setLevel(logging.ERROR)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)

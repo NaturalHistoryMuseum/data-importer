@@ -15,3 +15,4 @@ from multimedia import MultimediaTask
 from sites import SitesTask
 from taxonomy import TaxonomyTask
 from stratigraphy import StratigraphyTask
+from delete import DeleteTask

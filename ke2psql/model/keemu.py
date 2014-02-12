@@ -62,7 +62,8 @@ STRATIGRAPHIC_UNIT_TYPES = {
 
 # TODO Cascades + foreign keys
 # TODO Check data import & all fields
-
+# TODO: Paleo multimedia fields, are not honouring multi values: Missing IRN 125584,108810,111286 in relationship PalaeontologySpecimenModel(2272217).multimedia
+# TODO: Check: Paleo multimedia fields are a bug in the exports?
 log = logging.getLogger('ckanext.nhm.commands.keemu_import')
 
 # Modify some of the SQLAlchemy base objects
