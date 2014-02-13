@@ -58,12 +58,12 @@ class DeleteTask(luigi.postgres.CopyToTable):
             else:
 
                 try:
-                    record = self.session.query(model).with_polymorphic('*').filter(model.irn == irn).one()
-                    # TODO: Delete the record.
-                    # TODO: Test: do we need with polymorphic loading?
-                    print record
 
                     log.debug('Deleting record %s(%s)' % (model, irn))
+
+                    # Load the object and then delete so we use the SQLA inheritance
+                    obj = self.session.query(self.model).filter(self.model.irn == 1).one()
+                    self.session.delete(obj)
 
                 except NoResultFound:
 
@@ -78,6 +78,8 @@ class DeleteTask(luigi.postgres.CopyToTable):
                         log.debug('Record %s(%s) not found for deletion, but within date threshold (inserted: %s deleted: %s)' % (model.__name__, irn, date_inserted, date_deleted))
                     else:
                         log.error('Record %s(%s) not found for deletion' % (model, irn))
+
+        self.session.commit()
 
         # TODO: Mark this task as complete
         # self.output().touch()

@@ -35,12 +35,20 @@ class KEFileTask(luigi.ExternalTask):
     module = luigi.Parameter()
     date = luigi.DateParameter(default=None)
     file_name = luigi.Parameter(default='export')
-    keemu_export_dir = config.get('keemu', 'export_dir')
-
+    export_dir = luigi.Parameter(default=config.get('keemu', 'export_dir'))
     # Is the file compressed? (False is only for testing)
-    compressed = True
+    compressed = luigi.DateParameter(default=True)
 
     def output(self):
+
+        import_file_path = self.get_file_path()
+        file_format = Gzip if '.gz' in import_file_path else None
+        target = luigi.LocalTarget(import_file_path, format=file_format)
+        if not target.exists():
+            raise Exception('Export file %s for %s does not exist (Path: %s).' % (self.module, self.date, target.path))
+        return target
+
+    def get_file_path(self):
 
         file_name = [self.module, self.file_name]
         if self.date:
@@ -48,12 +56,7 @@ class KEFileTask(luigi.ExternalTask):
         if self.compressed:
             file_name.append('gz')
 
-        import_file_path = os.path.join(self.keemu_export_dir, '.'.join(file_name))
-        file_format = Gzip if '.gz' in import_file_path else None
-        target = luigi.LocalTarget(import_file_path, format=file_format)
-        if not target.exists():
-            raise Exception('Export file %s for %s does not exist (Path: %s).' % (self.module, self.date, target.path))
-        return target
+        return os.path.join(self.export_dir, '.'.join(file_name))
 
 
 class KEDataTask(luigi.postgres.CopyToTable):
@@ -103,8 +106,14 @@ class KEDataTask(luigi.postgres.CopyToTable):
 
                     self.process(data)
 
-                # Mark this task as complete
-                self.output().touch()
+                self.finish()
+
+    def finish(self):
+        # Mark this task as complete
+        self.output().touch()
+
+    def get_record(self, irn):
+        return self.session.query(self.model_class).filter_by(irn=irn).one()
 
     def process(self, data):
 
@@ -113,7 +122,7 @@ class KEDataTask(luigi.postgres.CopyToTable):
         try:
 
             # Do we already have a record for this?
-            record = self.session.query(CatalogueModel).filter_by(irn=data.get('irn')).one()
+            record = self.get_record(data.get('irn'))
 
             # Is this a stub record? If it is, we want to change the type and reload.
             # Seems a bit of a hack, but SQLAlchemy does not have a simple way of modifying the type
@@ -131,7 +140,7 @@ class KEDataTask(luigi.postgres.CopyToTable):
                 # Commit & expunge so the item can be reloaded
                 self.session.commit()
                 self.session.expunge(record)
-                record = self.session.query(CatalogueModel).filter_by(irn=data.get('irn')).one()
+                record = self.get_record(data.get('irn'))
 
             # Process the relationships
             data = self._process_relationships(data, record)

@@ -34,6 +34,12 @@ class CatalogueTask(KEDataTask):
         req.append(super(CatalogueTask, self).requires()[0])
         return req
 
+    def get_record(self, irn):
+        """
+        Overwrite the default that uses model.
+        """
+        return self.session.query(CatalogueModel).filter_by(irn=irn).one()
+
     def process(self, data):
 
         # Try and get the model class
