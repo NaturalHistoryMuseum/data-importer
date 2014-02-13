@@ -131,7 +131,7 @@ class BaseMixin(object):
         # Set the value
         super(BaseMixin, self).__setattr__(name, value)
 
-    def _populate(self, **kwargs):
+    def get_aliases(self):
 
         aliases = {}
 
@@ -147,6 +147,11 @@ class BaseMixin(object):
             except AttributeError:
                 pass
 
+        return aliases
+
+    def _populate(self, **kwargs):
+
+        aliases = self.get_aliases()
         cls_ = type(self)
 
         # Loop through kwargs and set attributes
@@ -429,7 +434,6 @@ class TaxonomyModel(BaseMixin, Base):
     irn = Column(Integer, primary_key=True)
     _created = Column(DateTime, nullable=False, server_default=func.now())
     _modified = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
-
     scientific_name = Column(String, alias='ClaScientificName')
     kingdom = Column(String, alias='ClaKingdom')
     phylum = Column(String, alias='ClaPhylum')
@@ -782,12 +786,10 @@ class EggModel(SpecimenModel):
 
 
 class FieldNotebookModel(SpecimenModel):
+
     __tablename__ = 'field_notebook'
 
-    # TODO: Incorrect model name. Check after re-running
-
     irn = Column(Integer, ForeignKey(SpecimenModel.irn, ondelete='CASCADE'), primary_key=True)
-
     left_page_transcription = Column(String, alias='Not2LeftTranscription')
     left_page_number = Column(String, alias='Not2LeftPageNumber')
     right_page_transcription = Column(String, alias='Not2RightTranscription')
@@ -812,6 +814,7 @@ class MammalGroupPartModel(PartModel):
 
 
 class NestModel(SpecimenModel):
+
     __tablename__ = 'nest'
 
     irn = Column(Integer, ForeignKey(SpecimenModel.irn, ondelete='CASCADE'), primary_key=True)
@@ -847,7 +850,7 @@ class IndexLotModel(CatalogueModel):
     kind_of_media = Column(String, alias='EntIndKindOfMedia')
     # Index lots link through to the collection index which holds the taxonomic name
     # EntIndIndexLotTaxonNameLocalRef holds a local copy of taxonomy IRN
-    taxonomy_irn = Column(Integer, ForeignKey(TaxonomyModel.irn), alias='EntIndIndexLotTaxonNameLocalRef')
+    taxonomy_irn = Column(Integer, ForeignKey(TaxonomyModel.irn, ondelete='SET NULL'), alias='EntIndIndexLotTaxonNameLocalRef')
     determination = relationship("TaxonomyModel")
 
     material_detail = relationship("IndexLotMaterialModel", cascade='all, delete-orphan')
