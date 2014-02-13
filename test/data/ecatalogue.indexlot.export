@@ -1,0 +1,17 @@
+rownum=1
+irn:1=1
+ColDepartment:1=Entomology
+ColRecordType:1=Index Lot
+EntIndMaterial:1=Yes
+EntIndType:1=Yes
+EntIndKindOfMaterial:1=Dry
+EntIndCount:1=1
+EntIndCount:2=2
+EntIndSex:1=Female
+EntIndSex:2=Male
+EntIndTypes:1=Holotype
+EntIndTypes:2=Paratype
+EntIndPrimaryTypeNo:1=1.1
+EntIndIndexLotTaxonNameLocalRef:1=1
+AdmDateInserted=2003-11-10
+###
