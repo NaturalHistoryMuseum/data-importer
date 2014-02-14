@@ -28,6 +28,12 @@ class IndexLotTest(unittest.TestCase, BaseTest):
     task = TestIndexLotTask
     model = IndexLotModel
 
+    def test_deleted_material_detail(self):
+        self._test_deleted_relationship('material_detail')
+
+    def test_material_detail_values(self):
+        self._test_relationship_values('material_detail')
+
 
 if __name__ == '__main__':
     unittest.main()
