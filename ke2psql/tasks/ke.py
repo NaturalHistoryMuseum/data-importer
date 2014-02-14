@@ -126,6 +126,7 @@ class KEDataTask(luigi.postgres.CopyToTable):
 
             # Is this a stub record? If it is, we want to change the type and reload.
             # Seems a bit of a hack, but SQLAlchemy does not have a simple way of modifying the type
+            #  This only runs for catalogue records
             if isinstance(record, StubModel):
 
                 polymorphic_type = self.model_class.__mapper_args__['polymorphic_identity']

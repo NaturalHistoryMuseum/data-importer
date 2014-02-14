@@ -845,7 +845,7 @@ class IndexLotModel(CatalogueModel):
     irn = Column(Integer, ForeignKey(CatalogueModel.irn, ondelete='CASCADE'), primary_key=True)
     material = Column(Boolean, alias='EntIndMaterial')
     is_type = Column(Boolean, alias='EntIndType')
-    media = Column(Boolean, alias='InEntIndMedia')
+    media = Column(Boolean, alias='EntIndMedia')
     kind_of_material = Column(String, alias='EntIndKindOfMaterial')
     kind_of_media = Column(String, alias='EntIndKindOfMedia')
     # Index lots link through to the collection index which holds the taxonomic name
