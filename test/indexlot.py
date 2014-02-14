@@ -9,7 +9,7 @@ import sys
 import os
 from ke2psql.tasks import CatalogueTask
 from base import BaseTask, BaseTest
-from ke2psql.model.keemu import IndexLotModel
+from ke2psql.model.keemu import IndexLotModel, TaxonomyModel
 import unittest
 
 class TestIndexLotTask(BaseTask, CatalogueTask):
@@ -17,6 +17,14 @@ class TestIndexLotTask(BaseTask, CatalogueTask):
     file_name = 'indexlot.export'
 
 class IndexLotTest(unittest.TestCase, BaseTest):
+
+    def setUp(self):
+
+        # Need to create a taxonomy record to test against
+        taxonomy = TaxonomyModel(irn=100, scientific_name='Dummy')
+        self.session.merge(taxonomy)
+        self.session.commit()
+
     task = TestIndexLotTask
     model = IndexLotModel
 

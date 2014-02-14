@@ -1,0 +1,25 @@
+rownum=1
+irn:1=1
+ChrEonFrom:1=Phanerozoic
+ChrEraFrom:1=Paleozoic
+ChrPeriodFrom:1=Ordovician
+ChrEpochFrom:1=Late Ordovician
+ChrStageFrom:1=Katian
+ChrSortOrderFrom:1=122;445.60;455.80
+ChrLowerFrom:1=445.60
+ChrUpperFrom:1=455.80
+ChrEonTo:1=Phanerozoic
+ChrEraTo:1=Paleozoic
+ChrPeriodTo:1=Ordovician
+ChrEpochTo:1=Late Ordovician
+ChrStageTo:1=Katian
+ChrSortOrderTo:1=122;445.60;455.80
+ChrLowerTo:1=445.60
+ChrUpperTo:1=455.80
+ChrUpperFrom:1=167.70
+ChrLowerFrom:1=164.70
+AdmDateInserted=2012-12-18
+BioKindofBiozone:1=A1
+OthSedimentology:1=A2
+OthSedimentaryFacies:1=A3
+###
