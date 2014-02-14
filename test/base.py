@@ -16,6 +16,8 @@ import abc
 from keparser import KEParser
 from datetime import date, datetime
 from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm.properties import RelationshipProperty as SQLAlchemyRelationshipProperty
+from ke2psql.model.keemu import RelationshipProperty
 
 class BaseTask(object):
 
@@ -48,66 +50,55 @@ class BaseTest(object):
     def model(self):
         return None
 
-    # def test_import(self):
-    #     self.create()
-    #     luigi.build([self.task()], local_scheduler=True)
-    #     obj = self.query().one()
-    #     # self.delete()
-    #
-    # def test_data(self):
-    #
-    #     """
-    #     Ensure the data in the file matches what is in the DB
-    #     """
-    #
-    #     self.create()
-    #     keemu_schema_file = config.get('keemu', 'schema')
-    #
-    #     #  Find the path to the import file from the import task
-    #     task = self.task()
-    #
-    #     # TODO: This will fail on catalogue
-    #     file_task = task.requires()[0]
-    #     file_path = file_task.get_file_path()
-    #     ke_data = KEParser(open(file_path, 'r'), schema_file=keemu_schema_file, input_file_path=file_path)
-    #
-    #     # Load the obj from the database
-    #     obj = self.query().one()
-    #
-    #     # Get all the field aliases
-    #     aliases = self.model().get_aliases()
+    def test_import(self):
+        self.create()
+        obj = self.query().one()
+        self.delete()
 
+    def test_data(self):
 
+        """
+        Ensure the data in the file matches what is in the DB
+        """
+        self.create()
+        data = self.get_data().next()
 
+        # Load the obj from the database
+        obj = self.query().one()
 
+        for prop in self.model().__mapper__.iterate_properties:
 
-        # for data in ke_data:
-        #
-        #     for field, value in data.items():
-        #         db_field = aliases[field] if field in aliases else field
-        #         # Assert the values are equal - only works for flat fields
-        #         # Other cases are handled in the module/file specific tests
-        #         if hasattr(obj, db_field):
-        #
-        #             obj_value = getattr(obj, db_field)
-        #
-        #             # Convert dates to unicode for comparison
-        #             if isinstance(obj_value, date):
-        #                 obj_value = unicode(obj_value)
-        #
-        #             self.assertEqual(obj_value, value, '%s does not match %s %s' % (db_field, obj_value, value))
+            if type(prop) not in [RelationshipProperty, SQLAlchemyRelationshipProperty]:
+
+                obj_value = getattr(obj, prop.key)
+                # In these tests, we should have a value for every field
+
+                self.assertIsNotNone(obj_value, 'Field %s is none' % prop.key)
+
+                # Skip type, _created and _inserted dates
+                # As long as they're not null we're good
+                if prop.key.startswith('_') or prop.key in ['type']:
+                    continue
+
+                if isinstance(obj_value, date):
+                    obj_value = unicode(obj_value)
+
+                col = prop.columns[0]
+                field = col.alias or prop.key
+                value = data.get(field)
+
+                self.assertEqual(obj_value, value, '%s does not match %s %s' % (prop.key, obj_value, value))
 
         # Destroy the object
-        # self.delete()
+        self.delete()
 
-
-    # def test_delete(self):
-    #     # Ensure the data is there to be deleted
-    #     self.create()
-    #     # ANd then delete it
-    #     self.delete()
-    #     count = self.query().count()
-    #     self.assertEqual(count, 0)
+    def test_delete(self):
+        # Ensure the data is there to be deleted
+        self.create()
+        # ANd then delete it
+        self.delete()
+        count = self.query().count()
+        self.assertEqual(count, 0)
 
     def create(self):
         luigi.build([self.task()], local_scheduler=True)
@@ -132,36 +123,47 @@ class BaseTest(object):
         file_path = file_task.get_file_path()
         return KEParser(open(file_path, 'r'), schema_file=keemu_schema_file, input_file_path=file_path)
 
-    def test_relationship(self):
+    def _test_relationship_values(self, relationship):
+        """
+        Loop through all values in a given relationship
+        Checking the data from the KE export matches whats in the DB
+        """
+        self.create()
         obj = self.query().one()
         data = self.get_data().next()
 
-        print obj.material_detail
-
         x = 0
-        for material in obj.material_detail:
+        for rel_obj in getattr(obj, relationship):
 
-            aliases = material.get_aliases()
+            aliases = rel_obj.get_aliases()
 
             for alias, db_field in aliases.items():
-                obj_value = getattr(material, db_field)
+                obj_value = getattr(rel_obj, db_field)
 
-                print data.get(alias, None)[x]
+                value = data.get(alias, None)
 
-                # self.assertEqual(obj_value, data.get(alias), '%s does not match %s %s' % (db_field, obj_value, value))
+                if value:
+                    value = self.ensure_list(value)
 
-                # print data[alias]
-                #
-                # print obj_value
+                    if x in value:
+                        self.assertEqual(obj_value, value[x], '%s does not match %s %s' % (db_field, obj_value, value[x]))
 
-            x += 1
+        self.delete()
 
+    def _test_deleted_relationship(self, relationship):
+        """
+        For a given relationship, check all records in the associated tables have been deleted
+        """
+        self.create()
+        self.delete()
+        table = getattr(self.model, relationship).property.table
+        count = self.session.scalar("SELECT COUNT(*) FROM {} WHERE irn={}".format(table, self.irn))
+        self.assertEqual(count, 0, '%s records for relationship %s are still present after deletion' % (count, relationship))
 
-            # print aliases
-            #
-            # print material.irn
-
-        print 'test'
+    @staticmethod
+    def ensure_list(value):
+        # Ensure a variable is a list & convert to a list if it's not
+        return value if isinstance(value, list) else [value]
 
 
 
