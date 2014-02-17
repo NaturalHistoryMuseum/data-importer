@@ -6,15 +6,16 @@ from catalogue import CatalogueTest, TestCatalogueTask
 from indexlot import IndexLotTest
 from mineralogy import MineralogyTest
 from sites import SitesTest
+from collectionevent import CollectionEventTest
 from ke2psql.model.keemu import *
 import unittest
 
-class TempTest(SitesTest):
+class TempTest(CollectionEventTest):
+
+
 
     def test_part(self):
-        self.update()
-
-        print self.file_name
+        # self.update()
 
         self.create()
         obj = self.query().one()
@@ -39,7 +40,7 @@ class TempTest(SitesTest):
 
 def export_data():
 
-    model = SiteModel()
+    model = CollectionEventModel()
 
     fields = []
     x = 1
@@ -50,7 +51,7 @@ def export_data():
             continue
 
         if aliases[alias] not in fields:
-            print '%s:1=A%s' % (alias, x)
+            print '%s:1=B%s' % (alias, x)
             x += 1
 
         fields.append(aliases[alias])
@@ -61,5 +62,5 @@ def export_data():
 
 
 if __name__ == '__main__':
-    # unittest.main()
-    export_data()
+    unittest.main()
+    # export_data()
