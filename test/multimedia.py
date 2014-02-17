@@ -21,8 +21,21 @@ class MultimediaTest(unittest.TestCase, BaseTest):
     model = MultimediaModel
 
     def test_data(self):
-        # TODO
-        pass
+        self.create()
+        obj = self.query().one()
+        self.assertEquals(obj.title, 'A1')
+        self.assertEquals(obj.mime_type, 'image')
+        self.assertEquals(obj.mime_format, 'A2')
+        self.delete()
+
+    def test_update(self):
+        self.update()
+        self.create()
+        obj = self.query().one()
+        self.assertEquals(obj.title, 'B1')
+        self.assertEquals(obj.mime_type, 'image')
+        self.assertEquals(obj.mime_format, 'B2')
+        self.delete()
 
 if __name__ == '__main__':
     unittest.main()
