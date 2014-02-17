@@ -26,6 +26,9 @@ class CatalogueTask(KEDataTask):
     # Regular expression for finding model name
     re_model = re.compile('[a-zA-Z &]+')
 
+    # List of record types we know we want to ignore.
+    # If a record type is found not in this list and without a model, an error will be logged
+    excluded_types = ['Object Entry', 'Acquisition', 'Missing']
 
     def requires(self):
         # Catalogue is dependent on all other modules
@@ -47,11 +50,17 @@ class CatalogueTask(KEDataTask):
 
         # If we don't have a model class, continue to next record
         if not self.model_class:
-            log.debug('Skipping record %s: No model class for %s', data['irn'], data.get('ColRecordType', 'No record type'))
+
+            record_type = data.get('ColRecordType', 'Missing')
+
+            # If record type is one we've knowingly excluded
+            if record_type in self.excluded_types:
+                log.debug('Skipping record %s: No model class for %s', data['irn'], record_type)
+            else:
+                log.error('Unknown model class %s for %s. Investigate and then add to [excluded_types] if not required.', record_type, data['irn'])
             return
 
         # Filter out some of the records
-
         if not 'ColDepartment' in data:
             log.debug('Skipping record %s: No collection department', data['irn'])
             return None
@@ -71,7 +80,6 @@ class CatalogueTask(KEDataTask):
             return None
 
         # 4257 Artefacts have no kind or name. Skip them
-        # TODO: Test
         if data['ColRecordType'] == 'Artefact' and 'ArtKind' not in data and 'ArtName' not in data:
             return None
 
@@ -137,6 +145,10 @@ class CatalogueTask(KEDataTask):
             data['EntCatCatalogueNumber'] = '{0}{1}'.format(data['EntCatPrefix'], data['EntCatCatalogueNumber'])
         except KeyError:
             pass
+
+        # Set egg part type if not already set
+        if self.model_class is EggModel and 'PrtType' not in data:
+            data['PrtType'] = 'egg'
 
         super(CatalogueTask, self).process(data)
 
