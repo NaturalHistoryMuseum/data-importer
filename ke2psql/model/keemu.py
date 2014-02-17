@@ -363,8 +363,7 @@ class StratigraphicUnitAssociation(BaseMixin, Base):
     unit_id = Column(Integer, ForeignKey(StratigraphicUnitModel.id), primary_key=True, nullable=False)
     types = [i[3:].lower() for group in STRATIGRAPHIC_UNIT_TYPES.values() for i in group]
 
-    # TODO: Change to stratigraphic type
-    type = Column(Enum(*types, name='type', schema=KEEMU_SCHEMA), primary_key=True, nullable=False)
+    stratigraphic_type = Column(Enum(*types, name='stratigraphic_type', schema=KEEMU_SCHEMA), primary_key=True, nullable=False)
     direction = Column(Enum('from', 'to', name='direction', schema=KEEMU_SCHEMA), primary_key=True, nullable=False)  # From / to
 
     # bidirectional attribute/collection of "specimen"/"determinations"
@@ -373,10 +372,10 @@ class StratigraphicUnitAssociation(BaseMixin, Base):
     # reference to the "Taxonomy" object
     unit = relationship("StratigraphicUnitModel")
 
-    def __init__(self, stratigraphy_irn=None, unit_id=None, type=None, direction=None):
+    def __init__(self, stratigraphy_irn=None, unit_id=None, stratigraphic_type=None, direction=None):
         self.stratigraphy_irn = stratigraphy_irn
         self.unit_id = unit_id
-        self.type = type
+        self.stratigraphic_type = stratigraphic_type
         self.direction = direction
 
 
@@ -555,7 +554,7 @@ class SpecimenModel(CatalogueModel):
     other_numbers = relationship("OtherNumbersModel", cascade='all, delete-orphan')
     sex_stage = relationship("SexStageModel", secondary=specimen_sex_stage)
 
-    # part = relationship("PartModel", primaryjoin="PartModel.parent_irn == SpecimenModel.irn")
+    part_record = relationship("PartModel", primaryjoin="PartModel.parent_irn == SpecimenModel.irn")
 
     __mapper_args__ = {
         'polymorphic_identity': 'specimen'
@@ -640,12 +639,7 @@ class PartModel(SpecimenModel):
     __tablename__ = 'part'
 
     irn = Column(Integer, ForeignKey(SpecimenModel.irn), primary_key=True)
-
-    # TODO: Remove
-    _modified = Column(DateTime, nullable=False, server_default=func.now())
-
     parent_irn = Column(Integer, ForeignKey(SpecimenModel.irn), alias='RegRegistrationParentRef')
-
     parent = relationship("SpecimenModel", viewonly=True, primaryjoin="PartModel.parent_irn == SpecimenModel.irn", backref="part")
     part_type = Column(String, alias='PrtType')
 
@@ -753,10 +747,7 @@ class HostParasiteAssociation(BaseMixin, Base):
         self.parasite_host = parasite_host
         self.stage = stage
 
-
-class EggModel(SpecimenModel):
-    # TODO: Check this. I have removed part specimen inheritance, and just added RegRegistrationParentRef
-    # Does it have all the part data?
+class EggModel(PartModel):
 
     """
     Changelog:
@@ -768,16 +759,14 @@ class EggModel(SpecimenModel):
                               accessory_colouration = Column(String, alias='EggAccessoryColouration')
                               other_colouration = Column(String, alias='EggOtherColouration')
                               pattern = Column(String, alias='EggPattern')
+    140213: Switched back to PartModel
     """
 
     __tablename__ = 'egg'
 
-    irn = Column(Integer, ForeignKey(SpecimenModel.irn, ondelete='CASCADE'), primary_key=True)
+    irn = Column(Integer, ForeignKey(PartModel.irn, ondelete='CASCADE'), primary_key=True)
     clutch_size = Column(Integer, alias='EggClutchSize')
     set_mark = Column(String, alias='EggSetMark')
-
-    parent_irn = Column(Integer, ForeignKey(SpecimenModel.irn), alias='RegRegistrationParentRef')
-    parent = relationship("SpecimenModel", viewonly=True, primaryjoin="EggModel.parent_irn == SpecimenModel.irn", backref="eggs")
 
     __mapper_args__ = {
         'polymorphic_identity': 'egg',
