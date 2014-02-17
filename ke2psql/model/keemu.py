@@ -522,6 +522,7 @@ class SpecimenModel(CatalogueModel):
     collection_department = Column(String, alias='ColDepartment')
     collection_sub_department = Column(String, alias='ColSubDepartment')
     # TODO: CHeck this. Min uses coll kind differently. I'm not sure this is OK! It's not. change it.
+    # TODO: Before rerunning
     specimen_unit = Column(String, alias=['ColKind', 'CatKindOfObject', 'EntCatKindOfObject'])
     curation_unit = Column(String, alias='RegCurationUnit')
     catalogue_number = Column(String, alias=['DarCatalogNumber', 'MinBmNumber', 'BotRegRegistrationNumber', 'EntCatCatalogueNumber', 'RegRegistrationNumber', 'PalRegFullRegistrationNumber'])
