@@ -46,7 +46,19 @@ class CatalogueTest(unittest.TestCase, BaseTest):
         obj = self.query().one()
         self.assertEquals(obj.ke_date_modified.strftime('%Y-%m-%d'), '1999-01-31')
         self.assertEquals(obj.ke_date_inserted.strftime('%Y-%m-%d'), '1999-01-31')
-        self.assertEquals(obj.collection_department, 'CD')
+        self.assertEquals(obj.collection_department, 'CD1')
+        self.delete()
+
+    def test_catalogue_data_update(self):
+        """
+        Test the updated data
+        """
+        self.update()
+        self.create()
+        obj = self.query().one()
+        self.assertEquals(obj.ke_date_modified.strftime('%Y-%m-%d'), '2000-01-31')
+        self.assertEquals(obj.ke_date_inserted.strftime('%Y-%m-%d'), '2000-01-31')
+        self.assertEquals(obj.collection_department, 'CD2')
         self.delete()
 
     def test_type(self):
