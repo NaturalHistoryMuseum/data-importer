@@ -24,7 +24,7 @@ class StratigraphyTask(KEDataTask):
             for unit_type in group:
                 # Every unit type has To & From: ChrEonTo & ChrEonFrom
                 for direction in ['To', 'From']:
-                    value = self._get_field_value(data, unit_type, direction)
+                    value = self.get_field_value(data, unit_type, direction)
                     # Do we have a value?
                     if value and value not in unit_names:
                         unit_names.append(value)
@@ -39,20 +39,20 @@ class StratigraphyTask(KEDataTask):
 
             # Now loop through all the types, assigning the unit model
             for group in STRATIGRAPHIC_UNIT_TYPES.values():
-                for unit_type in group:
-                    for direction in ['To', 'From']:
-                        value = self._get_field_value(data, unit_type, direction)
 
+                for unit_type in group:
+
+                    for direction in ['To', 'From']:
+                        value = self.get_field_value(data, unit_type, direction)
                         if value:
                             unit_model = unit_models[unicode(value)]
                             # First three chars of unit type aren't useful: Lit, Chr etc.,
-                            unit_type = unit_type[3:].lower()
-                            data['stratigraphic_unit'].append(StratigraphicUnitAssociation(stratigraphy_irn=data['irn'], unit_id=unit_model.id, type=unit_type, direction=direction.lower()))
+                            data['stratigraphic_unit'].append(StratigraphicUnitAssociation(stratigraphy_irn=data['irn'], unit_id=unit_model.id, stratigraphic_type=unit_type[3:].lower(), direction=direction.lower()))
 
         super(StratigraphyTask, self).process(data)
 
     @staticmethod
-    def _get_field_value(data, unit_type, direction):
+    def get_field_value(data, unit_type, direction):
         """
         Helper function to get the value of a field
         """
