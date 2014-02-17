@@ -10,6 +10,8 @@ import os
 import unittest
 from taxonomy import TaxonomyTest
 from indexlot import IndexLotTest
+from catalogue import CatalogueTest
+from multimedia import MultimediaTest
 
 if __name__ == '__main__':
     unittest.main()

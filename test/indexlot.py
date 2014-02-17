@@ -9,78 +9,79 @@ import sys
 import os
 from ke2psql.tasks import CatalogueTask
 from base import BaseTask, BaseTest
+from catalogue import CatalogueTest, TestCatalogueTask
 from ke2psql.model.keemu import IndexLotModel, TaxonomyModel, MultimediaModel, SpecimenModel
 import unittest
 
-class TestIndexLotTask(BaseTask, CatalogueTask):
-    module = 'ecatalogue'
 
-class IndexLotTest(unittest.TestCase, BaseTest):
+class IndexLotTest(CatalogueTest):
 
     file_name = 'indexlot.export'
 
-    def setUp(self):
-
-        # Need to create a taxonomy record to test against
-        taxonomy = TaxonomyModel(irn=100, scientific_name='Dummy 1')
-        self.session.merge(taxonomy)
-        taxonomy = TaxonomyModel(irn=101, scientific_name='Dummy 2')
-        self.session.merge(taxonomy)
-        multimedia = MultimediaModel(irn=100)
-        self.session.merge(multimedia)
-        multimedia = MultimediaModel(irn=101)
-        self.session.merge(multimedia)
-        assoc_record = SpecimenModel(irn=100)
-        self.session.merge(assoc_record)
-        assoc_record = SpecimenModel(irn=101)
-        self.session.merge(assoc_record)
-        self.session.commit()
-
-    task = TestIndexLotTask
+    task = TestCatalogueTask
     model = IndexLotModel
 
-    # def test_deleted_material_detail(self):
-    #     self._test_relationship_delete('material_detail')
+    def test_data(self):
+        self.create()
+        obj = self.query().one()
+        self.assertEquals(obj.type, 'indexlot')
+        self.assertEquals(obj.kind_of_material, 'Dry')
+        self.assertEquals(obj.kind_of_media, 'T1')
+        self.assertEquals(obj.taxonomy_irn, 100)
+        self.assertIsInstance(obj.determination, TaxonomyModel)
+        self.delete()
 
-    def test_material_detail_values(self):
-        self._test_relationship_values('material_detail', 2)
-
-    def test_multimedia_exists(self):
-        self._test_relationship_exists('multimedia')
-
-    def test_multimedia_delete(self):
-        self._test_relationship_delete('multimedia')
-
-    def test_associated_record_exists(self):
-        self._test_relationship_exists('associated_record')
-
-    def test_associated_record_delete(self):
-        self._test_relationship_delete('associated_record')
-
-    # Run all again as an update
-    def test_update_deleted_material_detail(self):
+    def test_update(self):
         self.update()
+        self.create()
+        obj = self.query().one()
+        self.assertEquals(obj.type, 'indexlot')
+        self.assertEquals(obj.kind_of_material, 'Wet')
+        self.assertEquals(obj.kind_of_media, 'T2')
+        self.assertEquals(obj.taxonomy_irn, 101)
+        self.assertIsInstance(obj.determination, TaxonomyModel)
+        self.delete()
+
+    def test_material_detail(self):
+        self.create()
+        obj = self.query().one()
+
+        # Should be two objects
+        self.assertEqual(len(obj.material_detail), 2)
+        self.assertEquals(obj.material_detail[0].count, 1)
+        self.assertEquals(obj.material_detail[0].sex, 'Male')
+        self.assertEquals(obj.material_detail[0].stage, None)
+        self.assertEquals(obj.material_detail[0].types, 'Holotype')
+        self.assertEquals(obj.material_detail[0].primary_type_number, '1')
+
+
+        self.assertEquals(obj.material_detail[1].count, 2)
+        self.assertEquals(obj.material_detail[1].sex, 'Female')
+        self.assertEquals(obj.material_detail[1].stage, 'Adult')
+        self.assertEquals(obj.material_detail[1].types, 'Paratype')
+        self.assertEquals(obj.material_detail[1].primary_type_number, None)
+        self.delete()
+
+
+    def test_material_detail_delete(self):
         self._test_relationship_delete('material_detail')
 
-    def test_update_material_detail_values(self):
+    def test_material_detail_update(self):
         self.update()
-        self._test_relationship_values('material_detail')
+        self.create()
+        obj = self.query().one()
 
-    def test_update_multimedia_exists(self):
-        self.update()
-        self._test_relationship_exists('multimedia')
+        # Should be one object
+        self.assertEqual(len(obj.material_detail), 1)
+        self.assertEquals(obj.material_detail[0].count, 3)
+        self.assertEquals(obj.material_detail[0].sex, None)
+        self.assertEquals(obj.material_detail[0].stage, 'Juvenile')
+        self.assertEquals(obj.material_detail[0].types, None)
+        self.assertEquals(obj.material_detail[0].primary_type_number, '1.1')
 
-    def test_update_multimedia_delete(self):
-        self.update()
-        self._test_relationship_delete('multimedia')
+        self.delete()
 
-    def test_update_associated_record_exists(self):
-        self.update()
-        self._test_relationship_exists('associated_record')
 
-    def test_update_associated_record_delete(self):
-        self.update()
-        self._test_relationship_delete('associated_record')
 
 if __name__ == '__main__':
     unittest.main()

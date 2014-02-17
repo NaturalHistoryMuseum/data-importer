@@ -19,5 +19,9 @@ class TaxonomyTest(unittest.TestCase, BaseTest):
     task = TestTaxonomyTask
     model = TaxonomyModel
 
+    def test_data(self):
+        # TODO
+        pass
+
 if __name__ == '__main__':
     unittest.main()

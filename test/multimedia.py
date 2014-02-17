@@ -20,6 +20,10 @@ class MultimediaTest(unittest.TestCase, BaseTest):
     task = TestMultimediaTask
     model = MultimediaModel
 
+    def test_data(self):
+        # TODO
+        pass
+
 if __name__ == '__main__':
     unittest.main()
 

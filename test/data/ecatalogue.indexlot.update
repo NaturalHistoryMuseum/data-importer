@@ -7,13 +7,13 @@ EntIndType:1=No
 EntIndMedia:1=No
 EntIndKindOfMaterial:1=Wet
 EntIndKindOfMedia:1=T2
-EntIndCount:1=1
-EntIndSex:1=Female
-EntIndTypes:1=Holotype
-EntIndPrimaryTypeNo:1=1.1
 EntIndIndexLotTaxonNameLocalRef:1=101
 MulMultiMediaRef:1=101
 EntRelOtherObjectRef:1=101
 AdmDateInserted=2003-11-10
 AdmDateModified=2013-02-01
+EntIndCount:1=3
+EntIndTypes:1=
+EntIndStage:1=Juvenile
+EntIndPrimaryTypeNo:1=1.1
 ###
