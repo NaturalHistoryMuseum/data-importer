@@ -7,15 +7,14 @@ from indexlot import IndexLotTest
 from mineralogy import MineralogyTest
 from sites import SitesTest
 from collectionevent import CollectionEventTest
+from taxonomy import TaxonomyTest
 from ke2psql.model.keemu import *
 import unittest
 
-class TempTest(CollectionEventTest):
-
-
+class TempTest(TaxonomyTest):
 
     def test_part(self):
-        # self.update()
+        self.update()
 
         self.create()
         obj = self.query().one()
@@ -30,7 +29,12 @@ class TempTest(CollectionEventTest):
             if field in ['irn', '_created', '_modified'] or isinstance(value, list):
                 continue
 
-            data[int(value[1:])] = 'self.assertEquals(obj.%s, \'%s\')' % (field, value)
+            try:
+                data[int(value[1:])] = 'self.assertEquals(obj.%s, \'%s\')' % (field, value)
+            except TypeError:
+                print 'self.assertEquals(obj.%s, \'%s\')' % (field, value)
+
+
 
         for key in sorted(sorted(data)):
             print data[key]
@@ -40,7 +44,7 @@ class TempTest(CollectionEventTest):
 
 def export_data():
 
-    model = CollectionEventModel()
+    model = TaxonomyModel()
 
     fields = []
     x = 1
@@ -62,5 +66,5 @@ def export_data():
 
 
 if __name__ == '__main__':
-    unittest.main()
-    # export_data()
+    # unittest.main()
+    export_data()
