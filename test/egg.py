@@ -26,7 +26,7 @@ class EggTest(PartTest):
         self.session.merge(SpecimenModel(irn=100))
         self.session.commit()
 
-    def test_data(self):
+    def test_egg_data(self):
 
         self.create()
         # Load the obj from the database
@@ -38,24 +38,20 @@ class EggTest(PartTest):
         # Make sure it's got the specimen data too
         self.assertEquals(obj.part_type, 'egg')
         self.assertEquals(obj.clutch_size, 1)
-        self.assertEquals(obj.set_mark, 'V1')
+        self.assertEquals(obj.set_mark, 'A12')
 
         self.delete()
 
-    def test_update(self):
+    def test_egg_update(self):
 
         self.update()
         self.create()
         # Load the obj from the database
         obj = self.query().one()
-
-        self.assertIsInstance(obj.parent, SpecimenModel)
-        self.assertEquals(obj.parent.irn, 101)
-
         # Make sure it's got the specimen data too
         self.assertEquals(obj.part_type, 'egg')
         self.assertEquals(obj.clutch_size, 2)
-        self.assertEquals(obj.set_mark, 'V2')
+        self.assertEquals(obj.set_mark, 'B12')
         self.delete()
 
 if __name__ == '__main__':

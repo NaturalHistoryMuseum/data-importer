@@ -3,7 +3,7 @@ irn:1=1
 AdmDateInserted:1=1999-01-31
 AdmDateModified:1=1999-01-31
 ColRecordType:1=Specimen
-ColDepartment:1=V1
+ColDepartment:1=CD1
 MulMultiMediaRef:1=100
 EntRelOtherObjectRef:1=100
 ###

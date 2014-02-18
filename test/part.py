@@ -9,11 +9,12 @@ import sys
 import os
 from ke2psql.tasks import CatalogueTask
 from base import BaseTask, BaseTest
-from catalogue import CatalogueTest, TestCatalogueTask
+from catalogue import TestCatalogueTask
+from specimen import SpecimenTest
 from ke2psql.model.keemu import BirdGroupPartModel, SpecimenModel
 import unittest
 
-class PartTest(CatalogueTest):
+class PartTest(SpecimenTest):
 
     file_name = 'part.export'
     task = TestCatalogueTask
@@ -25,7 +26,7 @@ class PartTest(CatalogueTest):
         self.session.merge(SpecimenModel(irn=100))
         self.session.commit()
 
-    def test_data(self):
+    def test_part_data(self):
 
         self.create()
         # Load the obj from the database
@@ -35,12 +36,11 @@ class PartTest(CatalogueTest):
         self.assertEquals(obj.parent.irn, 100)
 
         # Make sure it's got the specimen data too
-        self.assertEquals(obj.curation_unit, 'Bird')
-        self.assertEquals(obj.part_type, 'Leg')
+        self.assertIn(obj.part_type, ['A12', 'egg'])
 
         self.delete()
 
-    def test_update(self):
+    def test_part_update(self):
 
         self.update()
 
@@ -49,6 +49,8 @@ class PartTest(CatalogueTest):
         obj = self.query().one()
         # In the update we've remove the rel
         self.assertIsNone(obj.parent)
+        # Hacky - works with egg test too
+        self.assertIn(obj.part_type, ['B12', 'egg'])
         self.delete()
 
 
@@ -56,7 +58,7 @@ class PartTest(CatalogueTest):
         """
         Test the link back to the part from the parent record
         """
-        self.update()
+        self.create()
         parent = self.session.query(SpecimenModel).filter(SpecimenModel.irn == 100).one()
         self.assertIsInstance(parent.part_record[0], self.model)
         self.assertEquals(parent.part_record[0].irn, 1)

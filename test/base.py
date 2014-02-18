@@ -113,8 +113,12 @@ class BaseTest(object):
         self.create()
         obj = self.query().one()
         for prop in class_mapper(self.model).iterate_properties:
+
+
+
             self.assertIsNotNone(getattr(obj, prop.key), 'Property %s is None' % prop)
-        self.delete()
+
+        # self.delete()
 
 
     def update(self):
@@ -155,6 +159,16 @@ class BaseTest(object):
         # Check the object is the right type
         self.assertIsInstance(value[0], model)
         self.delete()
+
+    def _test_relationship_not_exists(self, relationship):
+        """
+        Check a relationship exists
+        """
+        self.create()
+        obj = self.query().one()
+        value = getattr(obj, relationship)
+        # Check we have the object
+        self.assertEqual(value, [], 'Relationship %s should not exist' % relationship)
 
     def _test_relationship_delete(self, relationship, table=None, key=None):
         """

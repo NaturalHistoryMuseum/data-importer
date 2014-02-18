@@ -7,13 +7,12 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 
 import sys
 import os
-from ke2psql.tasks import CatalogueTask
-from base import BaseTask, BaseTest
-from catalogue import CatalogueTest, TestCatalogueTask
+from catalogue import TestCatalogueTask
 from ke2psql.model.keemu import ParasiteCardModel
 import unittest
+import specimen
 
-class ParasiteCardTest(CatalogueTest):
+class ParasiteCardTest(specimen.SpecimenTest):
 
     file_name = 'parasite_card.export'
     task = TestCatalogueTask
@@ -24,7 +23,15 @@ class ParasiteCardTest(CatalogueTest):
         self.create()
         # Load the obj from the database
         obj = self.query().one()
-        self.assertEquals(obj.barcode, '1234')
+        self.assertEquals(obj.barcode, 'A12')
+        self.delete()
+
+    def test_data_update(self):
+        self.update()
+        self.create()
+        # Load the obj from the database
+        obj = self.query().one()
+        self.assertEquals(obj.barcode, 'B12')
         self.delete()
 
     def test_host_parasite(self):
@@ -37,13 +44,13 @@ class ParasiteCardTest(CatalogueTest):
 
         self.assertEquals(obj.host_parasite_taxonomy[0].taxonomy_irn, 100)
         self.assertEquals(obj.host_parasite_taxonomy[0].parasite_host, 'parasite')
-        self.assertEquals(obj.host_parasite_taxonomy[0].stage, 'stage1')
+        self.assertEquals(obj.host_parasite_taxonomy[0].stage, 'A13')
         self.assertEquals(obj.host_parasite_taxonomy[1].taxonomy_irn, 101)
         self.assertEquals(obj.host_parasite_taxonomy[1].parasite_host, 'parasite')
-        self.assertEquals(obj.host_parasite_taxonomy[1].stage, 'stage2')
+        self.assertEquals(obj.host_parasite_taxonomy[1].stage, 'A14')
         self.delete()
 
-    def test_update(self):
+    def test_host_parasite_update(self):
 
         self.update()
         self.create()
@@ -55,11 +62,11 @@ class ParasiteCardTest(CatalogueTest):
 
         self.assertEquals(obj.host_parasite_taxonomy[0].taxonomy_irn, 100)
         self.assertEquals(obj.host_parasite_taxonomy[0].parasite_host, 'host')
-        self.assertEquals(obj.host_parasite_taxonomy[0].stage, 'stage3')
+        self.assertEquals(obj.host_parasite_taxonomy[0].stage, 'B13')
 
         self.assertEquals(obj.host_parasite_taxonomy[1].taxonomy_irn, 101)
         self.assertEquals(obj.host_parasite_taxonomy[1].parasite_host, 'parasite')
-        self.assertEquals(obj.host_parasite_taxonomy[1].stage, 'stage3')
+        self.assertEquals(obj.host_parasite_taxonomy[1].stage, 'B13')
         self.delete()
 
     def test_delete(self):

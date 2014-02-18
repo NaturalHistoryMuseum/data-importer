@@ -6,15 +6,19 @@ from catalogue import CatalogueTest, TestCatalogueTask
 from indexlot import IndexLotTest
 from mineralogy import MineralogyTest
 from sites import SitesTest
+from specimen import SpecimenModel
+from specimen import SpecimenTest
 from collectionevent import CollectionEventTest
 from taxonomy import TaxonomyTest
+from mineralogy import MineralogyTest
 from ke2psql.model.keemu import *
 import unittest
+from indexlot import IndexLotTest, IndexLotModel
 
-class TempTest(TaxonomyTest):
+class TempTest(IndexLotTest):
 
     def test_part(self):
-        self.update()
+        # self.update()
 
         self.create()
         obj = self.query().one()
@@ -33,6 +37,8 @@ class TempTest(TaxonomyTest):
                 data[int(value[1:])] = 'self.assertEquals(obj.%s, \'%s\')' % (field, value)
             except TypeError:
                 print 'self.assertEquals(obj.%s, \'%s\')' % (field, value)
+            except ValueError:
+                print 'self.assertEquals(obj.%s, \'%s\')' % (field, value)
 
 
 
@@ -44,7 +50,7 @@ class TempTest(TaxonomyTest):
 
 def export_data():
 
-    model = TaxonomyModel()
+    model = IndexLotModel()
 
     fields = []
     x = 1
@@ -55,7 +61,7 @@ def export_data():
             continue
 
         if aliases[alias] not in fields:
-            print '%s:1=B%s' % (alias, x)
+            print '%s:1=A%s' % (alias, x)
             x += 1
 
         fields.append(aliases[alias])
