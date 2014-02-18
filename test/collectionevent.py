@@ -7,9 +7,9 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 
 import sys
 import os
-from ke2psql.tasks import CollectionEventsTask
+from ke2sql.tasks import CollectionEventsTask
 from base import BaseTask, BaseTest
-from ke2psql.model.keemu import CollectionEventModel
+from ke2sql.model.keemu import CollectionEventModel
 import unittest
 
 class CollectionEventTask(BaseTask, CollectionEventsTask):

@@ -7,10 +7,10 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 
 import sys
 import os
-from ke2psql.tasks import CatalogueTask
+from ke2sql.tasks import CatalogueTask
 from base import BaseTask, BaseTest
 from catalogue import CatalogueTest, TestCatalogueTask
-from ke2psql.model.keemu import IndexLotModel, TaxonomyModel, MultimediaModel, SpecimenModel
+from ke2sql.model.keemu import IndexLotModel, TaxonomyModel, MultimediaModel, SpecimenModel
 import unittest
 
 

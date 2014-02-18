@@ -7,11 +7,11 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 
 import sys
 import os
-from ke2psql.tasks import CatalogueTask
+from ke2sql.tasks import CatalogueTask
 from base import BaseTask, BaseTest
 from catalogue import CatalogueTest, TestCatalogueTask
 from part import PartTest
-from ke2psql.model.keemu import EggModel, SpecimenModel
+from ke2sql.model.keemu import EggModel, SpecimenModel
 import unittest
 
 class EggTest(PartTest):

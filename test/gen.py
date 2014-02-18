@@ -1,6 +1,6 @@
 import sys
 import os
-from ke2psql.tasks import CatalogueTask
+from ke2sql.tasks import CatalogueTask
 from base import BaseTask, BaseTest
 from catalogue import CatalogueTest, TestCatalogueTask
 from indexlot import IndexLotTest
@@ -11,7 +11,7 @@ from specimen import SpecimenTest
 from collectionevent import CollectionEventTest
 from taxonomy import TaxonomyTest
 from mineralogy import MineralogyTest
-from ke2psql.model.keemu import *
+from ke2sql.model.keemu import *
 import unittest
 from indexlot import IndexLotTest, IndexLotModel
 

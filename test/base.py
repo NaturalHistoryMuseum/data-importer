@@ -8,8 +8,8 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 import sys
 import os
 import luigi
-from ke2psql.model import meta
-from ke2psql.tasks.ke import KEFileTask
+from ke2sql.model import meta
+from ke2sql.tasks.ke import KEFileTask
 import abc
 from datetime import date, datetime
 from sqlalchemy.orm import class_mapper

@@ -7,9 +7,9 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 
 import sys
 import os
-from ke2psql.tasks import MultimediaTask
+from ke2sql.tasks import MultimediaTask
 from base import BaseTask, BaseTest
-from ke2psql.model.keemu import MultimediaModel
+from ke2sql.model.keemu import MultimediaModel
 import unittest
 
 class TestMultimediaTask(BaseTask, MultimediaTask):

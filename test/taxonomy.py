@@ -7,9 +7,9 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 
 import sys
 import os
-from ke2psql.tasks import TaxonomyTask
+from ke2sql.tasks import TaxonomyTask
 from base import BaseTask, BaseTest
-from ke2psql.model.keemu import TaxonomyModel
+from ke2sql.model.keemu import TaxonomyModel
 import unittest
 
 class TestTaxonomyTask(BaseTask, TaxonomyTask):

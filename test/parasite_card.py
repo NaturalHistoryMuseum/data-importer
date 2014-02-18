@@ -8,7 +8,7 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 import sys
 import os
 from catalogue import TestCatalogueTask
-from ke2psql.model.keemu import ParasiteCardModel
+from ke2sql.model.keemu import ParasiteCardModel
 import unittest
 import specimen
 

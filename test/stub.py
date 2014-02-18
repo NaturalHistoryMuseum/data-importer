@@ -7,9 +7,9 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 
 import sys
 import os
-from ke2psql.tasks import StratigraphyTask
+from ke2sql.tasks import StratigraphyTask
 from base import BaseTask, BaseTest
-from ke2psql.model.keemu import *
+from ke2sql.model.keemu import *
 import unittest
 from sqlalchemy.types import Integer, String, Date
 

@@ -7,9 +7,9 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 
 import sys
 import os
-from ke2psql.tasks import SitesTask
+from ke2sql.tasks import SitesTask
 from base import BaseTask, BaseTest
-from ke2psql.model.keemu import SiteModel
+from ke2sql.model.keemu import SiteModel
 import unittest
 
 class TestSitesTask(BaseTask, SitesTask):

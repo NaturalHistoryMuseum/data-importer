@@ -9,7 +9,7 @@ import sys
 import os
 
 from catalogue import TestCatalogueTask
-from ke2psql.model.keemu import PalaeontologySpecimenModel, StratigraphyModel
+from ke2sql.model.keemu import PalaeontologySpecimenModel, StratigraphyModel
 import unittest
 import specimen
 
