@@ -8,8 +8,8 @@ except:
 
 from distutils.core import Command
 from ConfigParser import ConfigParser
-from ke2psql.model.keemu import *
-from ke2psql.model import meta
+from ke2sql.model.keemu import *
+from ke2sql.model import meta
 from sqlalchemy import text
 
 class InitDBCommand(Command):
@@ -26,7 +26,7 @@ class InitDBCommand(Command):
     def run(self):
 
         config = ConfigParser()
-        config.read(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ke2psql/client.cfg'))
+        config.read(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ke2sql/client.cfg'))
 
         # Create the actual DB schema if it doesn't already exist
         # CREATE SCHEMA IF NOT EXISTS is PG 9.3
@@ -43,15 +43,15 @@ class InitDBCommand(Command):
 version = '0.1'
 
 setup(
-    name='ke2psql',
+    name='ke2sql',
     version=version,
     description='Import KE Data into postgres',
     author='Ben Scott',
     author_email='ben@benscott.co.uk',
-    url='https://github.com/NaturalHistoryMuseum/ke2psql',
+    url='https://github.com/NaturalHistoryMuseum/ke2sql',
     license='Apache License 2.0',
     packages=[
-        'ke2psql',
+        'ke2sql',
     ],
     cmdclass={
         'initdb': InitDBCommand
