@@ -7,13 +7,13 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 
 
 import luigi.postgres
-from ke2psql import log
+from ke2sql import log
 from keparser import KEParser
-from ke2psql.model.meta import config
-from ke2psql.model import meta
-from ke2psql.model.keemu import *
-from ke2psql.tasks.ke import KEFileTask, KEDataTask
-from ke2psql.tasks import *
+from ke2sql.model.meta import config
+from ke2sql.model import meta
+from ke2sql.model.keemu import *
+from ke2sql.tasks.ke import KEFileTask, KEDataTask
+from ke2sql.tasks import *
 from sqlalchemy.orm.exc import NoResultFound
 from datetime import datetime, timedelta
 

@@ -6,7 +6,7 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 """
 
 from sqlalchemy import Column, Integer, String, DateTime, PickleType, func
-from ke2psql.model.keemu import Base, KEEMU_SCHEMA
+from ke2sql.model.keemu import Base, KEEMU_SCHEMA
 
 class Log(Base):
 

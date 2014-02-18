@@ -6,8 +6,8 @@ Created by 'Ben Scott' on 2013-06-21.
 
 import logging
 import traceback
-from ke2psql.model.log import Log
-from ke2psql.model import meta
+from ke2sql.model.log import Log
+from ke2sql.model import meta
 
 
 class SQLAlchemyHandler(logging.Handler):

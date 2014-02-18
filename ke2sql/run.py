@@ -10,7 +10,7 @@ python run.py MultimediaTask --local-scheduler --date 2014-01-23
 """
 
 import luigi
-import ke2psql.tasks
+import ke2sql.tasks
 
 if __name__ == "__main__":
     luigi.run()
