@@ -527,7 +527,7 @@ class SpecimenModel(CatalogueModel):
     curation_unit = Column(String, alias='RegCurationUnit')
     catalogue_number = Column(String, alias=['DarCatalogNumber', 'MinBmNumber', 'BotRegRegistrationNumber', 'EntCatCatalogueNumber', 'RegRegistrationNumber', 'PalRegFullRegistrationNumber'])
     preservation = Column(String, alias=['EntCatPreservation', 'CatPreservative'])
-    verbatim_label_data = Column(String, alias=['EntLabVerbatimLabelData0', 'PalVerLabel'])
+    verbatim_label_data = Column(String, alias=['EntLabVerbatimLabelData', 'PalVerLabel'])
     donor_name = Column(String, alias='PalAcqAccLotDonorFullName')
     date_catalogued = Column(String, alias='EntCatDateCatalogued')
     kind_of_collection = Column(String, alias=['CatKindOfCollection', 'PreType'])
