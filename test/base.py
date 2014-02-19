@@ -113,12 +113,8 @@ class BaseTest(object):
         self.create()
         obj = self.query().one()
         for prop in class_mapper(self.model).iterate_properties:
-
-
-
             self.assertIsNotNone(getattr(obj, prop.key), 'Property %s is None' % prop)
-
-        # self.delete()
+        self.delete()
 
 
     def update(self):
@@ -128,11 +124,9 @@ class BaseTest(object):
         """
         self.create()
         self.file_name = self.file_name.replace('export', 'update')
-        return self.create()
 
     def create(self):
         luigi.build([self.task(file_name=self.file_name)], local_scheduler=True)
-        return self.query().one()
 
     def delete(self):
         obj = self.query().one()

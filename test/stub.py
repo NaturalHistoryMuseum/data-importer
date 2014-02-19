@@ -5,43 +5,73 @@ Created by 'bens3' on 2013-06-21.
 Copyright (c) 2013 'bens3'. All rights reserved.
 """
 
-import sys
-import os
-from ke2sql.tasks import StratigraphyTask
-from base import BaseTask, BaseTest
+
 from ke2sql.model.keemu import *
 import unittest
-from sqlalchemy.types import Integer, String, Date
+from base import  BaseTest
+from catalogue import TestCatalogueTask
+from sqlalchemy.orm.exc import NoResultFound
 
-# TODO:
+class StubTest(unittest.TestCase, BaseTest):
 
-def main():
-    model = SpecimenModel()
-    aliases = model.get_aliases()
+    file_name = 'stub.export'
+    task = TestCatalogueTask
+    model = MammalGroupPartModel
 
-    x = 0
-    done = []
+    def test_associated_record(self):
+        # NB: If this ever fails, try putting self.delete() here and rerunning
+        self.create()
+        obj = self.query().one()
+        # Make sure we have a StubModel(200)
+        self.assertIsInstance(obj.associated_record[0], StubModel)
+        self.session.query(StubModel).filter(self.model.irn == 200)
+        self.delete()
 
-    for alias, field in aliases.items():
+    def test_parent(self):
+        self.create()
+        obj = self.query().one()
+        # Make sure we have a StubModel(200)
+        self.assertIsInstance(obj.parent, StubModel)
+        self.session.query(StubModel).filter(self.model.irn == 201)
+        self.delete()
 
-        if field in done:
-            continue
+    def test_update(self):
+        """
+        The update file has code to update both stubs
+        """
+        self.update()
+        self.create()
+        obj = self.query().one()
+        # Check the subs have been transformed into correct models
+        self.session.query(IndexLotModel).filter(IndexLotModel.irn == 200).one()
+        self.session.query(SpecimenModel).filter(SpecimenModel.irn == 201).one()
+        # # Delete the objects
+        self.delete()
 
-        type = getattr(SpecimenModel, field).property.columns[0].type
+    def delete(self):
 
-        if isinstance(type, String):
-            val = 'V%s' % x
-        elif isinstance(type, Integer):
-            val = 1
-        else:
-            val = '1999-01-31'
+        for irn in [200, 201]:
+            try:
+                stub = self.session.query(CatalogueModel).filter(CatalogueModel.irn == irn).one()
+            except NoResultFound:
+                pass
+            else:
+                self.session.delete(stub)
 
-        x += 1
+        obj = self.query().one()
+        # Delete the obj
+        self.session.delete(obj)
+        self.session.commit()
 
-        print '%s:1=%s' % (alias, val)
+    def test_not_null(self):
+        pass
 
-        done.append(field)
+    def test_updated_date(self):
+        """
+        Override updated date - we don't update irn=1, just the stubs
+        """
+        pass
 
 
 if __name__ == '__main__':
-    main()
+    unittest.main()
