@@ -6,6 +6,7 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 
 PYTHONPATH=. python /vagrant/bin/luigi/bin/luigid --background --logdir /tmp
 python run.py MultimediaTask --local-scheduler --date 2014-01-23
+python run.py CatalogueTask --local-scheduler --date 2014-01-23 --force
 
 """
 

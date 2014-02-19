@@ -60,10 +60,7 @@ STRATIGRAPHIC_UNIT_TYPES = {
     'Lithostratigraphy': ['LitSupergroup', 'LitGroup', 'LitFormation', 'LitMember', 'LitBed'],
 }
 
-# TODO Cascades + foreign keys
-# TODO Check data import & all fields
-# TODO: Paleo multimedia fields, are not honouring multi values: Missing IRN 125584,108810,111286 in relationship PalaeontologySpecimenModel(2272217).multimedia
-# TODO: Check: Paleo multimedia fields are a bug in the exports?
+# TODO: Model type errors
 log = logging.getLogger('ckanext.nhm.commands.keemu_import')
 
 # Modify some of the SQLAlchemy base objects
@@ -521,8 +518,6 @@ class SpecimenModel(CatalogueModel):
     irn = Column(Integer, ForeignKey(CatalogueModel.irn, ondelete='CASCADE'), primary_key=True)
     collection_department = Column(String, alias='ColDepartment')
     collection_sub_department = Column(String, alias='ColSubDepartment')
-    # TODO: CHeck this. Min uses coll kind differently. I'm not sure this is OK! It's not. change it.
-    # TODO: Before rerunning
     specimen_unit = Column(String, alias=['ColKind', 'CatKindOfObject', 'EntCatKindOfObject'])
     curation_unit = Column(String, alias='RegCurationUnit')
     catalogue_number = Column(String, alias=['DarCatalogNumber', 'MinBmNumber', 'BotRegRegistrationNumber', 'EntCatCatalogueNumber', 'RegRegistrationNumber', 'PalRegFullRegistrationNumber'])

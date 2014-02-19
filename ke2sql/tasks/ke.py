@@ -26,7 +26,6 @@ from ke2sql.model.meta import config
 
 class KEFileTask(luigi.ExternalTask):
 
-    # TODO: Ensure delete works
     # After main run:
     # TODO: Data param & schedule
     # TODO: Email errors
@@ -37,7 +36,7 @@ class KEFileTask(luigi.ExternalTask):
     file_name = luigi.Parameter(default='export')
     export_dir = luigi.Parameter(default=config.get('keemu', 'export_dir'))
     # Is the file compressed? (False is only for testing)
-    compressed = luigi.DateParameter(default=True)
+    compressed = luigi.BooleanParameter(default=True)
 
     def output(self):
 
@@ -120,7 +119,6 @@ class KEDataTask(luigi.postgres.CopyToTable):
         log.debug('Processing %s record %s', self.model_class.__name__.lower(), data['irn'])
 
         try:
-
             # Do we already have a record for this?
             record = self.get_record(data.get('irn'))
 

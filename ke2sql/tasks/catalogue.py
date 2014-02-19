@@ -6,6 +6,7 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 """
 
 import re
+import luigi
 from ke2sql import log
 from ke2sql.model.keemu import *
 from ke2sql.tasks.ke import KEDataTask
@@ -18,6 +19,8 @@ from ke2sql.tasks.stratigraphy import StratigraphyTask
 
 class CatalogueTask(KEDataTask):
 
+    force = luigi.BooleanParameter()
+
     model_class = None  # Will be set dynamically based on the data values
     module = 'ecatalogue'
 
@@ -28,11 +31,33 @@ class CatalogueTask(KEDataTask):
 
     # List of record types we know we want to ignore.
     # If a record type is found not in this list and without a model, an error will be logged
-    excluded_types = ['Object Entry', 'Acquisition', 'Missing']
+    excluded_types = [
+        'Object Entry',
+        'object entry',  # FFS
+        'Acquisition',
+        'Missing',
+        'Preparation',
+        'Collection Level Description',
+        'Transient Lot',
+        'Incoming Loan',
+        'Image',
+        'Image (electronic)',
+        'Image (non-digital)',
+        'Image (digital)',
+        'PEG Specimen',
+        'PEG Catalogue',
+        'Rack File'
+    ]
 
     def requires(self):
         # Catalogue is dependent on all other modules
-        req = [CollectionEventsTask(self.date), MultimediaTask(self.date), SitesTask(self.date), TaxonomyTask(self.date), StratigraphyTask(self.date)]
+
+        # If force is set, we don't want to check all the other tasks have run (for dev purposes)
+        if self.force:
+            req = []
+        else:
+            req = [CollectionEventsTask(self.date), MultimediaTask(self.date), SitesTask(self.date), TaxonomyTask(self.date), StratigraphyTask(self.date)]
+
         # And add the usual KE EMU file dependency too
         req.append(super(CatalogueTask, self).requires()[0])
         return req
@@ -58,7 +83,12 @@ class CatalogueTask(KEDataTask):
                 log.debug('Skipping record %s: No model class for %s', data['irn'], record_type)
             else:
                 log.error('Unknown model class %s for %s. Investigate and then add to [excluded_types] if not required.', record_type, data['irn'])
+                raise Exception
+
+            # Next record
             return
+
+        return
 
         # Filter out some of the records
         if not 'ColDepartment' in data:
