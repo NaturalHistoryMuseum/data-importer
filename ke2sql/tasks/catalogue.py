@@ -37,14 +37,17 @@ class CatalogueTask(KEDataTask):
     excluded_types = [
         'Acquisition',
         'Collection Level Description',
+        'DNA Card', # 1 record, but keep an eye on this
         'Image',
         'Image (electronic)',
         'Image (non-digital)',
         'Image (digital)',
         'Incoming Loan',
+        'L&A Catalogue',
         'Missing',
         'Object Entry',
         'object entry',  # FFS
+        'Object entry',  # FFFS
         'PEG Specimen',
         'PEG Catalogue',
         'Preparation',
@@ -203,7 +206,10 @@ class CatalogueTask(KEDataTask):
         collection = data['ColKind'] if 'ColKind' in data else None
         collection_department = data['ColDepartment'] if 'ColDepartment' in data else None
 
-        matches = self.re_model.match(data['ColRecordType'])
+        # KE EMU has case insensitive record types (2820735: specimen)
+        # So make sure the first letter is capitalised
+        record_type = data['ColRecordType'][0].capitalize() + data['ColRecordType'][1:]
+        matches = self.re_model.match(record_type)
 
         if matches:
             cls = matches.group(0).replace(' ', '')
