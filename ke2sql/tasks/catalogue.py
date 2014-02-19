@@ -31,22 +31,26 @@ class CatalogueTask(KEDataTask):
 
     # List of record types we know we want to ignore.
     # If a record type is found not in this list and without a model, an error will be logged
+    # See https://docs.google.com/a/benscott.co.uk/spreadsheet/ccc?key=0AlDxkyZfoDnfdGVtVmpaRVBHOHk4VGY2ZmNHbUtjemc&usp=drive_web#gid=0
+    # There are more types than this, but many didn't have records when investigated.
+    # Those without records are not in this list - it's good to log an error when these start appearing
     excluded_types = [
-        'Object Entry',
-        'object entry',  # FFS
         'Acquisition',
-        'Missing',
-        'Preparation',
         'Collection Level Description',
-        'Transient Lot',
-        'Incoming Loan',
         'Image',
         'Image (electronic)',
         'Image (non-digital)',
         'Image (digital)',
+        'Incoming Loan',
+        'Missing',
+        'Object Entry',
+        'object entry',  # FFS
         'PEG Specimen',
         'PEG Catalogue',
-        'Rack File'
+        'Preparation',
+        'Rack File',
+        'Tissue',  # Only 2 records. May need to add this at some point
+        'Transient Lot'
     ]
 
     def requires(self):
