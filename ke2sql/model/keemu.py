@@ -60,7 +60,6 @@ STRATIGRAPHIC_UNIT_TYPES = {
     'Lithostratigraphy': ['LitSupergroup', 'LitGroup', 'LitFormation', 'LitMember', 'LitBed'],
 }
 
-# TODO: Model type errors
 log = logging.getLogger('ckanext.nhm.commands.keemu_import')
 
 # Modify some of the SQLAlchemy base objects
