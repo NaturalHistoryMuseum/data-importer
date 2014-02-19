@@ -90,12 +90,9 @@ class CatalogueTask(KEDataTask):
                 log.debug('Skipping record %s: No model class for %s', data['irn'], record_type)
             else:
                 log.error('Unknown model class %s for %s. Investigate and then add to [excluded_types] if not required.', record_type, data['irn'])
-                raise Exception
 
             # Next record
             return
-
-        return
 
         # Filter out some of the records
         if not 'ColDepartment' in data:
