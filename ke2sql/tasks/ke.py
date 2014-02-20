@@ -29,7 +29,7 @@ class KEFileTask(luigi.ExternalTask):
     # After main run:
     # TODO: Data param & schedule
     # TODO: Email errors
-    # TODO: Ensure they run in order! No a later one doesn't run before another one? Maybe in a TASK ALL that gets the date from the files?
+    # TODO: Ensure they run in order! Not a later one doesn't run before another one? Maybe in a TASK ALL that gets the date from the files?
 
     module = luigi.Parameter()
     date = luigi.DateParameter(default=None)
