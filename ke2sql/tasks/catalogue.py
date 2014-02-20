@@ -52,7 +52,7 @@ class CatalogueTask(KEDataTask):
         'PEG Catalogue',
         'Preparation',
         'Rack File',
-        'Tissue',  # Only 2 records. May need to add this at some point
+        'Tissue',  # Only 2 records. Watch.
         'Transient Lot'
     ]
 
