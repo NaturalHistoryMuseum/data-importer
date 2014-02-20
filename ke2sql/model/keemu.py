@@ -3,9 +3,9 @@ from sqlalchemy import Table, Column as SQLAlchemyColumn, Integer, Float, String
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship, backref, RelationshipProperty as SQLAlchemyRelationshipProperty, validates
 from sqlalchemy.exc import InvalidRequestError
-import logging
 import datetime
 from sqlalchemy import event
+from ke2sql import log
 
 __all__ = [
     'Base',
@@ -59,8 +59,6 @@ STRATIGRAPHIC_UNIT_TYPES = {
     'Cultural phase': ['HumCulturalPhase', 'HumArchaeological'],
     'Lithostratigraphy': ['LitSupergroup', 'LitGroup', 'LitFormation', 'LitMember', 'LitBed'],
 }
-
-log = logging.getLogger('ckanext.nhm.commands.keemu_import')
 
 # Modify some of the SQLAlchemy base objects
 class Column(SQLAlchemyColumn):
