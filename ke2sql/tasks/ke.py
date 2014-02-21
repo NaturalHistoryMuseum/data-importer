@@ -9,7 +9,6 @@ import sys
 import os
 import luigi.postgres
 from luigi.format import Gzip
-from ke2sql import log
 from keparser import KEParser
 import abc
 
@@ -19,6 +18,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.exc import ProgrammingError, DataError
 from sqlalchemy.schema import CreateSchema
 
+from ke2sql.log import log
 from ke2sql.model.keemu import *
 from ke2sql.model import meta
 from ke2sql.model.meta import config
