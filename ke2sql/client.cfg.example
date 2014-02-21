@@ -4,6 +4,7 @@ host = localhost
 database = example
 username = username
 password = asdf
+schema = schema_name
 
 [keemu]
 # The directory where the keemu export files are deposited
