@@ -7,8 +7,8 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 
 
 import luigi.postgres
-from ke2sql import log
 from keparser import KEParser
+from ke2sql.log import log
 from ke2sql.model.meta import config
 from ke2sql.model import meta
 from ke2sql.model.keemu import *

@@ -7,10 +7,18 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 
 __author__ = 'Ben Scott'
 
-from catalogue import CatalogueTask
-from collection_events import CollectionEventsTask
-from multimedia import MultimediaTask
-from sites import SitesTask
-from taxonomy import TaxonomyTask
-from stratigraphy import StratigraphyTask
-from delete import DeleteTask
+import catalogue
+import collection_events
+import multimedia
+import sites
+import taxonomy
+import stratigraphy
+import delete
+
+CatalogueTask = catalogue.CatalogueTask
+CollectionEventsTask = collection_events.CollectionEventsTask
+MultimediaTask = multimedia.MultimediaTask
+SitesTask = sites.SitesTask
+TaxonomyTask = taxonomy.TaxonomyTask
+StratigraphyTask= stratigraphy.StratigraphyTask
+DeleteTask = delete.DeleteTask
