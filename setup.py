@@ -8,8 +8,8 @@ except:
 
 from distutils.core import Command
 from ConfigParser import ConfigParser
-from ke2sql.model.keemu import *
 from ke2sql.model import meta
+from ke2sql.model.base import Base
 from sqlalchemy import text
 
 class InitDBCommand(Command):
@@ -30,15 +30,15 @@ class InitDBCommand(Command):
 
         # Create the actual DB schema if it doesn't already exist
         # CREATE SCHEMA IF NOT EXISTS is PG 9.3
-        result = meta.engine.execute(text(u'SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = \'%s\')' % KEEMU_SCHEMA))
+        result = meta.engine.execute(text(u'SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = \'%s\')' % config.get('database', 'schema')))
 
         if not result.scalar():
-            meta.engine.execute(text(u'CREATE SCHEMA %s AUTHORIZATION %s' % (KEEMU_SCHEMA, config.get('database', 'username'))))
+            meta.engine.execute(text(u'CREATE SCHEMA %s AUTHORIZATION %s' % (config.get('database', 'schema'), config.get('database', 'username'))))
 
         # Create all the tables
         Base.metadata.create_all(meta.engine)
 
-        print 'Created database tables'
+        print 'Creating database tables: SUCCESS'
 
 version = '0.1'
 
