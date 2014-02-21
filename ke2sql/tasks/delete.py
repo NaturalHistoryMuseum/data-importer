@@ -34,7 +34,6 @@ class DeleteTask(luigi.postgres.CopyToTable):
     session = meta.session
 
     def requires(self):
-        # TODO: Make dependent on catalogue task
         return KEFileTask(module=self.module, date=self.date, file_name=self.file_name)
 
     def run(self):

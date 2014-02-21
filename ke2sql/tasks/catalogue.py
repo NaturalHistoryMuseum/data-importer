@@ -63,6 +63,7 @@ class CatalogueTask(KEDataTask):
         if self.force:
             req = []
         else:
+            # TODO: Add delete task
             req = [CollectionEventsTask(self.date), MultimediaTask(self.date), SitesTask(self.date), TaxonomyTask(self.date), StratigraphyTask(self.date)]
 
         # And add the usual KE EMU file dependency too
