@@ -7,7 +7,7 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 
 import re
 import luigi
-from ke2sql import log
+from ke2sql.log import log
 from ke2sql.model.keemu import *
 from ke2sql.tasks.ke import KEDataTask
 from ke2sql.tasks.collection_events import CollectionEventsTask
@@ -89,7 +89,8 @@ class CatalogueTask(KEDataTask):
             if record_type in self.excluded_types:
                 log.debug('Skipping record %s: No model class for %s', data['irn'], record_type)
             else:
-                log.error('Unknown model class %s for %s. Investigate and then add to [excluded_types] if not required.', record_type, data['irn'])
+                # Critical error - log to DB
+                log.critical('Unknown model class %s for %s. Investigate and then add to [excluded_types] if not required.', record_type, data['irn'])
 
             # Next record
             return
