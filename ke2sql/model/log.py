@@ -6,7 +6,9 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 """
 
 from sqlalchemy import Column, Integer, String, DateTime, PickleType, func
-from ke2sql.model.keemu import Base, KEEMU_SCHEMA
+from sqlalchemy.ext.declarative import declarative_base
+from ke2sql.model.base import Base
+from ke2sql import config
 
 class Log(Base):
 
@@ -16,7 +18,7 @@ class Log(Base):
     __tablename__ = 'log'
 
     __table_args__ = {
-        'schema': KEEMU_SCHEMA
+        'schema': config.get('database', 'schema')
     }
 
     id = Column(Integer, primary_key=True)

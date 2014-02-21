@@ -11,13 +11,14 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine.url import URL
-from ConfigParser import ConfigParser
-
-config = ConfigParser()
-config.read(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'client.cfg'))
+from ke2sql import config
 
 __all__ = ['engine', 'session']
 
-engine = create_engine(URL(**dict(config.items('database'))))
+db_settings = dict(config.items('database'))
+# Do not use the schema in the URL connection
+db_settings.pop('schema')
+
+engine = create_engine(URL(**db_settings))
 session = sessionmaker(bind=engine)()
 

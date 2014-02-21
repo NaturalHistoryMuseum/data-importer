@@ -5,10 +5,11 @@ from sqlalchemy.orm import relationship, backref, RelationshipProperty as SQLAlc
 from sqlalchemy.exc import InvalidRequestError
 import datetime
 from sqlalchemy import event
-from ke2sql import log
+from ke2sql.log import log
+from ke2sql.model.base import Base
+from ke2sql import config
 
 __all__ = [
-    'Base',
     'ArtefactModel',
     'BirdGroupParentModel',
     'BirdGroupPartModel',
@@ -46,12 +47,8 @@ __all__ = [
     'StratigraphicUnitAssociation',
     'HostParasiteAssociation',
     'Determination',
-    'KEEMU_SCHEMA',
     'STRATIGRAPHIC_UNIT_TYPES'
 ]
-
-# CONSTANTS
-KEEMU_SCHEMA = 'keemu'
 
 STRATIGRAPHIC_UNIT_TYPES = {
     'Chronostratigraphy': ['ChrEon', 'ChrEra', 'ChrPeriod', 'ChrEpoch', 'ChrStage'],
@@ -59,6 +56,8 @@ STRATIGRAPHIC_UNIT_TYPES = {
     'Cultural phase': ['HumCulturalPhase', 'HumArchaeological'],
     'Lithostratigraphy': ['LitSupergroup', 'LitGroup', 'LitFormation', 'LitMember', 'LitBed'],
 }
+
+keemu_schema = config.get('database', 'schema')
 
 # Modify some of the SQLAlchemy base objects
 class Column(SQLAlchemyColumn):
@@ -82,14 +81,10 @@ def relationship(argument, secondary=None, alias=None, **kwargs):
 class DataTypeException(Exception):
     pass
 
-
-Base = declarative_base()
-
-
 class BaseMixin(object):
 
     __table_args__ = {
-        'schema': KEEMU_SCHEMA
+        'schema': keemu_schema
     }
 
     _rebuilding = False
@@ -226,27 +221,27 @@ def configure_listener(class_, key, inst):
 
 # Relationship tables
 catalogue_multimedia = Table('catalogue_multimedia', Base.metadata,
-                            Column('catalogue_irn', Integer, ForeignKey('%s.catalogue.irn' % KEEMU_SCHEMA, ondelete='CASCADE'), primary_key=True),
-                            Column('multimedia_irn', Integer, ForeignKey('%s.multimedia.irn' % KEEMU_SCHEMA, ondelete='CASCADE'), primary_key=True),
-                            schema=KEEMU_SCHEMA
+                            Column('catalogue_irn', Integer, ForeignKey('%s.catalogue.irn' % keemu_schema, ondelete='CASCADE'), primary_key=True),
+                            Column('multimedia_irn', Integer, ForeignKey('%s.multimedia.irn' % keemu_schema, ondelete='CASCADE'), primary_key=True),
+                            schema=keemu_schema
 )
 
 catalogue_associated_record = Table('catalogue_associated_record', Base.metadata,
-                            Column('catalogue_irn', Integer, ForeignKey('%s.catalogue.irn' % KEEMU_SCHEMA, ondelete='CASCADE'), primary_key=True),
-                            Column('associated_irn', Integer, ForeignKey('%s.catalogue.irn' % KEEMU_SCHEMA, ondelete='CASCADE'), primary_key=True),
-                            schema=KEEMU_SCHEMA
+                            Column('catalogue_irn', Integer, ForeignKey('%s.catalogue.irn' % keemu_schema, ondelete='CASCADE'), primary_key=True),
+                            Column('associated_irn', Integer, ForeignKey('%s.catalogue.irn' % keemu_schema, ondelete='CASCADE'), primary_key=True),
+                            schema=keemu_schema
 )
 
 specimen_sex_stage = Table('specimen_sex_stage', Base.metadata,
-                           Column('specimen_irn', Integer, ForeignKey('%s.specimen.irn' % KEEMU_SCHEMA, ondelete='CASCADE'), primary_key=True),
-                           Column('sex_stage_id', Integer, ForeignKey('%s.sex_stage.id' % KEEMU_SCHEMA, ondelete='CASCADE'), primary_key=True),
-                           schema=KEEMU_SCHEMA
+                           Column('specimen_irn', Integer, ForeignKey('%s.specimen.irn' % keemu_schema, ondelete='CASCADE'), primary_key=True),
+                           Column('sex_stage_id', Integer, ForeignKey('%s.sex_stage.id' % keemu_schema, ondelete='CASCADE'), primary_key=True),
+                           schema=keemu_schema
 )
 
 specimen_mineralogical_age = Table('specimen_mineralogical_age', Base.metadata,
-                                   Column('mineralogy_irn', Integer, ForeignKey('%s.mineralogy.irn' % KEEMU_SCHEMA, ondelete='CASCADE'), primary_key=True),
-                                   Column('mineralogical_age_id', Integer, ForeignKey('%s.mineralogical_age.id' % KEEMU_SCHEMA, ondelete='CASCADE'), primary_key=True),
-                                   schema=KEEMU_SCHEMA
+                                   Column('mineralogy_irn', Integer, ForeignKey('%s.mineralogy.irn' % keemu_schema, ondelete='CASCADE'), primary_key=True),
+                                   Column('mineralogical_age_id', Integer, ForeignKey('%s.mineralogical_age.id' % keemu_schema, ondelete='CASCADE'), primary_key=True),
+                                   schema=keemu_schema
 )
 
 class MultimediaModel(BaseMixin, Base):
@@ -357,8 +352,8 @@ class StratigraphicUnitAssociation(BaseMixin, Base):
     unit_id = Column(Integer, ForeignKey(StratigraphicUnitModel.id), primary_key=True, nullable=False)
     types = [i[3:].lower() for group in STRATIGRAPHIC_UNIT_TYPES.values() for i in group]
 
-    stratigraphic_type = Column(Enum(*types, name='stratigraphic_type', schema=KEEMU_SCHEMA), primary_key=True, nullable=False)
-    direction = Column(Enum('from', 'to', name='direction', schema=KEEMU_SCHEMA), primary_key=True, nullable=False)  # From / to
+    stratigraphic_type = Column(Enum(*types, name='stratigraphic_type', schema=keemu_schema), primary_key=True, nullable=False)
+    direction = Column(Enum('from', 'to', name='direction', schema=keemu_schema), primary_key=True, nullable=False)  # From / to
 
     # bidirectional attribute/collection of "specimen"/"determinations"
     stratigraphy = relationship(StratigraphyModel, backref=backref("stratigraphic_unit", cascade="all, delete-orphan"))
@@ -598,7 +593,7 @@ class SexStageModel(BaseMixin, Base):
 
     __tablename__ = 'sex_stage'
 
-    __table_args__ = (UniqueConstraint('count', 'sex', 'stage'), {'schema': KEEMU_SCHEMA})
+    __table_args__ = (UniqueConstraint('count', 'sex', 'stage'), {'schema': keemu_schema})
 
     id = Column(Integer, primary_key=True)
     count = Column(Integer, alias='EntSexCount')
@@ -725,7 +720,7 @@ class HostParasiteAssociation(BaseMixin, Base):
 
     parasite_card_irn = Column(Integer, ForeignKey(ParasiteCardModel.irn), primary_key=True)
     taxonomy_irn = Column(Integer, ForeignKey(TaxonomyModel.irn), primary_key=True)
-    parasite_host = Column(Enum('host', 'parasite', name='parasite_host', schema=KEEMU_SCHEMA), primary_key=True, nullable=False)
+    parasite_host = Column(Enum('host', 'parasite', name='parasite_host', schema=keemu_schema), primary_key=True, nullable=False)
     stage = Column(String)
 
     # bidirectional attribute/collection of parasite taxonomy
@@ -954,7 +949,7 @@ class MineralogicalAge(BaseMixin, Base):
     """
 
     __tablename__ = 'mineralogical_age'
-    __table_args__ = (UniqueConstraint('age', 'age_type'), {'schema': KEEMU_SCHEMA})
+    __table_args__ = (UniqueConstraint('age', 'age_type'), {'schema': keemu_schema})
 
     id = Column(Integer, primary_key=True)
     age = Column(String, alias='MinAgeDataAge')
