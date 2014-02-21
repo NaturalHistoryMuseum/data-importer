@@ -80,8 +80,6 @@ class DeleteTask(luigi.postgres.CopyToTable):
                         log.error('Record %s(%s) not found for deletion' % (model, irn))
 
         self.session.commit()
-
-        # TODO: Mark this task as complete
-        # self.output().touch()
+        self.output().touch()
 
 
