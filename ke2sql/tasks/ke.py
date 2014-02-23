@@ -73,6 +73,7 @@ class KEDataTask(luigi.postgres.CopyToTable):
     table = None
 
     keemu_schema_file = config.get('keemu', 'schema')
+    keemu_schema = config.get('database', 'schema')
 
     session = meta.session
 
@@ -129,12 +130,12 @@ class KEDataTask(luigi.postgres.CopyToTable):
 
                 polymorphic_type = self.model_class.__mapper_args__['polymorphic_identity']
                 # Manually set type
-                self.session.execute('UPDATE %s.catalogue SET type=:type WHERE irn=:irn' % KEEMU_SCHEMA, {'type': polymorphic_type, 'irn': data.get('irn')})
+                self.session.execute('UPDATE %s.catalogue SET type=:type WHERE irn=:irn' % self.keemu_schema, {'type': polymorphic_type, 'irn': data.get('irn')})
 
                 # If this has a child table, insert the IRN so updates will work
                 if self.model_class.__mapper__.local_table.name != 'specimen':
                     # And create empty row in the polymorphic table
-                    self.session.execute('INSERT INTO %s.%s (irn) VALUES (:irn)' % (KEEMU_SCHEMA, self.model_class.__mapper__.local_table.name), {'irn': data.get('irn')})
+                    self.session.execute('INSERT INTO %s.%s (irn) VALUES (:irn)' % (self.keemu_schema, self.model_class.__mapper__.local_table.name), {'irn': data.get('irn')})
 
                 # Commit & expunge so the item can be reloaded
                 self.session.commit()
