@@ -149,7 +149,7 @@ class BaseTest(object):
         self.assertTrue(len(value) == 1, 'Missing relationship %s' % relationship)
 
         # Retrieve the model to test against
-        model = getattr(self.model, relationship).mapper.class_
+        model = getattr(self.model, relationship).property.mapper.class_
         # Check the object is the right type
         self.assertIsInstance(value[0], model)
         self.delete()

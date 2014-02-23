@@ -56,6 +56,8 @@ class StratigraphyTest(unittest.TestCase, BaseTest):
             value = '{}_{}'.format(unit.stratigraphic_type, unit.direction)
             self.assertEquals(unit.unit.name, value)
 
+        self.delete()
+
     def test_units_update(self):
         self.update()
 
@@ -85,8 +87,10 @@ class StratigraphyTest(unittest.TestCase, BaseTest):
 
         # Check we have the values correct (they were all generated to be type_direction: epoch_from
         for unit in obj.stratigraphic_unit:
-            value = '{}_{}_B'.format(unit.stratigraphic_type, unit.direction)
+            value = '{}_{}'.format(unit.stratigraphic_type, unit.direction)
             self.assertEquals(unit.unit.name, value)
+
+        self.delete()
 
     def test_units_delete(self):
         self.create()
