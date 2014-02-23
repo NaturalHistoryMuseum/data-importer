@@ -19,7 +19,7 @@ from ke2sql.tasks.stratigraphy import StratigraphyTask
 
 class CatalogueTask(KEDataTask):
 
-    force = luigi.BooleanParameter()
+    force = luigi.BooleanParameter(default=False)
 
     model_class = None  # Will be set dynamically based on the data values
     module = 'ecatalogue'
