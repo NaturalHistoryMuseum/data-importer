@@ -273,14 +273,14 @@ class SiteModel(BaseMixin, Base):
     county = Column(String, alias=['LocDistrictCountyShireMain', 'PolPD3'], dwc='DarCounty')
     locality = Column(String, alias=['LocNhmVerbatimLocality', 'LocPreciseLocation'], dwc='DarLocality')
     vice_county = Column(String, alias='Cat1ViceUkViceCounty')
-    parish = Column(String, alias='PolParish') # Here on down will be concatenated into DWC Higher Geography
+    parish = Column(String, alias='PolParish')
     town = Column(String, alias='LocTownship')
     nearest_named_place = Column(String, alias='LocNearestNamedPlace')
 
     # Ocean & lakes
     ocean = Column(String, alias='LocOceanMain', dwc='DarWaterBody')
     island_group = Column(String, alias='LocIslandGrouping')
-    island = Column(String, alias='LocIslandName')
+    island = Column(String, alias='LocIslandName', dwc='DarIsland')
     water_body = Column(String, alias='AquNhmLake')
     river_basin = Column(String, alias='AquRiverBasin')
 
@@ -411,6 +411,10 @@ class CollectionEventModel(BaseMixin, Base):
     vessel_name = Column(String, alias=['ExpVesselName', 'AquVesselName'])
     vessel_type = Column(String, alias=['ExpVesselType', 'AquVesselType'])
 
+    # Collector
+    collector_name = Column(String, alias='ColParticipantString')
+    collector_number = Column(String, alias='ColPrimaryParticipantRef', dwc='DarCollectorNumber')
+
 
     def __repr__(self):
         return 'CollectionEvent(%s)' % repr(self.irn)
@@ -438,8 +442,10 @@ class TaxonomyModel(BaseMixin, Base):
     validity = Column(String, alias='TaxValidity')
     rank = Column(String, alias='ClaRank')
     scientific_name_author = Column(String, alias='AutBasionymAuthorString')
-    scientific_name_author_year = Column(String, alias='AutBasionymDate')
+    scientific_name_author_year = Column(String, alias='AutBasionymDate', dar='DarScientificNameAuthorYear')
     currently_accepted_name = Column(Boolean, alias='ClaCurrentlyAccepted')
+
+
 
     def __repr__(self):
         return 'Taxonomy(%s)' % repr(self.irn)
@@ -879,8 +885,6 @@ class BotanySpecimenModel(SpecimenModel):
 
 
 # Palaeontology
-
-
 class PalaeontologySpecimenModel(SpecimenModel):
     """
     Extra paleo fields
