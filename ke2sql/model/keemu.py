@@ -290,9 +290,9 @@ class SiteModel(BaseMixin, Base):
     geodetic_datum = Column(String, alias='LatDatum', dwc='DarGeodeticDatum')
     georef_method = Column(String, alias=['LatDetSource', 'LatLatLongDetermination'], dwc='DarGeorefMethod')
     latitude = Column(String, alias='LatLatitude')
-    decimal_latitude = Column(String, alias='LatLatitudeDecimal')
+    decimal_latitude = Column(String, alias='LatLatitudeDecimal', dwc='DarDecimalLatitude')
     longitude = Column(String, alias='LatLongitude')
-    decimal_longitude = Column(String, alias='LatLongitudeDecimal')
+    decimal_longitude = Column(String, alias='LatLongitudeDecimal', dwc='DarDecimalLongitude')
 
     # Physical
     minimum_elevation_in_meters = Column(String, alias='PhyAltitudeFromMtr', dwc='DarMinimumElevationInMeters')
@@ -392,9 +392,10 @@ class CollectionEventModel(BaseMixin, Base):
     _modified = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 
     # Collection
-    date_collected_from = Column(String, alias='ColDateVisitedFrom', dwc='DarStart*Collected')
+    # DarYearCollected will use either date_collected_from or date_collected_to, whichever is populated
+    date_collected_from = Column(String, alias='ColDateVisitedFrom', dwc=['DarStartDayCollected', 'DarStartMonthCollected', 'DarStartYearCollected', 'DarDayCollected', 'DarMonthCollected', 'DarYearCollected'])
     time_collected_from = Column(String, alias='ColTimeVisitedFrom', dwc=['DarStartTimeOfDay', 'DarTimeOfDay'])
-    date_collected_to = Column(String, alias='ColDateVisitedTo', dwc='DarEnd*Collected') # Needs to be string to pass validation
+    date_collected_to = Column(String, alias='ColDateVisitedTo', dwc=['DarEndDayCollected', 'DarEndMonthCollected', 'DarEndYearCollected', 'DarDayCollected', 'DarMonthCollected', 'DarYearCollected'])  # Needs to be string to pass validation
     time_collected_to = Column(String, alias='ColTimeVisitedTo', dwc='DarEndTimeOfDay')
     collection_event_code = Column(String, alias='ColCollectionEventCode', dwc='DarFieldNumber')
     collection_method = Column(String, alias='ColCollectionMethod')
@@ -429,10 +430,10 @@ class TaxonomyModel(BaseMixin, Base):
     _created = Column(DateTime, nullable=False, server_default=func.now())
     _modified = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
     scientific_name = Column(String, alias='ClaScientificName')
-    kingdom = Column(String, alias='ClaKingdom')
-    phylum = Column(String, alias='ClaPhylum')
-    taxonomic_class = Column(String, alias='ClaClass')
-    order = Column(String, alias='ClaOrder')
+    kingdom = Column(String, alias='ClaKingdom', dwc='DarKingdom')
+    phylum = Column(String, alias='ClaPhylum', dwc='DarPhylum')
+    taxonomic_class = Column(String, alias='ClaClass', dwc='DarClass')
+    order = Column(String, alias='ClaOrder', dwc='DarOrder')
     suborder = Column(String, alias='ClaSuborder')
     superfamily = Column(String, alias='ClaSuperfamily')
     family = Column(String, alias='ClaFamily')
@@ -443,8 +444,8 @@ class TaxonomyModel(BaseMixin, Base):
     subspecies = Column(String, alias='ClaSubspecies', dwc='DarSubspecies')
     validity = Column(String, alias='TaxValidity')
     rank = Column(String, alias='ClaRank')
-    scientific_name_author = Column(String, alias='AutBasionymAuthorString')
-    scientific_name_author_year = Column(String, alias='AutBasionymDate', dar='DarScientificNameAuthorYear')
+    scientific_name_author = Column(String, alias='AutBasionymAuthorString', dwc='DarScientificNameAuthor')
+    scientific_name_author_year = Column(String, alias='AutBasionymDate', dwc='DarScientificNameAuthorYear')
     currently_accepted_name = Column(Boolean, alias='ClaCurrentlyAccepted')
 
 
@@ -478,7 +479,7 @@ class CatalogueModel(BaseMixin, Base):
                                         secondaryjoin=irn == catalogue_associated_record.c.associated_irn,
                                         backref=backref("associated_to", viewonly=True),
                                         alias=['AssRegistrationNumberRef', 'EntRelOtherObjectRef'],
-                                        dar='DarRelatedCatalogItem'
+                                        dwc='DarRelatedCatalogItem'
     )
 
     # Polymorphic identity to allow for subclasses
@@ -532,7 +533,6 @@ class SpecimenModel(CatalogueModel):
     preparation_type = Column(String, alias='PreType', dwc='DarPreparationType')
     weight = Column(String, alias='DarObservedWeight', dwc='DarObservedWeight')
 
-
     registration_code = Column(String, alias='RegCode')
 
     # DwC - it's easier just to use these DwC fields
@@ -558,12 +558,8 @@ class SpecimenModel(CatalogueModel):
     # association proxy of "specimen_taxonomy" collection to "determination" attribute
     determination = association_proxy('specimen_taxonomy', 'taxonomy')
 
-    other_numbers = relationship("OtherNumbersModel", cascade='all, delete-orphan')
+    other_numbers = relationship("OtherNumbersModel", cascade='all, delete-orphan', dwc='DarOtherCatalogNumbers')
 
-    # KE EMu is using SexAge field for DarAgeClass, which isn't right
-    # SexAge has values like 2 days etc.,
-    # Whereas it should be Juvenile etc.,
-    # We need to use SexStageModel.stage
     sex_stage = relationship("SexStageModel", secondary=specimen_sex_stage)
 
     part_record = relationship("PartModel", primaryjoin="PartModel.parent_irn == SpecimenModel.irn")
@@ -621,8 +617,11 @@ class SexStageModel(BaseMixin, Base):
 
     id = Column(Integer, primary_key=True)
     count = Column(Integer, alias='EntSexCount')
-    sex = Column(String, alias='EntSexSex')
-    stage = Column(String, alias='EntSexStage', dar='DarAgeClass')
+    sex = Column(String, alias='EntSexSex', dwc='DarSex')
+    # KE EMu is using SexAge field for DarAgeClass, which isn't right
+    # SexAge has values like 2 days etc., whereas it should be Juvenile etc.,
+    # DarAgeClass could also map to this field, but DarLifeStage is a better fit
+    stage = Column(String, alias='EntSexStage', dwc='DarLifeStage')
 
 
 class ArtefactModel(CatalogueModel):
