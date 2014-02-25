@@ -278,11 +278,13 @@ class SiteModel(BaseMixin, Base):
     nearest_named_place = Column(String, alias='LocNearestNamedPlace')
 
     # Ocean & lakes
-    ocean = Column(String, alias='LocOceanMain', dwc='DarWaterBody')
-    island_group = Column(String, alias='LocIslandGrouping')
+    # TODO: Mapping 'DarWaterBody' will be interesting
+    # Use lake > river basin > ocean
+    ocean = Column(String, alias='LocOceanMain', dwc=['DarWaterBody', 'DarContinentOcean'])
+    island_group = Column(String, alias='LocIslandGrouping', dwc='DarIslandGroup')
     island = Column(String, alias='LocIslandName', dwc='DarIsland')
-    water_body = Column(String, alias='AquNhmLake')
-    river_basin = Column(String, alias='AquRiverBasin')
+    lake = Column(String, alias='AquNhmLake', dwc='DarWaterBody')
+    river_basin = Column(String, alias='AquRiverBasin', dwc='DarWaterBody')
 
     # Lat/long
     geodetic_datum = Column(String, alias='LatDatum', dwc='DarGeodeticDatum')
@@ -391,7 +393,7 @@ class CollectionEventModel(BaseMixin, Base):
 
     # Collection
     date_collected_from = Column(String, alias='ColDateVisitedFrom', dwc='DarStart*Collected')
-    time_collected_from = Column(String, alias='ColTimeVisitedFrom', dwc='DarStartTimeOfDay')
+    time_collected_from = Column(String, alias='ColTimeVisitedFrom', dwc=['DarStartTimeOfDay', 'DarTimeOfDay'])
     date_collected_to = Column(String, alias='ColDateVisitedTo', dwc='DarEnd*Collected') # Needs to be string to pass validation
     time_collected_to = Column(String, alias='ColTimeVisitedTo', dwc='DarEndTimeOfDay')
     collection_event_code = Column(String, alias='ColCollectionEventCode', dwc='DarFieldNumber')
@@ -436,9 +438,9 @@ class TaxonomyModel(BaseMixin, Base):
     family = Column(String, alias='ClaFamily')
     subfamily = Column(String, alias='ClaSubfamily')
     genus = Column(String, alias='ClaGenus')
-    subgenus = Column(String, alias='ClaSubgenus')
+    subgenus = Column(String, alias='ClaSubgenus', dwc='DarSubgenus')
     species = Column(String, alias='ClaSpecies')
-    subspecies = Column(String, alias='ClaSubspecies')
+    subspecies = Column(String, alias='ClaSubspecies', dwc='DarSubspecies')
     validity = Column(String, alias='TaxValidity')
     rank = Column(String, alias='ClaRank')
     scientific_name_author = Column(String, alias='AutBasionymAuthorString')
@@ -471,11 +473,12 @@ class CatalogueModel(BaseMixin, Base):
 
     # All catalogue records can be associated with each other
     associated_record = relationship("CatalogueModel",
-                                       secondary=catalogue_associated_record,
-                                       primaryjoin=irn == catalogue_associated_record.c.catalogue_irn,
-                                       secondaryjoin=irn == catalogue_associated_record.c.associated_irn,
-                                       backref=backref("associated_to", viewonly=True),
-                                       alias=['AssRegistrationNumberRef', 'EntRelOtherObjectRef']
+                                        secondary=catalogue_associated_record,
+                                        primaryjoin=irn == catalogue_associated_record.c.catalogue_irn,
+                                        secondaryjoin=irn == catalogue_associated_record.c.associated_irn,
+                                        backref=backref("associated_to", viewonly=True),
+                                        alias=['AssRegistrationNumberRef', 'EntRelOtherObjectRef'],
+                                        dar='DarRelatedCatalogItem'
     )
 
     # Polymorphic identity to allow for subclasses
@@ -523,17 +526,27 @@ class SpecimenModel(CatalogueModel):
     verbatim_label_data = Column(String, alias=['EntLabVerbatimLabelData', 'PalVerLabel'])
     donor_name = Column(String, alias='PalAcqAccLotDonorFullName')
     date_catalogued = Column(String, alias='EntCatDateCatalogued')
-    kind_of_collection = Column(String, alias=['CatKindOfCollection', 'PreType'])
+    kind_of_collection = Column(String, alias='CatKindOfCollection')
+
+    preparation = Column(String, alias='PreProcess', dwc='DarPreparations')
+    preparation_type = Column(String, alias='PreType', dwc='DarPreparationType')
+    weight = Column(String, alias='DarObservedWeight', dwc='DarObservedWeight')
+
+
     registration_code = Column(String, alias='RegCode')
 
     # DwC - it's easier just to use these DwC fields
-    type_status = Column(String, alias='DarTypeStatus')
+    type_status = Column(String, alias='DarTypeStatus', dwc='DarTypeStatus')
 
     # EntIdeDateIdentified can be an array if there's multiple determinations 
     # Easier just to use the constructed DwC fields
-    date_identified_year = Column(Integer, alias='DarYearIdentified')
-    date_identified_month = Column(Integer, alias='DarMonthIdentified')
-    date_identified_day = Column(Integer, alias='DarDayIdentified')
+    date_identified_year = Column(Integer, alias='DarYearIdentified', dwc='DarYearIdentified')
+    date_identified_month = Column(Integer, alias='DarMonthIdentified', dwc='DarMonthIdentified')
+    date_identified_day = Column(Integer, alias='DarDayIdentified', dwc='DarDayIdentified')
+
+    # Identification (for DwC)
+    identification_qualifier = Column(Integer, alias='DarIdentificationQualifier', dwc='DarIdentificationQualifier')
+    identified_by = Column(Integer, alias='DarIdentifiedBy', dwc='DarIdentifiedBy')
 
     # Relationships
     site_irn = Column(Integer, ForeignKey(SiteModel.irn), alias=['sumSiteRef', 'PalCol1SiteRef'])
@@ -546,6 +559,11 @@ class SpecimenModel(CatalogueModel):
     determination = association_proxy('specimen_taxonomy', 'taxonomy')
 
     other_numbers = relationship("OtherNumbersModel", cascade='all, delete-orphan')
+
+    # KE EMu is using SexAge field for DarAgeClass, which isn't right
+    # SexAge has values like 2 days etc.,
+    # Whereas it should be Juvenile etc.,
+    # We need to use SexStageModel.stage
     sex_stage = relationship("SexStageModel", secondary=specimen_sex_stage)
 
     part_record = relationship("PartModel", primaryjoin="PartModel.parent_irn == SpecimenModel.irn")
@@ -604,7 +622,7 @@ class SexStageModel(BaseMixin, Base):
     id = Column(Integer, primary_key=True)
     count = Column(Integer, alias='EntSexCount')
     sex = Column(String, alias='EntSexSex')
-    stage = Column(String, alias='EntSexStage')
+    stage = Column(String, alias='EntSexStage', dar='DarAgeClass')
 
 
 class ArtefactModel(CatalogueModel):
