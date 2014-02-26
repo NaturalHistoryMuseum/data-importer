@@ -69,6 +69,7 @@ class Column(SQLAlchemyColumn):
 class RelationshipProperty(SQLAlchemyRelationshipProperty):
     def __init__(self, *args, **kwargs):
         self.alias = kwargs.pop('alias', None)
+        self.dwc = kwargs.pop('dwc', None)
         super(RelationshipProperty, self).__init__(*args, **kwargs)
 
 
@@ -460,7 +461,7 @@ class CatalogueModel(BaseMixin, Base):
     irn = Column(Integer, primary_key=True, nullable=False)
     _created = Column(DateTime, nullable=False, server_default=func.now())
     _modified = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
-    ke_date_modified = Column(Date, alias='AdmDateModified', dwc='DarDateLastModified')
+    ke_date_modified = Column(Date, alias='AdmDateModified')
     ke_date_inserted = Column(Date, alias='AdmDateInserted')
     type = Column(String)
 
@@ -473,8 +474,7 @@ class CatalogueModel(BaseMixin, Base):
                                         primaryjoin=irn == catalogue_associated_record.c.catalogue_irn,
                                         secondaryjoin=irn == catalogue_associated_record.c.associated_irn,
                                         backref=backref("associated_to", viewonly=True),
-                                        alias=['AssRegistrationNumberRef', 'EntRelOtherObjectRef'],
-                                        dwc='DarRelatedCatalogItem'
+                                        alias=['AssRegistrationNumberRef', 'EntRelOtherObjectRef']
     )
 
     # Polymorphic identity to allow for subclasses
@@ -525,16 +525,17 @@ class SpecimenModel(CatalogueModel):
     date_catalogued = Column(String, alias='EntCatDateCatalogued')
     kind_of_collection = Column(String, alias='CatKindOfCollection')
 
-    specimen_count = Column(String, alias=['DarIndividualCount', 'EntCatSpecimenCount'], dwc='DarIndividualCount')
+    # TODO: Put back in
+    # specimen_count = Column(String, alias=['DarIndividualCount', 'EntCatSpecimenCount'], dwc='DarIndividualCount')
 
-    preparation = Column(String, alias='PreProcess', dwc='DarPreparations')
-    preparation_type = Column(String, alias='PreType', dwc='DarPreparationType')
-    weight = Column(String, alias='DarObservedWeight', dwc='DarObservedWeight')
+    # preparation = Column(String, alias='PreProcess', dwc='DarPreparations')
+    # preparation_type = Column(String, alias='PreType', dwc='DarPreparationType')
+    # weight = Column(String, alias='DarObservedWeight', dwc='DarObservedWeight')
 
     registration_code = Column(String, alias='RegCode')
 
     # DwC - it's easier just to use these DwC fields
-    type_status = Column(String, alias='DarTypeStatus', dwc='DarTypeStatus')
+    type_status = Column(String, alias='DarTypeStatus')
 
     # EntIdeDateIdentified can be an array if there's multiple determinations 
     # Easier just to use the constructed DwC fields
@@ -543,8 +544,8 @@ class SpecimenModel(CatalogueModel):
     date_identified_day = Column(Integer, alias='DarDayIdentified', dwc='DarDayIdentified')
 
     # Identification (for DwC)
-    identification_qualifier = Column(Integer, alias='DarIdentificationQualifier', dwc='DarIdentificationQualifier')
-    identified_by = Column(Integer, alias='DarIdentifiedBy', dwc='DarIdentifiedBy')
+    # identification_qualifier = Column(Integer, alias='DarIdentificationQualifier', dwc='DarIdentificationQualifier')
+    # identified_by = Column(Integer, alias='DarIdentifiedBy', dwc='DarIdentifiedBy')
 
     # Relationships
     site_irn = Column(Integer, ForeignKey(SiteModel.irn), alias=['sumSiteRef', 'PalCol1SiteRef'])
