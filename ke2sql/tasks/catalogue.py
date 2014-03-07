@@ -15,6 +15,8 @@ from ke2sql.tasks.multimedia import MultimediaTask
 from ke2sql.tasks.sites import SitesTask
 from ke2sql.tasks.taxonomy import TaxonomyTask
 from ke2sql.tasks.stratigraphy import StratigraphyTask
+from ke2sql.model.meta import config
+from sqlalchemy import text
 
 
 class CatalogueTask(KEDataTask):
@@ -231,6 +233,31 @@ class CatalogueTask(KEDataTask):
                 break
 
         return model_class
+
+    def on_success(self):
+        # On completion, rebuild the views (table)
+        self.session.execute(text('DROP TABLE IF EXISTS specimen_taxonomy'))
+
+        # TODO: This should only select the first determination. Limit isn't working
+        self.session.execute(text(
+            """
+            CREATE TABLE specimen_taxonomy AS
+                    (SELECT DISTINCT ON(d.specimen_irn) specimen_irn, taxonomy_irn
+                    FROM {}.determination d
+                    INNER JOIN keemu.specimen s ON s.irn = d.specimen_irn
+                    ORDER BY d.specimen_irn, filed_as DESC)
+                UNION
+                    (SELECT DISTINCT ON(s.irn) s.irn as specimen_irn, taxonomy_irn
+                    FROM {}.SPECIMEN s
+                    INNER JOIN keemu.part p ON p.irn = s.irn
+                    INNER JOIN keemu.determination d ON p.parent_irn = d.specimen_irn
+                    WHERE NOT EXISTS (SELECT 1 FROM keemu.determination WHERE specimen_irn = s.irn)
+                    ORDER BY s.irn, filed_as DESC)
+            """.format(config.get('database', 'schema'))
+        ))
+
+        # Add primary key
+        self.session.execute(text('ALTER TABLE specimen_taxonomy ADD PRIMARY KEY (specimen_irn)'))
 
 
 
