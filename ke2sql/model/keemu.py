@@ -63,13 +63,11 @@ keemu_schema = config.get('database', 'schema')
 class Column(SQLAlchemyColumn):
     def __init__(self, *args, **kwargs):
         self.alias = kwargs.pop('alias', None)
-        self.dwc = kwargs.pop('dwc', None)
         super(Column, self).__init__(*args, **kwargs)
 
 class RelationshipProperty(SQLAlchemyRelationshipProperty):
     def __init__(self, *args, **kwargs):
         self.alias = kwargs.pop('alias', None)
-        self.dwc = kwargs.pop('dwc', None)
         super(RelationshipProperty, self).__init__(*args, **kwargs)
 
 
@@ -268,38 +266,36 @@ class SiteModel(BaseMixin, Base):
     _created = Column(DateTime, nullable=False, server_default=func.now())
     _modified = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 
-    continent = Column(String, alias=['LocContinentMain', 'PolContinent'], dwc='DarContinent')
-    country = Column(String, alias=['LocCountryMain', 'PolPD1'], dwc='DarCountry')
-    state_province = Column(String, alias=['LocProvinceStateTerritoryMain', 'PolPD2'], dwc='DarStateProvince')
-    county = Column(String, alias=['LocDistrictCountyShireMain', 'PolPD3'], dwc='DarCounty')
-    locality = Column(String, alias=['LocNhmVerbatimLocality', 'LocPreciseLocation'], dwc='DarLocality')
+    continent = Column(String, alias=['LocContinentMain', 'PolContinent'])
+    country = Column(String, alias=['LocCountryMain', 'PolPD1'])
+    state_province = Column(String, alias=['LocProvinceStateTerritoryMain', 'PolPD2'])
+    county = Column(String, alias=['LocDistrictCountyShireMain', 'PolPD3'])
+    locality = Column(String, alias=['LocNhmVerbatimLocality', 'LocPreciseLocation'])
     vice_county = Column(String, alias='Cat1ViceUkViceCounty')
     parish = Column(String, alias='PolParish')
     town = Column(String, alias='LocTownship')
     nearest_named_place = Column(String, alias='LocNearestNamedPlace')
 
     # Ocean & lakes
-    # TODO: Mapping 'DarWaterBody' will be interesting
-    # Use lake > river basin > ocean
-    ocean = Column(String, alias='LocOceanMain', dwc=['DarWaterBody', 'DarContinentOcean'])
-    island_group = Column(String, alias='LocIslandGrouping', dwc='DarIslandGroup')
-    island = Column(String, alias='LocIslandName', dwc='DarIsland')
-    lake = Column(String, alias='AquNhmLake', dwc='DarWaterBody')
-    river_basin = Column(String, alias='AquRiverBasin', dwc='DarWaterBody')
+    ocean = Column(String, alias='LocOceanMain')
+    island_group = Column(String, alias='LocIslandGrouping')
+    island = Column(String, alias='LocIslandName')
+    lake = Column(String, alias='AquNhmLake')
+    river_basin = Column(String, alias='AquRiverBasin')
 
     # Lat/long
-    geodetic_datum = Column(String, alias='LatDatum', dwc='DarGeodeticDatum')
-    georef_method = Column(String, alias=['LatDetSource', 'LatLatLongDetermination'], dwc='DarGeorefMethod')
+    geodetic_datum = Column(String, alias='LatDatum')
+    georef_method = Column(String, alias=['LatDetSource', 'LatLatLongDetermination'])
     latitude = Column(String, alias='LatLatitude')
-    decimal_latitude = Column(String, alias='LatLatitudeDecimal', dwc='DarDecimalLatitude')
+    decimal_latitude = Column(String, alias='LatLatitudeDecimal')
     longitude = Column(String, alias='LatLongitude')
-    decimal_longitude = Column(String, alias='LatLongitudeDecimal', dwc='DarDecimalLongitude')
+    decimal_longitude = Column(String, alias='LatLongitudeDecimal')
 
     # Physical
-    minimum_elevation_in_meters = Column(String, alias='PhyAltitudeFromMtr', dwc='DarMinimumElevationInMeters')
-    maximum_elevation_in_meters = Column(String, alias='PhyAltitudeToMtr', dwc='DarMaximumElevationInMeters')
-    minimum_depth_in_meters = Column(String, alias='PhyDepthFromMtr', dwc='DarMinimumDepthInMeters')
-    maximum_depth_in_meters = Column(String, alias='PhyDepthToMtr', dwc='DarMaximumDepthInMeters')
+    minimum_elevation_in_meters = Column(String, alias='PhyAltitudeFromMtr')
+    maximum_elevation_in_meters = Column(String, alias='PhyAltitudeToMtr')
+    minimum_depth_in_meters = Column(String, alias='PhyDepthFromMtr')
+    maximum_depth_in_meters = Column(String, alias='PhyDepthToMtr')
 
     # Mineralogy location data
     mineral_complex = Column(String, alias='GeoNhmComplex')
@@ -383,7 +379,7 @@ class CollectionEventModel(BaseMixin, Base):
                     geological_lithology = Column(String, alias='GeoLithologicalDetails') (5)
     131213: Removed site = Column(Integer, ForeignKey(SiteModel.irn), alias='ColSiteRef')
             The catalogue site field is populated (via PalCol1SiteRef?) with collection event site irn
-            There are no records witho
+            There are no records with collection event and not site
     """
 
     __tablename__ = 'collection_event'
@@ -394,28 +390,27 @@ class CollectionEventModel(BaseMixin, Base):
 
     # Collection
     # DarYearCollected will use either date_collected_from or date_collected_to, whichever is populated
-    date_collected_from = Column(String, alias='ColDateVisitedFrom', dwc=['DarStartDayCollected', 'DarStartMonthCollected', 'DarStartYearCollected', 'DarDayCollected', 'DarMonthCollected', 'DarYearCollected'])
-    time_collected_from = Column(String, alias='ColTimeVisitedFrom', dwc=['DarStartTimeOfDay', 'DarTimeOfDay'])
-    date_collected_to = Column(String, alias='ColDateVisitedTo', dwc=['DarEndDayCollected', 'DarEndMonthCollected', 'DarEndYearCollected', 'DarDayCollected', 'DarMonthCollected', 'DarYearCollected'])  # Needs to be string to pass validation
-    time_collected_to = Column(String, alias='ColTimeVisitedTo', dwc='DarEndTimeOfDay')
-    collection_event_code = Column(String, alias='ColCollectionEventCode', dwc='DarFieldNumber')
-    collection_method = Column(String, alias='ColCollectionMethod', dwc='samplingProtocol')
+    date_collected_from = Column(String, alias='ColDateVisitedFrom')
+    time_collected_from = Column(String, alias='ColTimeVisitedFrom')
+    date_collected_to = Column(String, alias='ColDateVisitedTo')  # Needs to be string to pass validation
+    time_collected_to = Column(String, alias='ColTimeVisitedTo')
+    collection_event_code = Column(String, alias='ColCollectionEventCode')
+    collection_method = Column(String, alias='ColCollectionMethod')
 
     # Depth / height
-    depth_from_metres = Column(String, alias='DepFromMetres', dwc='minimumDepthInMeters')
-    depth_to_metres = Column(String, alias='DepToMetres', dwc='maximumDepthInMeters')
+    depth_from_metres = Column(String, alias='DepFromMetres')
+    depth_to_metres = Column(String, alias='DepToMetres')
 
     # Expedition
     expedition_start_date = Column(String, alias='ExpStartDate')
     # DwC recommends using expedition name as collector
-    expedition_name = Column(String, alias='ExpExpeditionName', dwc='DarCollector')
+    expedition_name = Column(String, alias='ExpExpeditionName')
     vessel_name = Column(String, alias=['ExpVesselName', 'AquVesselName'])
     vessel_type = Column(String, alias=['ExpVesselType', 'AquVesselType'])
 
     # Collector
-    collector_name = Column(String, alias='ColParticipantString', dwc='DarCollector')
-    collector_number = Column(String, alias='ColPrimaryParticipantRef', dwc='DarCollectorNumber')
-
+    collector_name = Column(String, alias='ColParticipantString')
+    collector_number = Column(String, alias='ColPrimaryParticipantRef')
 
     def __repr__(self):
         return 'CollectionEvent(%s)' % repr(self.irn)
@@ -427,23 +422,23 @@ class TaxonomyModel(BaseMixin, Base):
     irn = Column(Integer, primary_key=True)
     _created = Column(DateTime, nullable=False, server_default=func.now())
     _modified = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
-    scientific_name = Column(String, alias='ClaScientificName', dwc='DarScientificName')
-    kingdom = Column(String, alias='ClaKingdom', dwc='DarKingdom')
-    phylum = Column(String, alias='ClaPhylum', dwc='DarPhylum')
-    taxonomic_class = Column(String, alias='ClaClass', dwc='DarClass')
-    order = Column(String, alias='ClaOrder', dwc='DarOrder')
+    scientific_name = Column(String, alias='ClaScientificName')
+    kingdom = Column(String, alias='ClaKingdom')
+    phylum = Column(String, alias='ClaPhylum')
+    taxonomic_class = Column(String, alias='ClaClass')
+    order = Column(String, alias='ClaOrder')
     suborder = Column(String, alias='ClaSuborder')
     superfamily = Column(String, alias='ClaSuperfamily')
-    family = Column(String, alias='ClaFamily', dwc='DarFamily')
+    family = Column(String, alias='ClaFamily')
     subfamily = Column(String, alias='ClaSubfamily')
-    genus = Column(String, alias='ClaGenus', dwc='DarGenus')
-    subgenus = Column(String, alias='ClaSubgenus', dwc='DarSubgenus')
-    species = Column(String, alias='ClaSpecies', dwc='DarSpecies')
-    subspecies = Column(String, alias='ClaSubspecies', dwc='DarSubspecies')
+    genus = Column(String, alias='ClaGenus')
+    subgenus = Column(String, alias='ClaSubgenus')
+    species = Column(String, alias='ClaSpecies')
+    subspecies = Column(String, alias='ClaSubspecies')
     validity = Column(String, alias='TaxValidity')
-    rank = Column(String, alias='ClaRank', dwc='taxonRank')
-    scientific_name_author = Column(String, alias='AutBasionymAuthorString', dwc='DarScientificNameAuthor')
-    scientific_name_author_year = Column(String, alias='AutBasionymDate', dwc='DarScientificNameAuthorYear')
+    rank = Column(String, alias='ClaRank')
+    scientific_name_author = Column(String, alias='AutBasionymAuthorString')
+    scientific_name_author_year = Column(String, alias='AutBasionymDate')
     currently_accepted_name = Column(Boolean, alias='ClaCurrentlyAccepted')
 
     def __repr__(self):
@@ -508,44 +503,39 @@ class SpecimenModel(CatalogueModel):
             There are only 6 records with different values:  EGG xC/2 | Egg ...
     131125: Merged preparation_type = Column(String, alias='PreType') (only 6 records) into kind_of_collection = Column(String, alias='CatKindOfCollection')
     """
-
     __tablename__ = 'specimen'
 
     # base fields
     irn = Column(Integer, ForeignKey(CatalogueModel.irn, ondelete='CASCADE'), primary_key=True)
-    # DarCollectionCode is based on department: Zoology: ZOO, Paleo: PAL, Botany: BOT, Entom: BMNH(E)
-    collection_department = Column(String, alias='ColDepartment', dwc='DarCollectionCode')
+    collection_department = Column(String, alias='ColDepartment')
     collection_sub_department = Column(String, alias='ColSubDepartment')
     specimen_unit = Column(String, alias=['ColKind', 'CatKindOfObject', 'EntCatKindOfObject'])
     curation_unit = Column(String, alias='RegCurationUnit')
-    catalogue_number = Column(String, alias=['DarCatalogNumber', 'MinBmNumber', 'BotRegRegistrationNumber', 'EntCatCatalogueNumber', 'RegRegistrationNumber', 'PalRegFullRegistrationNumber'], dwc=['DarCatalogNumberText', 'DarCatalogNumber'])
+    catalogue_number = Column(String, alias=['DarCatalogNumber', 'MinBmNumber', 'BotRegRegistrationNumber', 'EntCatCatalogueNumber', 'RegRegistrationNumber', 'PalRegFullRegistrationNumber'])
     preservation = Column(String, alias=['EntCatPreservation', 'CatPreservative'])
     verbatim_label_data = Column(String, alias=['EntLabVerbatimLabelData', 'PalVerLabel'])
     donor_name = Column(String, alias='PalAcqAccLotDonorFullName')
     date_catalogued = Column(String, alias='EntCatDateCatalogued')
     kind_of_collection = Column(String, alias='CatKindOfCollection')
 
-    # TODO: Put back in
-    # specimen_count = Column(String, alias=['DarIndividualCount', 'EntCatSpecimenCount'], dwc='DarIndividualCount')
+    specimen_count = Column(Integer, alias=['DarIndividualCount', 'EntCatSpecimenCount'])
 
-    # preparation = Column(String, alias='PreProcess', dwc='DarPreparations')
-    # preparation_type = Column(String, alias='PreType', dwc='DarPreparationType')
-    # weight = Column(String, alias='DarObservedWeight', dwc='DarObservedWeight')
+    preparation = Column(String, alias='PreProcess')
+    preparation_type = Column(String, alias='PreType')
+    weight = Column(String, alias='DarObservedWeight')
 
     registration_code = Column(String, alias='RegCode')
 
     # DwC - it's easier just to use these DwC fields
     type_status = Column(String, alias='DarTypeStatus')
 
-    # EntIdeDateIdentified can be an array if there's multiple determinations 
-    # Easier just to use the constructed DwC fields
-    date_identified_year = Column(Integer, alias='DarYearIdentified', dwc='DarYearIdentified')
-    date_identified_month = Column(Integer, alias='DarMonthIdentified', dwc='DarMonthIdentified')
-    date_identified_day = Column(Integer, alias='DarDayIdentified', dwc='DarDayIdentified')
-
+    # EntIdeDateIdentified can be an array if there's multiple determinations, so use DwC fields
+    date_identified_day = Column(Integer, alias='DarDayIdentified')
+    date_identified_month = Column(Integer, alias='DarMonthIdentified')
+    date_identified_year = Column(Integer, alias='DarYearIdentified')
     # Identification (for DwC)
-    # identification_qualifier = Column(Integer, alias='DarIdentificationQualifier', dwc='DarIdentificationQualifier')
-    # identified_by = Column(Integer, alias='DarIdentifiedBy', dwc='DarIdentifiedBy')
+    identification_qualifier = Column(String, alias='DarIdentificationQualifier')
+    identified_by = Column(String, alias='DarIdentifiedBy')
 
     # Relationships
     site_irn = Column(Integer, ForeignKey(SiteModel.irn), alias=['sumSiteRef', 'PalCol1SiteRef'])
@@ -557,7 +547,7 @@ class SpecimenModel(CatalogueModel):
     # association proxy of "specimen_taxonomy" collection to "determination" attribute
     determination = association_proxy('specimen_taxonomy', 'taxonomy')
 
-    other_numbers = relationship("OtherNumbersModel", cascade='all, delete-orphan', dwc='DarOtherCatalogNumbers')
+    other_numbers = relationship("OtherNumbersModel", cascade='all, delete-orphan')
 
     sex_stage = relationship("SexStageModel", secondary=specimen_sex_stage)
 
@@ -616,11 +606,8 @@ class SexStageModel(BaseMixin, Base):
 
     id = Column(Integer, primary_key=True)
     count = Column(Integer, alias='EntSexCount')
-    sex = Column(String, alias='EntSexSex', dwc='DarSex')
-    # KE EMu is using SexAge field for DarAgeClass, which isn't right
-    # SexAge has values like 2 days etc., whereas it should be Juvenile etc.,
-    # DarAgeClass could also map to this field, but DarLifeStage is a better fit
-    stage = Column(String, alias='EntSexStage', dwc='DarLifeStage')
+    sex = Column(String, alias='EntSexSex')
+    stage = Column(String, alias='EntSexStage')
 
 
 class ArtefactModel(CatalogueModel):
@@ -889,7 +876,7 @@ class BotanySpecimenModel(SpecimenModel):
     # This is called "Label locality" in existing NHM online DBs
     site_description = Column(String, alias='ColSiteDescription')
     plant_description = Column(String, alias='ColPlantDescription')
-    habitat_verbatim = Column(String, alias='ColHabitatVerbatim', dwc='habitat')
+    habitat_verbatim = Column(String, alias='ColHabitatVerbatim')
     cultivated = Column(Boolean, alias='FeaCultivated')
     plant_form = Column(String, alias='FeaPlantForm')
 
