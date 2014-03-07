@@ -43,6 +43,7 @@ class InitDBCommand(Command):
 
         print 'Creating database tables: SUCCESS'
 
+
 version = '0.1'
 
 setup(
