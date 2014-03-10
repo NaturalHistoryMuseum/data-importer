@@ -10,7 +10,10 @@ import os
 from ke2sql.model import meta
 from ke2sql.model.base import Base
 from sqlalchemy import Table
+from ke2sql import config
+
+keemu_schema = config.get('database', 'schema')
 
 # Reflect the table. It's purpose is as a view, but this is faster
-SpecimenTaxonomyView = Table("specimen_taxonomy", Base.metadata, autoload=True, autoload_with=meta.engine)
+SpecimenTaxonomyView = Table("specimen_taxonomy", Base.metadata, autoload=True, autoload_with=meta.engine, schema=keemu_schema)
 
