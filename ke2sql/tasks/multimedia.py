@@ -19,6 +19,7 @@ class MultimediaTask(KEDataTask):
         # Ke Emu has mime_types:  application, message, video, x-url, text, image
         # Application (including ms word) has stuff we definitely don't want released - messages & text possible risk too
         # If it's not an image or video, skip it
+        # NB: This does mean we'll get missing multimedia refs on import as not every record will be present
         if data.get('MulMimeType', None) not in ('image', 'video'):
             return
 
