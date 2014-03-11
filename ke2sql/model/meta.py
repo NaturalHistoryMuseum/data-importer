@@ -21,4 +21,3 @@ db_settings.pop('schema')
 
 engine = create_engine(URL(**db_settings))
 session = sessionmaker(bind=engine)()
-

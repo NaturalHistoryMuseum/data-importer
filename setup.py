@@ -8,12 +8,16 @@ except:
 
 from distutils.core import Command
 from ConfigParser import ConfigParser
-from ke2sql.model import meta
-from ke2sql.model.base import Base
-# Required to create the tables
-from ke2sql.model.keemu import *
-from ke2sql.model.log import Log
-from sqlalchemy import text
+from ConfigParser import NoSectionError
+try:
+    from ke2sql.model import meta
+    from ke2sql.model.base import Base
+    # Required to create the tables
+    from ke2sql.model.keemu import *
+    from ke2sql.model.log import Log
+    from sqlalchemy import text
+except NoSectionError:
+    pass
 
 class InitDBCommand(Command):
 
