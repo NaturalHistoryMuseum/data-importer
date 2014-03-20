@@ -234,35 +234,6 @@ class CatalogueTask(KEDataTask):
 
         return model_class
 
-    def on_success(self):
-
-        schema = config.get('database', 'schema')
-
-        # On completion, rebuild the views (table)
-        self.session.execute(text('DROP TABLE IF EXISTS {schema}.specimen_taxonomy'.format(schema=schema)))
-
-        # TODO: This should only select the first determination. Limit isn't working
-        self.session.execute(text(
-            """
-            CREATE TABLE {schema}.specimen_taxonomy AS
-                    (SELECT DISTINCT ON(d.specimen_irn) specimen_irn, taxonomy_irn
-                    FROM {schema}.determination d
-                    INNER JOIN keemu.specimen s ON s.irn = d.specimen_irn
-                    ORDER BY d.specimen_irn, filed_as DESC)
-                UNION
-                    (SELECT DISTINCT ON(s.irn) s.irn as specimen_irn, taxonomy_irn
-                    FROM {schema}.SPECIMEN s
-                    INNER JOIN keemu.part p ON p.irn = s.irn
-                    INNER JOIN keemu.determination d ON p.parent_irn = d.specimen_irn
-                    WHERE NOT EXISTS (SELECT 1 FROM keemu.determination WHERE specimen_irn = s.irn)
-                    ORDER BY s.irn, filed_as DESC)
-            """.format(schema=schema)
-        ))
-
-        # Add primary key
-        self.session.execute(text('ALTER TABLE {schema}.specimen_taxonomy ADD PRIMARY KEY (specimen_irn)'.format(schema=schema)))
-        self.session.commit()
-
 
 
 
