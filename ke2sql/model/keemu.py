@@ -47,6 +47,7 @@ __all__ = [
     'StratigraphicUnitAssociation',
     'HostParasiteAssociation',
     'Determination',
+    'MineralogicalAge',
     'STRATIGRAPHIC_UNIT_TYPES'
 ]
 
