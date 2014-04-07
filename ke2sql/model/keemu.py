@@ -660,21 +660,6 @@ class BirdGroupPartModel(PartModel):
     }
 
 
-class BoundVolumeModel(SpecimenModel):
-    """
-    Bound volume & bound volume page fields aren't currently used properly.
-    """
-    __mapper_args__ = {
-        'polymorphic_identity': 'bound_volume',
-    }
-
-
-class BoundVolumePageModel(SpecimenModel):
-    __mapper_args__ = {
-        'polymorphic_identity': 'bound_volume_page',
-    }
-
-
 class BryozoaParentSpecimenModel(SpecimenModel):
     __mapper_args__ = {
         'polymorphic_identity': 'bryozoa_parent',
@@ -770,6 +755,7 @@ class EggModel(PartModel):
         'polymorphic_identity': 'egg',
         'inherit_condition': (irn == SpecimenModel.irn)
     }
+
 
 class MammalGroupParentModel(SpecimenModel):
     __mapper_args__ = {
