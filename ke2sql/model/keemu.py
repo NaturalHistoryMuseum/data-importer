@@ -771,23 +771,6 @@ class EggModel(PartModel):
         'inherit_condition': (irn == SpecimenModel.irn)
     }
 
-
-class FieldNotebookModel(SpecimenModel):
-
-    __tablename__ = 'field_notebook'
-
-    irn = Column(Integer, ForeignKey(SpecimenModel.irn, ondelete='CASCADE'), primary_key=True)
-    left_page_transcription = Column(String, alias='Not2LeftTranscription')
-    left_page_number = Column(String, alias='Not2LeftPageNumber')
-    right_page_transcription = Column(String, alias='Not2RightTranscription')
-    right_page_number = Column(String, alias='Not2RightPageNumber')
-    left_page_multimedia = Column(Integer, alias='Not2MultiMediaLeftPageRef')
-    right_page_multimedia = Column(Integer, alias='Not2MultiMediaRightPageRef')
-
-    __mapper_args__ = {
-        'polymorphic_identity': 'field_notebook',
-    }
-
 class MammalGroupParentModel(SpecimenModel):
     __mapper_args__ = {
         'polymorphic_identity': 'mammal_group_parent',
@@ -989,6 +972,7 @@ class MeteoritesSpecimenModel(SpecimenModel):
     recovery = Column(String, alias='MinMetRecoveryFindFall')
     recovery_date = Column(String, alias='MinMetRecoveryDate')
     recovery_weight = Column(String, alias='MinMetRecoveryWeight')
+    # TODO: Rerun to add these?
     registered_weight = Integer(String, alias='MinMetWeightAsRegistered')
     registered_weight_unit = Integer(String, alias='MinMetWeightAsRegisteredUnit')
 
