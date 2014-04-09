@@ -5,6 +5,8 @@ Created by 'bens3' on 2013-06-21.
 Copyright (c) 2013 'bens3'. All rights reserved.
 """
 
+import sys
+import itertools
 from ke2sql.tasks.ke import KEDataTask
 from ke2sql.model.keemu import *
 
@@ -15,32 +17,31 @@ class SitesTask(KEDataTask):
     module = 'esites'
 
     def process(self, data):
+        # Dictionary of fields, keyed by field name with a list of preferred fields
+        # Try and use PreferredX first, followed by centroid, and then the field name
+        fields = {
+            'LatLatitude': ['LatPreferredCentroidLatitude', 'LatCentroidLatitude', 'LatPreferredLatitude'],
+            'LatLatitudeDecimal': ['LatPreferredCentroidLatDec', 'LatCentroidLatitudeDec', 'LatPreferredLatitudeDec'],
+            'LatLongitude': ['LatPreferredCentroidLongitude', 'LatCentroidLongitude', 'LatPreferredLongitude'],
+            'LatLongitudeDecimal': ['LatPreferredCentroidLongDec', 'LatCentroidLongitudeDec', 'LatPreferredLongitudeDec']
+        }
 
-        # Initially, we're only going to use single point locations
-        # If we have a centroid, use that one
-        # If we don't, and we do have multiple points, just use the first one
-        for field, centroid_field in [
-            ('LatLatitude', 'LatCentroidLatitude'),
-            ('LatLatitudeDecimal', 'LatCentroidLatitudeDec'),
-            ('LatLongitude', 'LatCentroidLongitude'),
-            ('LatLongitudeDecimal', 'LatCentroidLongitudeDec')
-        ]:
+        for field_name, preferred_fields in fields.items():
 
-            centroid_value = data.get(centroid_field, None)
+            # Loop through the fields in order of preference
+            for field in itertools.chain(preferred_fields, [field_name]):
 
-            # If we have a centroid value, use that
-            if centroid_value:
-                data[field] = centroid_value
-            else:
-                # Otherwise if it's a list, use the first value
+                # Do we have a value
                 value = data.get(field, None)
 
-                if isinstance(value, list):
-                    data[field] = value[0]
+                if value:
+
+                    # If we have multiple points, use the first one
+                    if isinstance(value, list):
+                        value = value[0]
+
+                    # Set the field name value
+                    data[field_name] = value
+                    break
 
         super(SitesTask, self).process(data)
-
-
-
-
-
