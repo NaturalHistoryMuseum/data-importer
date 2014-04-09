@@ -8,6 +8,7 @@ PYTHONPATH=. python /vagrant/bin/luigi/bin/luigid --background --logdir /tmp
 python run.py MultimediaTask --local-scheduler --date 2014-01-23
 python run.py SitesTask --local-scheduler --date 2014-01-23
 python run.py TaxonomyTask --local-scheduler --date 2014-01-23
+python run.py SitesTask --local-scheduler
 python run.py CatalogueTask --local-scheduler --date 2014-01-23 --force
 """
 
