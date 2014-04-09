@@ -17,6 +17,7 @@ class SitesTask(KEDataTask):
     module = 'esites'
 
     def process(self, data):
+        
         # Dictionary of fields, keyed by field name with a list of preferred fields
         # Try and use PreferredX first, followed by centroid, and then the field name
         fields = {
@@ -42,6 +43,8 @@ class SitesTask(KEDataTask):
 
                     # Set the field name value
                     data[field_name] = value
+
+                    # Exit inner loop, continue to next field_name, pref
                     break
 
         super(SitesTask, self).process(data)
