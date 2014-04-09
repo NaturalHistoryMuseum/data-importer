@@ -35,8 +35,6 @@ class KEFileTask(luigi.ExternalTask):
     date = luigi.DateParameter(default=None)
     file_name = luigi.Parameter(default='export')
     export_dir = luigi.Parameter(default=config.get('keemu', 'export_dir'))
-    # Is the file compressed? (False is only for testing)
-    compressed = luigi.BooleanParameter(default=True)
 
     def output(self):
 
@@ -52,10 +50,15 @@ class KEFileTask(luigi.ExternalTask):
         file_name = [self.module, self.file_name]
         if self.date:
             file_name.append(self.date.strftime('%Y%m%d'))
-        if self.compressed:
-            file_name.append('gz')
 
-        return os.path.join(self.export_dir, '.'.join(file_name))
+        path = os.path.join(self.export_dir, '.'.join(file_name))
+
+        #  If we don't have a compressed file, try an uncompressed one
+        if not os.path.isfile(path):
+            path += '.gz'
+
+        return path
+
 
 
 class KEDataTask(luigi.postgres.CopyToTable):
