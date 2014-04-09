@@ -285,9 +285,9 @@ class SiteModel(BaseMixin, Base):
     geodetic_datum = Column(String, alias='LatDatum')
     georef_method = Column(String, alias=['LatDetSource', 'LatLatLongDetermination'])
     latitude = Column(String, alias='LatLatitude')
-    decimal_latitude = Column(String, alias='LatLatitudeDecimal')
+    decimal_latitude = Column(Float, alias='LatLatitudeDecimal')
     longitude = Column(String, alias='LatLongitude')
-    decimal_longitude = Column(String, alias='LatLongitudeDecimal')
+    decimal_longitude = Column(Float, alias='LatLongitudeDecimal')
 
     # Physical
     minimum_elevation_in_meters = Column(String, alias='PhyAltitudeFromMtr')

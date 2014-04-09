@@ -47,4 +47,8 @@ class SitesTask(KEDataTask):
                     # Exit inner loop, continue to next field_name, pref
                     break
 
+            # For decimal fields, convert '' to None to prevent DB error: invalid input syntax for type double precision
+            if data.get(field, None) == '' and field_name in ['LatLatitudeDecimal', 'LatLongitudeDecimal']:
+                data[field_name] = None
+
         super(SitesTask, self).process(data)
