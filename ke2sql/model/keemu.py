@@ -955,7 +955,6 @@ class MeteoritesSpecimenModel(SpecimenModel):
     recovery = Column(String, alias='MinMetRecoveryFindFall')
     recovery_date = Column(String, alias='MinMetRecoveryDate')
     recovery_weight = Column(String, alias='MinMetRecoveryWeight')
-    # TODO: Rerun to add these?
     registered_weight = Integer(String, alias='MinMetWeightAsRegistered')
     registered_weight_unit = Integer(String, alias='MinMetWeightAsRegisteredUnit')
 
