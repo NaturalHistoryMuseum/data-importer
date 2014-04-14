@@ -3,7 +3,9 @@ from sqlalchemy import Table, Column as SQLAlchemyColumn, Integer, Float, String
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import relationship, backref, RelationshipProperty as SQLAlchemyRelationshipProperty, validates
 from sqlalchemy.exc import InvalidRequestError
+from sqlalchemy.types import String
 import datetime
+import sys
 from sqlalchemy import event
 from ke2sql.log import log
 from ke2sql.model.base import Base
@@ -114,6 +116,12 @@ class BaseMixin(object):
             if value and existing_value and existing_value != value:
                 log.error('Multiple aliased fields do not match for %s(%s).%s: %s != %s' % (self.__class__.__name__, self.irn, name, existing_value, value))
 
+            column_type = self.get_column_type(name)
+
+            # If this is a list for a string field, join together
+            if isinstance(value, list) and isinstance(column_type, String):
+                value = ', '.join(value)
+
         # Set the value
         super(BaseMixin, self).__setattr__(name, value)
 
@@ -175,6 +183,11 @@ class BaseMixin(object):
 
         # And then re-populate
         self._populate(**kwargs)
+
+    def get_column_type(self, name):
+
+        prop = self.__mapper__.get_property(name)
+        return prop.columns[0].type
 
 
 # Set up some data validators
