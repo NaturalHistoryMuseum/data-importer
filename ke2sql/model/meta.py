@@ -16,8 +16,9 @@ from ke2sql import config
 __all__ = ['engine', 'session']
 
 db_settings = dict(config.items('database'))
+# Explicitly set client encoding (NB: setting as param in create_engine is not working)
+db_settings['query'] = {'client_encoding': 'utf8'}
 # Do not use the schema in the URL connection
 db_settings.pop('schema')
-
 engine = create_engine(URL(**db_settings))
 session = sessionmaker(bind=engine)()
