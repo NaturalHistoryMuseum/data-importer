@@ -114,6 +114,8 @@ class KEDataTask(luigi.postgres.CopyToTable):
     def finish(self):
         # Mark this task as complete
         self.output().touch()
+        # Close the session
+        self.session.close()
 
     def get_record(self, irn):
         return self.session.query(self.model_class).filter_by(irn=irn).one()
