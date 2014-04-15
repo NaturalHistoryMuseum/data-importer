@@ -119,6 +119,7 @@ class BaseMixin(object):
             column_type = self.get_column_type(name)
 
             # If this is a list for a string field, join together
+            # Only need to do this with Strings - all other field types will raise an exception
             if isinstance(value, list) and isinstance(column_type, String):
                 value = ', '.join(value)
 
