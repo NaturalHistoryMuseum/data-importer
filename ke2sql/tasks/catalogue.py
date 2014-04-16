@@ -38,8 +38,11 @@ class CatalogueTask(KEDataTask):
     # Those without records are not in this list - it's good to log an error when these start appearing
     excluded_types = [
         'Acquisition',
+        'Bound Volume',
+        'Bound Volume Page',
         'Collection Level Description',
-        'DNA Card', # 1 record, but keep an eye on this
+        'DNA Card',  # 1 record, but keep an eye on this
+        'Field Notebook',
         'Image',
         'Image (electronic)',
         'Image (non-digital)',
