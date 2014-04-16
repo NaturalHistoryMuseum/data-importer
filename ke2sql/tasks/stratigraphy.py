@@ -45,7 +45,7 @@ class StratigraphyTask(KEDataTask):
                     for direction in ['To', 'From']:
                         value = self.get_field_value(data, unit_type, direction)
                         if value:
-                            unit_model = unit_models[unicode(value)]
+                            unit_model = unit_models[value]
                             # First three chars of unit type aren't useful: Lit, Chr etc.,
                             data['stratigraphic_unit'].append(StratigraphicUnitAssociation(stratigraphy_irn=data['irn'], unit_id=unit_model.id, stratigraphic_type=unit_type[3:].lower(), direction=direction.lower()))
 
@@ -75,7 +75,8 @@ class StratigraphyTask(KEDataTask):
         results = self.session.query(StratigraphicUnitModel).filter(StratigraphicUnitModel.name.in_(unit_names)).all()
 
         for unit_model in results:
-            unit_models[unicode(unit_model.name)] = unit_model
+            # Convert to UTF8 for comparison
+            unit_models[unit_model.name.encode('utf-8')] = unit_model
 
         # De we have any new unit models? If so, we need to create them
         missing_unit_names = list(set(unit_names) - set(unit_models.keys()))
