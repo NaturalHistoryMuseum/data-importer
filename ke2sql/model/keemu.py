@@ -187,12 +187,16 @@ class BaseMixin(object):
 
     def get_column_type(self, name):
 
-        prop = self.__mapper__.get_property(name)
-        return prop.columns[0].type
+        try:
+            prop = self.__mapper__.get_property(name)
+            column_type = prop.columns[0].type
+        except AttributeError:
+            # Relationship type
+            column_type = None
 
+        return column_type
 
 # Set up some data validators
-
 def validate_int(value):
     if isinstance(value, basestring):
         value = int(value)
