@@ -80,5 +80,3 @@ class DeleteTask(luigi.postgres.CopyToTable):
 
         self.session.commit()
         self.output().touch()
-
-
