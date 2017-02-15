@@ -11,9 +11,10 @@ import time
 import click
 from psycopg2.extras import Json
 
+
 from ke2sql.lib import config, get_records
 from ke2sql import db
-from ke2sql import models
+from ke2sql.models import EMultimediaModel, ECatalogueModel
 
 
 @click.command()
@@ -27,7 +28,7 @@ def run_import(limit):
     connection = db.get_connection()
     start_time = time.time()
 
-    for cls in models.Base.__subclasses__():
+    for cls in [EMultimediaModel, ECatalogueModel]:
         model = cls()
         # For speed, we don't use the sqlalchemy orm for inserts
         # FIXME: Need to auto-generate this from the fields - move to the model
@@ -42,7 +43,10 @@ def run_import(limit):
             date=date
         )
         file_path = os.path.join(cfg.get('keemu', 'export_dir'), file_name)
-        count = 0
+        counter = {
+            'records': 0,
+            'inserted': 0
+        }
         buffer = []
         buffer_length = 10000
         for record in get_records(file_path):
@@ -56,19 +60,20 @@ def run_import(limit):
             else:
                 # Ensure it doesn't exist? But only for non-full imports.
                 pass
-            count += 1
-
+            counter['records'] += 1
             if len(buffer) == buffer_length:
-                print('Writing buffer - %s' % count)
                 connection.execute(sql, buffer)
+                counter['inserted'] += buffer_length
+                print('Writing buffer - {inserted} ({records})'.format(**counter))
                 buffer = []
 
             # If we've specified a limit, then end process once we've reached it
-            if limit and count >= limit:
+            if limit and counter['records'] >= limit:
+                counter['inserted'] += len(buffer)
                 connection.execute(sql, buffer)
                 break
 
-        print('Inserted {0} {1} records in {2} seconds'.format(count, model.__tablename__, time.time() - start_time))
+        print('Inserted {0} {1} records in {2} seconds'.format(counter['inserted'], model.__tablename__, time.time() - start_time))
 
 if __name__ == "__main__":
     run_import()

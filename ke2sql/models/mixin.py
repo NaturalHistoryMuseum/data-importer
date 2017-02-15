@@ -4,6 +4,8 @@
 Created by Ben Scott on '14/02/2017'.
 """
 from abc import abstractproperty
+import datetime
+import time
 from sqlalchemy import Table, Column, Integer, Float, String, ForeignKey, Boolean, Date, UniqueConstraint, Enum, DateTime, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import declarative_base
@@ -26,14 +28,14 @@ class MixinModel(object):
     created = Column(DateTime, nullable=False, server_default=func.now())
     modified = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
     deleted = Column(DateTime, nullable=True)
+    # deleted = Column(Integer, nullable=True)
     properties = Column(JSONB, nullable=True)
 
     @abstractproperty
     def property_mappings(self):
         return None
 
-    @staticmethod
-    def is_importable(record):
+    def is_importable(self, record):
         """
         Evaluate whether a record is importable
         At the very least a record will need AdmPublishWebNoPasswordFlag set to Y,
@@ -44,7 +46,16 @@ class MixinModel(object):
         if record.AdmPublishWebNoPasswordFlag.lower() != 'y':
             return False
 
-        # for f in ['NhmSecEmbargoDate', 'NhmSecEmbargoExtensionDate']:
+        today_timestamp = time.time()
+        embargo_dates = [
+            getattr(record, 'NhmSecEmbargoDate', None),
+            getattr(record, 'NhmSecEmbargoExtensionDate', None)
+        ]
+        for embargo_date in embargo_dates:
+            if embargo_date:
+                embargo_date_timestamp = time.mktime(datetime.datetime.strptime(embargo_date, "%Y-%m-%d").timetuple())
+                if embargo_date_timestamp > today_timestamp:
+                    return False
 
         return True
 

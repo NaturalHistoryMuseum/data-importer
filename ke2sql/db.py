@@ -5,10 +5,9 @@ Created by Ben Scott on '14/02/2017'.
 """
 
 import sqlalchemy
-from psycopg2.extras import Json
 
-from ke2sql.models import Base
 from ke2sql.lib import config
+from ke2sql.models.base import Base
 
 engine = None
 
