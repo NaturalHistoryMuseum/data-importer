@@ -8,7 +8,6 @@ import datetime
 import time
 from sqlalchemy import Table, Column, Integer, Float, String, ForeignKey, Boolean, Date, UniqueConstraint, Enum, DateTime, func
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.declarative import declared_attr
 
 
@@ -30,6 +29,19 @@ class MixinModel(object):
     deleted = Column(DateTime, nullable=True)
     # deleted = Column(Integer, nullable=True)
     properties = Column(JSONB, nullable=True)
+
+    @property
+    def sql(self):
+        """
+        Special SQL for insert / updates
+        For speed, do not use ORM
+        :return:
+        """
+        return """
+            INSERT INTO {0} (irn, properties, created) VALUES (%(irn)s, %(properties)s, NOW())
+            ON CONFLICT (irn)
+            DO UPDATE SET (properties, modified) = (%(properties)s, NOW()) WHERE {0}.irn = %(irn)s
+    """.format(self.__tablename__)
 
     @abstractproperty
     def property_mappings(self):

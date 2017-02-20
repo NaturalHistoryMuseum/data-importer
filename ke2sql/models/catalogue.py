@@ -4,19 +4,19 @@
 Created by Ben Scott on '14/02/2017'.
 """
 
+from sqlalchemy import Column, String
+
 from ke2sql.models.mixin import MixinModel
 from ke2sql.models.base import Base
 
 
-# FIXME: Index lots??
-# FIXME: Geospatial?
-# FIXME: Artefacts
-
-
-class ECatalogueModel(Base, MixinModel):
+class CatalogueModel(Base, MixinModel):
     """
     Ecatalogue records
     """
+    # Add extra field for recording record type
+    record_type = Column(String, nullable=False)
+
     property_mappings = (
         # Record numbers
         ('AdmGUIDPreferredValue', 'occurrenceID'),
@@ -75,6 +75,8 @@ class ECatalogueModel(Base, MixinModel):
         ('DarMaximumElevationInMeters', 'maximumElevationInMeters'),
         ('DarMinimumDepthInMeters', 'minimumDepthInMeters'),
         ('DarMaximumDepthInMeters', 'maximumDepthInMeters'),
+        ('CollEventFromMetres', 'minimumDepthInMeters'),
+        ('CollEventToMetres', 'maximumDepthInMeters'),
         ('DarCollectorNumber', 'recordNumber'),
         ('DarIndividualCount', 'individualCount'),
         # Duplicate lifeStage fields - only fields with a value get populated so
@@ -135,6 +137,7 @@ class ECatalogueModel(Base, MixinModel):
         ('DnaReSuspendedIn', 'resuspendedIn'),
         ('DnaTotalVolume', 'totalVolume'),
         # Parasite card
+        ('EntCatBarcode', 'barcode'),
         ('CardBarcode', 'barcode'),
         # Egg
         ('EggClutchSize', 'clutchSize'),
@@ -264,9 +267,6 @@ class ECatalogueModel(Base, MixinModel):
         :param record:
         :return: boolean - false if not importable
         """
-        # Run the record passed the base filter (checks AdmPublishWebNoPasswordFlag)
-        if not super().is_importable(record):
-            return False
 
         # Records must have a GUID
         if not getattr(record, 'AdmGUIDPreferredValue', None):
@@ -288,5 +288,6 @@ class ECatalogueModel(Base, MixinModel):
         if collection_department not in self.collection_departments:
             return False
 
-        # If it gets to the end, return True - record can be imported
-        return True
+        # Run the record passed the base filter (checks AdmPublishWebNoPasswordFlag)
+        return super(CatalogueModel, self).is_importable(record)
+

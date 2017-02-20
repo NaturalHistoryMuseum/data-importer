@@ -4,7 +4,8 @@
 Created by Ben Scott on '14/02/2017'.
 """
 
-from .ecatalogue import ECatalogueModel
-from .emultimedia import EMultimediaModel
+from .catalogue import CatalogueModel
+from .multimedia import MultimediaModel
+from .taxonomy import TaxonomyModel
+from .relationships import *
 
-__all__ = ['ECatalogueModel', 'EMultimediaModel']
