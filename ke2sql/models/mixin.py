@@ -27,49 +27,24 @@ class MixinModel(object):
     created = Column(DateTime, nullable=False, server_default=func.now())
     modified = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
     deleted = Column(DateTime, nullable=True)
-    # deleted = Column(Integer, nullable=True)
     properties = Column(JSONB, nullable=True)
 
-    @property
-    def sql(self):
-        """
-        Special SQL for insert / updates
-        For speed, do not use ORM
-        :return:
-        """
-        return """
-            INSERT INTO {0} (irn, properties, created) VALUES (%(irn)s, %(properties)s, NOW())
-            ON CONFLICT (irn)
-            DO UPDATE SET (properties, modified) = (%(properties)s, NOW()) WHERE {0}.irn = %(irn)s
-    """.format(self.__tablename__)
+    # @property
+    # def sql(self):
+    #     """
+    #     Special SQL for insert / updates
+    #     For speed, do not use ORM
+    #     :return:
+    #     """
+    #     return """
+    #         INSERT INTO {0} (irn, properties, created) VALUES (%(irn)s, %(properties)s, NOW())
+    #         ON CONFLICT (irn)
+    #         DO UPDATE SET (properties, modified) = (%(properties)s, NOW()) WHERE {0}.irn = %(irn)s
+    # """.format(self.__tablename__)
 
     @abstractproperty
     def property_mappings(self):
         return None
-
-    def is_importable(self, record):
-        """
-        Evaluate whether a record is importable
-        At the very least a record will need AdmPublishWebNoPasswordFlag set to Y,
-        Additional models will extend this to provide additional filters
-        :param record:
-        :return: boolean - false if not importable
-        """
-        if record.AdmPublishWebNoPasswordFlag.lower() != 'y':
-            return False
-
-        today_timestamp = time.time()
-        embargo_dates = [
-            getattr(record, 'NhmSecEmbargoDate', None),
-            getattr(record, 'NhmSecEmbargoExtensionDate', None)
-        ]
-        for embargo_date in embargo_dates:
-            if embargo_date:
-                embargo_date_timestamp = time.mktime(datetime.datetime.strptime(embargo_date, "%Y-%m-%d").timetuple())
-                if embargo_date_timestamp > today_timestamp:
-                    return False
-
-        return True
 
     def get_properties(self, record):
         """

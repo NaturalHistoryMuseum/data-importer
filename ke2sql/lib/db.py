@@ -6,7 +6,7 @@ Created by Ben Scott on '14/02/2017'.
 
 import sqlalchemy
 
-from ke2sql.lib import config
+from ke2sql.lib.config import get_config
 from ke2sql.models.base import Base
 
 engine = None
@@ -20,8 +20,8 @@ def get_engine():
     """
     global engine
     if not engine:
-        cfg = config()
-        engine = sqlalchemy.create_engine(cfg.get('postgres', 'url'))
+        config = get_config()
+        engine = sqlalchemy.create_engine(config.get('postgres', 'url'))
     return engine
 
 
@@ -41,6 +41,6 @@ def get_connection():
     return get_engine().connect()
 
 
-def create_schema():
-    # TODO: These should be in a separate, non-public schema
-    pass
+# def create_schema():
+#     # TODO: These should be in a separate, non-public schema
+#     pass

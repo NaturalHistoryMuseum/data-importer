@@ -12,7 +12,7 @@ from ke2sql.models.base import Base
 
 class CatalogueModel(Base, MixinModel):
     """
-    Ecatalogue records
+    ECatalogue records
     """
     # Add extra field for recording record type
     record_type = Column(String, nullable=False)
@@ -199,95 +199,4 @@ class CatalogueModel(Base, MixinModel):
         # ('EntIdeFiledAs', '_determinationFiledAs'),
 
     )
-
-    # List of record types (ColRecordType) to exclude from the import
-    excluded_types = [
-        'Acquisition',
-        'Bound Volume',
-        'Bound Volume Page',
-        'Collection Level Description',
-        'DNA Card',  # 1 record, but keep an eye on this
-        'Field Notebook',
-        'Field Notebook (Double Page)',
-        'Image',
-        'Image (electronic)',
-        'Image (non-digital)',
-        'Image (digital)',
-        'Incoming Loan',
-        'L&A Catalogue',
-        'Missing',
-        'Object Entry',
-        'object entry',  # FFS
-        'Object entry',  # FFFS
-        'PEG Specimen',
-        'PEG Catalogue',
-        'Preparation',
-        'Rack File',
-        'Tissue',  # Only 2 records. Watch.
-        'Transient Lot'
-    ]
-
-    # List of record statuses (SecRecordStatus) to exclude from the import
-    excluded_statuses = [
-        "DELETE",
-        "DELETE-MERGED",
-        "DUPLICATION",
-        "Disposed of",
-        "FROZEN ARK",
-        "INVALID",
-        "POSSIBLE TYPE",
-        "PROBLEM",
-        "Re-registered in error",
-        "Reserved",
-        "Retired",
-        "Retired (see Notes)",
-        "Retired (see Notes)Retired (see Notes)",
-        "SCAN_cat",
-        "See Notes",
-        "Specimen missing - see notes",
-        "Stub",
-        "Stub Record",
-        "Stub record"
-    ]
-
-    # Record must be in one of these collection departments
-    collection_departments = [
-        "Botany",
-        "Entomology",
-        "Mineralogy",
-        "Palaeontology",
-        "Zoology"
-    ]
-
-    def is_importable(self, record):
-        """
-        Evaluate whether a record is importable
-        At the very least a record will need AdmPublishWebNoPasswordFlag set to Y,
-        Additional models will extend this to provide additional filters
-        :param record:
-        :return: boolean - false if not importable
-        """
-
-        # Records must have a GUID
-        if not getattr(record, 'AdmGUIDPreferredValue', None):
-            return False
-
-        # Does this record have an excluded status - Stub etc.,
-        record_status = getattr(record, 'SecRecordStatus', None)
-        if record_status in self.excluded_statuses:
-            return False
-
-        # Does this record have an excluded status - Stub etc.,
-        record_type = getattr(record, 'ColRecordType', None)
-        if record_type in self.excluded_types:
-            return False
-
-        # Record must be in one of the known collection departments
-        # (Otherwise the home page breaks)
-        collection_department = getattr(record, 'ColDepartment', None)
-        if collection_department not in self.collection_departments:
-            return False
-
-        # Run the record passed the base filter (checks AdmPublishWebNoPasswordFlag)
-        return super(CatalogueModel, self).is_importable(record)
 
