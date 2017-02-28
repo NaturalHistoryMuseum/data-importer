@@ -7,7 +7,7 @@ from ke2sql.models.catalogue import CatalogueModel
 
 class ECatalogueTask(BaseTask):
 
-    model = CatalogueModel
+    model_cls = CatalogueModel
 
     record_filters = {
         # List of record types (ColRecordType) to exclude from the import
@@ -100,7 +100,7 @@ class ECatalogueTask(BaseTask):
             return False
 
         # Run the record passed the base filter (checks AdmPublishWebNoPasswordFlag)
-        return super(ECatalogueTask, self)._is_importable(record)    
+        return super(ECatalogueTask, self)._is_importable(record)
 
 
 if __name__ == '__main__':

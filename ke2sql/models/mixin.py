@@ -29,27 +29,28 @@ class MixinModel(object):
     deleted = Column(DateTime, nullable=True)
     properties = Column(JSONB, nullable=True)
 
-    # @property
-    # def sql(self):
-    #     """
-    #     Special SQL for insert / updates
-    #     For speed, do not use ORM
-    #     :return:
-    #     """
-    #     return """
-    #         INSERT INTO {0} (irn, properties, created) VALUES (%(irn)s, %(properties)s, NOW())
-    #         ON CONFLICT (irn)
-    #         DO UPDATE SET (properties, modified) = (%(properties)s, NOW()) WHERE {0}.irn = %(irn)s
-    # """.format(self.__tablename__)
+    def get_extra_fields(self):
+        """
+        Return list of extra fields defined in a child model
+        :return:
+        """
+        print(self.__table__.columns)
+        # print(self.__mapper__.columns)
+
+    @property
+    def sql(self):
+        """
+        Special SQL for insert / updates
+        To make this faster, we don't use the ORM for inserts
+        :return: SQL
+        """
+        return """
+            INSERT INTO {0} (irn, properties, created) VALUES (%(irn)s, %(properties)s, NOW())
+            ON CONFLICT (irn)
+            DO UPDATE SET (properties, modified) = (%(properties)s, NOW()) WHERE {0}.irn = %(irn)s
+    """.format(self.__tablename__)
 
     @abstractproperty
     def property_mappings(self):
         return None
 
-    def get_properties(self, record):
-        """
-        Method to build a dict of properties
-        :param record:
-        :return:
-        """
-        return {alias: getattr(record, field, None) for (field, alias) in self.property_mappings if getattr(record, field, None)}

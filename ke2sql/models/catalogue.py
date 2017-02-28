@@ -6,11 +6,12 @@ Created by Ben Scott on '14/02/2017'.
 
 from sqlalchemy import Column, String
 
-from ke2sql.models.mixin import MixinModel
+
+# from ke2sql.models.mixin import MixinModel
 from ke2sql.models.base import Base
 
 
-class CatalogueModel(Base, MixinModel):
+class CatalogueModel(Base):
     """
     ECatalogue records
     """
