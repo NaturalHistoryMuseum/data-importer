@@ -69,6 +69,7 @@ class BaseTask(luigi.Task):
             self.record_count += 1
             if self._is_web_publishable(record) and self._is_valid_record(record):
                 # Get an extra fields
+
                 record_dict = {
                     'irn': record.irn,
                     'properties': Json(record.to_dict(self.model.property_mappings))
