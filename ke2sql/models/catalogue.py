@@ -5,7 +5,7 @@ Created by Ben Scott on '14/02/2017'.
 """
 
 from sqlalchemy import Column, String
-
+from ke2sql.lib.aliased_column import AliasedColumn
 
 # from ke2sql.models.mixin import MixinModel
 from ke2sql.models.base import Base
@@ -16,7 +16,7 @@ class CatalogueModel(Base):
     ECatalogue records
     """
     # Add extra field for recording record type
-    record_type = Column(String, nullable=False)
+    record_type = AliasedColumn(String, nullable=False, alias="ColRecordType")
 
     property_mappings = (
         # Record numbers
@@ -115,7 +115,6 @@ class CatalogueModel(Base):
         ('DarMember', 'member'),
         ('DarBed', 'bed'),
         # These fields do not map to DwC, but are still very useful
-        ('ColRecordType', 'recordType'),
         ('ColSubDepartment', 'subDepartment'),
         ('PrtType', 'partType'),
         ('RegCode', 'registrationCode'),

@@ -7,7 +7,7 @@ Copyright (c) 2013 'bens3'. All rights reserved.
 
 import os
 import luigi
-from ke2sql.lib.config import get_config
+from ke2sql.lib.config import Config
 
 
 class FileTask(luigi.ExternalTask):
@@ -24,9 +24,7 @@ class FileTask(luigi.ExternalTask):
             model_name=self.module_name,
             date=self.date
         )
-
-        config = get_config()
-        return os.path.join(config.get('keemu', 'export_dir'), file_name)
+        return os.path.join(Config.get('keemu', 'export_dir'), file_name)
 
     def output(self):
         return luigi.LocalTarget(self.file_path)

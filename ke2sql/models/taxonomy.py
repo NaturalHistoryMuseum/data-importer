@@ -4,11 +4,10 @@
 Created by Ben Scott on '14/02/2017'.
 """
 
-from ke2sql.models.mixin import MixinModel
 from ke2sql.models.base import Base
 
 
-class TaxonomyModel(Base, MixinModel):
+class TaxonomyModel(Base):
     """
     ETaxonomy records
     """

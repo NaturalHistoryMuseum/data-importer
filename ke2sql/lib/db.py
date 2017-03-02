@@ -6,7 +6,7 @@ Created by Ben Scott on '14/02/2017'.
 
 import sqlalchemy
 
-from ke2sql.lib.config import get_config
+from ke2sql.lib.config import Config
 from ke2sql.models.base import Base
 
 engine = None
@@ -20,8 +20,7 @@ def get_engine():
     """
     global engine
     if not engine:
-        config = get_config()
-        engine = sqlalchemy.create_engine(config.get('postgres', 'url'))
+        engine = sqlalchemy.create_engine(Config.get('postgres', 'url'))
     return engine
 
 

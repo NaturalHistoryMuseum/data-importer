@@ -66,7 +66,7 @@ class ECatalogueTask(BaseTask):
         ]
     }
 
-    def _is_importable(self, record):
+    def _is_valid_record(self, record):
         """
         Override base is_importable
         Add additional checks for:
@@ -88,9 +88,9 @@ class ECatalogueTask(BaseTask):
         if record_status in self.record_filters['excluded_statuses']:
             return False
 
-        # Does this record have an excluded status - Stub etc.,
+        # Does this record have a record type that isn't excluded status - Stub etc.,
         record_type = getattr(record, 'ColRecordType', None)
-        if record_type in self.record_filters['excluded_types']:
+        if not record_type or record_type in self.record_filters['excluded_types']:
             return False
 
         # Record must be in one of the known collection departments
@@ -99,8 +99,7 @@ class ECatalogueTask(BaseTask):
         if collection_department not in self.record_filters['collection_departments']:
             return False
 
-        # Run the record passed the base filter (checks AdmPublishWebNoPasswordFlag)
-        return super(ECatalogueTask, self)._is_importable(record)
+        return True
 
 
 if __name__ == '__main__':

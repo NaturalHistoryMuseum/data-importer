@@ -25,19 +25,20 @@ class Parser(object):
     def __next__(self):
         for record in self._parse():
             return record
+        raise StopIteration()
 
     def _parse(self):
         record = Record()
-        for line in self.export_file :
-                line = line.strip()
-                if not line:
-                    continue
-                # If is a line separator, write the record
-                if line == '###':
-                    yield record
-                    record = Record()
-                else:
-                    field_name, value = line.split('=', 1)
-                    # Replace field name indexes
-                    field_name = self.re_field_name_index.sub('', field_name)
-                    setattr(record, field_name, value)
+        for line in self.export_file:
+            line = line.strip()
+            if not line:
+                continue
+            # If is a line separator, write the record
+            if line == '###':
+                yield record
+                record = Record()
+            else:
+                field_name, value = line.split('=', 1)
+                # Replace field name indexes
+                field_name = self.re_field_name_index.sub('', field_name)
+                setattr(record, field_name, value)
