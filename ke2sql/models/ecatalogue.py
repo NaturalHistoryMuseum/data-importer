@@ -1,29 +1,18 @@
+
 import luigi
 
-from operator import is_not
-
-from ke2sql.tasks.base import BaseTask
-from ke2sql.lib.operators import is_one_of, is_not_one_of
-
-
-# FIXME: Extra fields
-# FIXME: Create table??
-# FIXME: DO we need extra fields??? Makes migrations harder?????? Can we just use the properties??
+from ke2sql.tasks.bulk import BaseTask
 
 
 class ECatalogueTask(BaseTask):
 
-    table = 'ecatalogue'
-
-    columns = BaseTask.columns + [
-        ("record_type", "TEXT"),
-        ("multimedia_irns", "ARRAY[INTEGER]"),  # Bit flaky
-        ("_metadata", "JSONP"),
-    ]
-
-    _metadata_columns = [
-
-    ]
+    # [
+    #
+    # ]
+    #
+    # ("record_type", "TEXT"),
+    # ("multimedia_irns", "ARRAY[INTEGER]"),  # Bit flaky
+    # ("multimedia_irn", "INTEGER REFERENCES products (product_no),"),
 
     property_mappings = (
         # Record numbers
@@ -204,94 +193,7 @@ class ECatalogueTask(BaseTask):
         # ('IdeCitationTypeStatus', '_determinationTypes'),
         # ('EntIdeScientificNameLocal', '_determinationNames', 'string:250'),
         # ('EntIdeFiledAs', '_determinationFiledAs'),
-
     )
 
-    filters = {
-        # Records must have a GUID
-        'AdmGUIDPreferredValue': [
-            (is_not, None)
-        ],
-        # Does this record have an excluded status - Stub etc.,
-        'SecRecordStatus': [
-            (is_not, None),
-            (is_not_one_of, [
-                "DELETE",
-                "DELETE-MERGED",
-                "DUPLICATION",
-                "Disposed of",
-                "FROZEN ARK",
-                "INVALID",
-                "POSSIBLE TYPE",
-                "PROBLEM",
-                "Re-registered in error",
-                "Reserved",
-                "Retired",
-                "Retired (see Notes)",
-                "Retired (see Notes)Retired (see Notes)",
-                "SCAN_cat",
-                "See Notes",
-                "Specimen missing - see notes",
-                "Stub",
-                "Stub Record",
-                "Stub record"
-            ])
-        ],
-        # Exclude records without the proper record type
-        'ColRecordType': [
-            (is_not, None),
-            (is_not_one_of, [
-                'Acquisition',
-                'Bound Volume',
-                'Bound Volume Page',
-                'Collection Level Description',
-                'DNA Card',  # 1 record, but keep an eye on this
-                'Field Notebook',
-                'Field Notebook (Double Page)',
-                'Image',
-                'Image (electronic)',
-                'Image (non-digital)',
-                'Image (digital)',
-                'Incoming Loan',
-                'L&A Catalogue',
-                'Missing',
-                'Object Entry',
-                'object entry',  # FFS
-                'Object entry',  # FFFS
-                'PEG Specimen',
-                'PEG Catalogue',
-                'Preparation',
-                'Rack File',
-                'Tissue',  # Only 2 records. Watch.
-                'Transient Lot'
-            ])
-        ],
-        # Record must be in one of the known collection departments
-        # (Otherwise the home page breaks)
-        'ColDepartment': [
-            (is_one_of, [
-                "Botany",
-                "Entomology",
-                "Mineralogy",
-                "Palaeontology",
-                "Zoology"
-            ])
-        ]
-    }
-
-    def _get_record_dict(self, record):
-        """
-        Add extra info to the record dict object
-        :param record:
-        :return:
-        """
-        record_dict = super(ECatalogueTask, self)._get_record_dict(record)
-        record_dict['record_type'] = record.ColRecordType
-
-        print(record)
-
-        print(record.ColRecordType)
-
-        return record_dict
-
-
+if __name__ == '__main__':
+    luigi.run(main_task_cls=ECatalogueTask)

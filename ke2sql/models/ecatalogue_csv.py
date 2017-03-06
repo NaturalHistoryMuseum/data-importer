@@ -33,11 +33,13 @@ class ECatalogueCSVTask(luigi.postgres.CopyToTable):
     model_cls = CatalogueModel
 
     columns = [
-        ("irn", "INT"),
-        ("modified", "TEXT"),
-        ("created", "TEXT"),
-        ("deleted", "TEXT"),
+        ("irn", "PRIMARY KEY"),
+        ("modified", "DATETIME NOT NULL"),
+        ("created", "DATETIME NOT NULL"),
+        ("deleted", "DATETIME"),
         ("record_type", "TEXT"),
+        ("multimedia_irns", "ARRAY[INTEGER]"),  # Bit flaky
+        ("multimedia_irn", "INTEGER REFERENCES products (product_no),"),
         ("properties", "JSONB")
     ]
 

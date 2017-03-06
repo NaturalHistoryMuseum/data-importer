@@ -9,9 +9,7 @@ from datetime import datetime
 import datetime
 import logging
 import json
-import operator
-from abc import abstractproperty, abstractmethod
-from psycopg2.extras import Json
+from abc import abstractproperty
 
 from ke2sql.lib.parser import Parser
 from ke2sql.lib.config import Config
@@ -20,7 +18,7 @@ from ke2sql.tasks.file import FileTask
 logger = logging.getLogger('luigi-interface')
 
 
-class BaseTask(object):
+class BaseTask(luigi.contrib.postgres.CopyToTable):
 
     date = luigi.IntParameter()
     limit = luigi.IntParameter(default=None)
@@ -33,18 +31,10 @@ class BaseTask(object):
 
     columns = [
         ("irn", "INTEGER PRIMARY KEY"),
-        ("created", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+        ("created", "TIMESTAMP NOT NULL"),
         ("modified", "TIMESTAMP"),
         ("deleted", "TIMESTAMP"),
         ("properties", "JSONB")
-    ]
-
-    # Column metadata
-    primary_key_column = 'irn'
-    metadata_columns = [
-        'created',
-        'modified',
-        'deleted'
     ]
 
     # List of filters to check records against
@@ -63,40 +53,63 @@ class BaseTask(object):
         """
         return None
 
-    @abstractproperty
+    @property
     def table(cls):
         """
-        Table name
+        Table name - lower case class with model removed
         :return:
         """
-        return None
+        return cls.__class__.__name__.lower().replace('task', '')
 
-    @abstractmethod
-    def delete_record(self, record):
-        """
-        Method for deleting records - Over-ridden in mixins
-        :param record:
-        :return:
-        """
-        pass
+    def __init__(self, *args, **kwargs):
+        # Initiate a DB connection
+        super(BaseTask, self).__init__(*args, **kwargs)
+        # Boolean denoting if this is the latest full export being run
+        # If it is we can skip certain parts of the process - deleting records etc.,
+        self.full_import = (self.date == Config.getint('keemu', 'full_export_date'))
 
     def requires(self):
         return FileTask(module_name=self.table, date=self.date)
 
-    def records(self):
+    def rows(self):
+        """
+        Implementation of CopyToTable.rows()
+        :return:
+        """
         start_time = time.time()
         for record in Parser(self.input().path):
             self.record_count += 1
-            if self._is_web_publishable(record) and self._apply_filters(record):
+            # TODO: Add filters
+            if self._is_web_publishable(record):
                 self.insert_count += 1
-                yield self._get_record_dict(record)
+                row = self.get_row(record)
+                yield row
             else:
                 self.delete_record(record)
             if self.limit and self.record_count >= self.limit:
                 break
             if self.record_count % 1000 == 0:
                 logger.debug('Record count: %d', self.record_count)
+
         logger.info('Inserted %d %s records in %d seconds', self.insert_count, self.table, time.time() - start_time)
+
+    def get_row(self, record):
+        return [
+            int(record.irn),  # IRN
+            None,  # Date Created
+            None,  # Date Updated
+            None,  # Date Deleted
+            json.dumps(record.to_dict(self.property_mappings)),  # Properties
+        ]
+
+    def delete_record(self, record):
+        """
+        Marks a record as deleted
+        :return: None
+        """
+        # print("DELETE")
+        # self.connection.execute(self.model.delete_sql, irn=record.irn)
+        pass
 
     @staticmethod
     def _is_web_publishable(record):
@@ -123,36 +136,3 @@ class BaseTask(object):
 
         return True
 
-    def _apply_filters(self, record):
-        """
-        Apply any filters to exclude records based on any field filters
-        See emultimedia::filters for example filters
-        If any filters return False, the record will be skipped
-        If all filters pass, will return True
-        :return:
-        """
-        for field, filters in self.filters.items():
-            value = getattr(record, field, None)
-            for filter_operator, filter_value in filters:
-                if not filter_operator(value, filter_value):
-                    return False
-        return True
-
-    def _get_record_dict(self, record):
-        """
-        Convert record object to dict
-        :param record:
-        :return:
-        """
-        return {
-            'irn': record.irn,
-            'properties': record.to_dict(self.property_mappings)
-        }
-
-    def _get_extra_fields(self):
-        """
-        Return a list of extra fields defined in a task
-        Calculated from the difference between current task and base task columns
-        :return:
-        """
-        return set(dict(self.columns).keys()) - set(dict(BaseTask.columns).keys())

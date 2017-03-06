@@ -4,7 +4,7 @@
 Created by Ben Scott on '14/02/2017'.
 """
 
-from sqlalchemy import Column, String
+from sqlalchemy import Column, String, ARRAY, Integer
 from ke2sql.lib.aliased_column import AliasedColumn
 
 # from ke2sql.models.mixin import MixinModel
@@ -17,6 +17,7 @@ class CatalogueModel(Base):
     """
     # Add extra field for recording record type
     record_type = AliasedColumn(String, nullable=False, alias="ColRecordType")
+    multimedia = Column(ARRAY(Integer), nullable=False, alias="ColRecordType")
 
     property_mappings = (
         # Record numbers

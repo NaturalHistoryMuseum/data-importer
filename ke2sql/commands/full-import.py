@@ -17,6 +17,8 @@ from ke2sql import db
 # from ke2sql.models import EMultimediaModel, ECatalogueModel
 from ke2sql.models import ETaxonomyModel
 
+# self.file_copy = (self.date == Config.getint('keemu', 'full_export_date'))
+
 
 @click.command()
 @click.option('--limit', default=None, help='Number of records to process.', type=click.FLOAT)
