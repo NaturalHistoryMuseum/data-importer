@@ -1,6 +1,6 @@
 
 import time
-import datetime
+
 import logging
 from datetime import datetime
 from abc import abstractproperty, abstractmethod
@@ -32,6 +32,7 @@ class BaseTask(object):
         ("modified", "TIMESTAMP"),
         ("deleted", "TIMESTAMP"),
         ("properties", "JSONB"),
+        ("metadata", "JSONB"),
     ]
 
     # List of filters to check records against
@@ -41,6 +42,9 @@ class BaseTask(object):
     record_count = 0
     # Count of records inserted / written to CSV
     insert_count = 0
+
+    # Fields to use
+    metadata_mappings = []
 
     @abstractproperty
     def property_mappings(self):
@@ -104,7 +108,7 @@ class BaseTask(object):
         ]
         for embargo_date in embargo_dates:
             if embargo_date:
-                embargo_date_timestamp = time.mktime(datetime.datetime.strptime(embargo_date, "%Y-%m-%d").timetuple())
+                embargo_date_timestamp = time.mktime(datetime.strptime(embargo_date, "%Y-%m-%d").timetuple())
                 if embargo_date_timestamp > today_timestamp:
                     return False
 
@@ -143,6 +147,14 @@ class BaseTask(object):
         :return: dict
         """
         return self._record_map_properties(record, self.property_mappings)
+
+    def get_metadata(self, record):
+        """
+        Build dictionary of record properties
+        :param record:
+        :return: dict
+        """
+        return self._record_map_properties(record, self.metadata_mappings)
 
     @staticmethod
     def _record_map_properties(record, properties):

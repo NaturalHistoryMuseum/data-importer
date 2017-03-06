@@ -15,12 +15,7 @@ class ECatalogueTask(BaseTask):
 
     table = 'ecatalogue'
 
-    # Add the metadata column to the base columns
-    columns = BaseTask.columns + [
-        ("metadata", "JSONB"),
-    ]
-
-    metadata_properties = (
+    metadata_mappings = (
         # Record numbers
         ('ColRecordType', 'record_type'),
         ('MulMultiMediaRef', 'multimedia_irns'),
@@ -291,7 +286,5 @@ class ECatalogueTask(BaseTask):
         :return:
         """
         record_dict = super(ECatalogueTask, self).record_to_dict(record)
-        # Add metadata fields
-        record_dict['metadata'] = self._record_map_properties(record, self.metadata_properties)
         # FIXME: Specimen - single etc.,
         return record_dict
