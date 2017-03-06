@@ -9,6 +9,7 @@ from luigi.contrib.postgres import CopyToTable as LuigiCopyToTable
 import json
 import time
 from abc import abstractproperty
+from collections import OrderedDict
 from psycopg2.extras import Json as PGJson
 
 
@@ -29,34 +30,42 @@ class UpdateTable(LuigiCopyToTable):
         Tries inserting, and on conflict performs update with modified date
         :return: SQL
         """
-        primary_key = 'irn'
-        metadata_fields = set(['created', 'modified', 'deleted'])
-        fields = set(dict(self.columns).keys())
-
-        insert_fields = fields - metadata_fields
-        # FIXME: What is the syntax for this??
-        update_fields = fields - metadata_fields
-        update_fields.remove(primary_key)
+        extra_fields = self.get_extra_fields()
+        insert_fields = ['irn', 'properties'] + extra_fields
+        update_fields = ['properties'] + extra_fields
 
         return """
-            INSERT INTO {table_name} ({insert_fields}, created) VALUES ({insert_fields_placeholders}, NOW())
-            ON CONFLICT ({primary_key})
-            DO UPDATE SET ({update_fields}, modified) = ({update_fields_placeholders}, NOW()) WHERE {table_name}.{primary_key} = %({primary_key})s
+                INSERT INTO {table_name} ({insert_fields}, created) VALUES ({insert_fields_placeholders}, NOW())
+                ON CONFLICT (irn)
+                DO UPDATE SET ({update_fields}, modified) = ({update_fields_placeholders}, NOW()) WHERE {table_name}.irn = %(irn)s
         """.format(
             table_name=self.table,
-            insert_fields=', '.join(insert_fields),
-            insert_fields_placeholders=', '.join(map(lambda field: "%({0})s".format(field), insert_fields)),
-            primary_key=primary_key,
-            update_fields=', '.join(update_fields),
-            update_fields_placeholders=', '.join(map(lambda field: "%({0})s".format(field), update_fields)),
+            insert_fields=','.join(insert_fields),
+            insert_fields_placeholders=','.join(map(lambda field: "%({0})s".format(field), insert_fields)),
+            update_fields=','.join(update_fields),
+            update_fields_placeholders=','.join(map(lambda field: "%({0})s".format(field), update_fields)),
         )
 
-    def run(self):
+    def ensure_table(self):
+        if not self.table_exists():
+            self.create_table(self.connection)
 
+    def table_exists(self):
+        self.cursor.execute("SELECT 1 FROM information_schema.tables WHERE table_name=%s", (self.table,))
+        return bool(self.cursor.rowcount)
+
+    def run(self):
+        # Ensure table exists
+        self.ensure_table()
+        # Loop through all the records, executing SQL
         for record in self.records():
-            # psycopg2 encode Json
-            record['properties'] = PGJson(record['properties'])
+            # psycopg2 encode dicts to Json
+            for key in record.keys():
+                if type(record[key]) is dict:
+                    record[key] = PGJson(record[key])
             self.cursor.execute(self.sql, record)
+
+        self.connection.commit()
 
     def delete_record(self, record):
         """
@@ -77,15 +86,17 @@ class CopyToTable(LuigiCopyToTable):
         Implementation of CopyToTable.rows()
         :return:
         """
-        # FIXME: Use a mapper here rather then yielding twice
+        # Populate row using the same order as columns
+        ordered_cols = OrderedDict(self.columns).keys()
+        # Loop through records, building and yielding rows (lists)
         for record in self.records():
-            row = (
-                int(record['irn']),  # IRN
-                int(time.time()),  # Date Created
-                None,  # Date Updated
-                None,  # Date Deleted
-                json.dumps(record['properties']),  # Properties
-            )
+            row = []
+            record['created'] = 'NOW()'
+            for col in ordered_cols:
+                value = record.get(col, None)
+                if type(value) is dict:
+                    value = json.dumps(value)
+                row.append(value)
             yield row
 
     def delete_record(self, record):

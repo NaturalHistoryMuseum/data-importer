@@ -1,21 +1,16 @@
-import os
-import re
-import abc
-import gzip
-import luigi
-import luigi.contrib.postgres
+
 import time
-from datetime import datetime
 import datetime
 import logging
-import json
-import operator
+from datetime import datetime
 from abc import abstractproperty, abstractmethod
-from psycopg2.extras import Json
+import luigi
+import luigi.contrib.postgres
 
 from ke2sql.lib.parser import Parser
 from ke2sql.lib.config import Config
 from ke2sql.tasks.file import FileTask
+
 
 logger = logging.getLogger('luigi-interface')
 
@@ -36,15 +31,7 @@ class BaseTask(object):
         ("created", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
         ("modified", "TIMESTAMP"),
         ("deleted", "TIMESTAMP"),
-        ("properties", "JSONB")
-    ]
-
-    # Column metadata
-    primary_key_column = 'irn'
-    metadata_columns = [
-        'created',
-        'modified',
-        'deleted'
+        ("properties", "JSONB"),
     ]
 
     # List of filters to check records against
@@ -89,7 +76,7 @@ class BaseTask(object):
             self.record_count += 1
             if self._is_web_publishable(record) and self._apply_filters(record):
                 self.insert_count += 1
-                yield self._get_record_dict(record)
+                yield self.record_to_dict(record)
             else:
                 self.delete_record(record)
             if self.limit and self.record_count >= self.limit:
@@ -138,21 +125,41 @@ class BaseTask(object):
                     return False
         return True
 
-    def _get_record_dict(self, record):
+    def record_to_dict(self, record):
         """
-        Convert record object to dict
+        Convert record object to a dict
         :param record:
         :return:
         """
         return {
             'irn': record.irn,
-            'properties': record.to_dict(self.property_mappings)
+            'properties': self.get_properties(record),
         }
 
-    def _get_extra_fields(self):
+    def get_properties(self, record):
+        """
+        Build dictionary of record properties
+        :param record:
+        :return: dict
+        """
+        return self._record_map_properties(record, self.property_mappings)
+
+    @staticmethod
+    def _record_map_properties(record, properties):
+        """
+        Helper function - pass in a list of tuples
+        (source field, destination field)
+        And return a dict of values keyed by destination field
+        :param record:
+        :param fields:
+        :return:
+        """
+        return {dest_prop: getattr(record, src_prop, None) for (src_prop, dest_prop) in properties if getattr(record, src_prop, None)}
+
+    def get_extra_fields(self):
         """
         Return a list of extra fields defined in a task
         Calculated from the difference between current task and base task columns
         :return:
         """
-        return set(dict(self.columns).keys()) - set(dict(BaseTask.columns).keys())
+        return list(set(dict(self.columns).keys()) - set(dict(BaseTask.columns).keys()))

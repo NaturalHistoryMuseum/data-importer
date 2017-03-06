@@ -18,10 +18,3 @@ class Record(object):
         else:
             self.__dict__[key] = value
 
-    def to_dict(self, property_mappings):
-        """
-        Method to build a dict of properties
-        :param property_mappings:
-        :return:
-        """
-        return {alias: getattr(self, field, None) for (field, alias) in property_mappings if getattr(self, field, None)}

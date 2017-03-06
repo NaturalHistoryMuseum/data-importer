@@ -8,4 +8,4 @@ import luigi
 
 from ke2sql.tasks import *
 
-luigi.run(main_task_cls=ECatalogueUpdateTask)
+luigi.run(main_task_cls=ECatalogueCopyTask)
