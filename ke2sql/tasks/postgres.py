@@ -4,13 +4,10 @@
 Created by Ben Scott on '03/03/2017'.
 """
 
-from luigi.contrib.postgres import CopyToTable as LuigiCopyToTable
-
 import json
-import time
-from abc import abstractproperty
 from collections import OrderedDict
 from psycopg2.extras import Json as PGJson
+from luigi.contrib.postgres import CopyToTable as LuigiCopyToTable
 
 
 class UpdateTable(LuigiCopyToTable):
@@ -30,20 +27,13 @@ class UpdateTable(LuigiCopyToTable):
         Tries inserting, and on conflict performs update with modified date
         :return: SQL
         """
-        extra_fields = self.get_extra_fields()
-        insert_fields = ['irn', 'properties'] + extra_fields
-        update_fields = ['properties'] + extra_fields
-
         return """
-                INSERT INTO {table_name} ({insert_fields}, created) VALUES ({insert_fields_placeholders}, NOW())
+                INSERT INTO {table_name} (irn, properties, metadata, created)
+                  VALUES (%(irn)s, %(properties)s, %(metadata)s, NOW())
                 ON CONFLICT (irn)
-                DO UPDATE SET ({update_fields}, modified) = ({update_fields_placeholders}, NOW()) WHERE {table_name}.irn = %(irn)s
+                DO UPDATE SET (properties, metadata, modified) = (%(properties)s, %(metadata)s, NOW()) WHERE {table_name}.irn = %(irn)s
         """.format(
-            table_name=self.table,
-            insert_fields=','.join(insert_fields),
-            insert_fields_placeholders=','.join(map(lambda field: "%({0})s".format(field), insert_fields)),
-            update_fields=','.join(update_fields),
-            update_fields_placeholders=','.join(map(lambda field: "%({0})s".format(field), update_fields)),
+            table_name=self.table
         )
 
     def ensure_table(self):

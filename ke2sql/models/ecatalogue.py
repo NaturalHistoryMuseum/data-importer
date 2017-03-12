@@ -6,14 +6,6 @@ from ke2sql.tasks.bulk import BaseTask
 
 class ECatalogueTask(BaseTask):
 
-    # [
-    #
-    # ]
-    #
-    # ("record_type", "TEXT"),
-    # ("multimedia_irns", "ARRAY[INTEGER]"),  # Bit flaky
-    # ("multimedia_irn", "INTEGER REFERENCES products (product_no),"),
-
     property_mappings = (
         # Record numbers
         ('AdmGUIDPreferredValue', 'occurrenceID'),

@@ -36,7 +36,7 @@ class BaseTask(object):
     ]
 
     # List of filters to check records against
-    filters = []
+    filters = {}
 
     # Count total number of records (including skipped)
     record_count = 0
@@ -55,7 +55,7 @@ class BaseTask(object):
         return None
 
     @abstractproperty
-    def table(cls):
+    def table(self):
         """
         Table name
         :return:
@@ -138,6 +138,7 @@ class BaseTask(object):
         return {
             'irn': record.irn,
             'properties': self.get_properties(record),
+            'metadata': self.get_metadata(record),
         }
 
     def get_properties(self, record):
@@ -154,7 +155,9 @@ class BaseTask(object):
         :param record:
         :return: dict
         """
-        return self._record_map_properties(record, self.metadata_mappings)
+        metadata_dict = self._record_map_properties(record, self.metadata_mappings)
+        metadata_dict['import_date'] = self.date
+        return metadata_dict
 
     @staticmethod
     def _record_map_properties(record, properties):
@@ -163,15 +166,7 @@ class BaseTask(object):
         (source field, destination field)
         And return a dict of values keyed by destination field
         :param record:
-        :param fields:
+        :param properties:
         :return:
         """
         return {dest_prop: getattr(record, src_prop, None) for (src_prop, dest_prop) in properties if getattr(record, src_prop, None)}
-
-    def get_extra_fields(self):
-        """
-        Return a list of extra fields defined in a task
-        Calculated from the difference between current task and base task columns
-        :return:
-        """
-        return list(set(dict(self.columns).keys()) - set(dict(BaseTask.columns).keys()))

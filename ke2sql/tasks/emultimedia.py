@@ -1,5 +1,5 @@
 import luigi
-from operator import is_not
+from operator import is_not, ne
 
 from ke2sql.tasks.base import BaseTask
 
@@ -13,6 +13,7 @@ class EMultimediaTask(BaseTask):
         ('GenDigitalMediaId', 'assetID'),
         ('MulTitle', 'title'),
         ('MulMimeFormat', 'mime'),
+        ('MulCreator', 'creator'),
     )
 
     # Field level filters
@@ -21,5 +22,8 @@ class EMultimediaTask(BaseTask):
         'GenDigitalMediaId': [
             (is_not, None),
             (is_not, 'Pending')
-        ]
+        ],
+        # 'irn': [
+        #     (ne, '80936')
+        # ]
     }

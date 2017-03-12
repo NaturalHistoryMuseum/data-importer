@@ -1,29 +1,11 @@
-import luigi
-
-from operator import is_not
+from operator import is_not, ne
 
 from ke2sql.tasks.base import BaseTask
 from ke2sql.lib.operators import is_one_of, is_not_one_of
 
-
-# FIXME: Extra fields
-# FIXME: Create table??
-# FIXME: DO we need extra fields??? Makes migrations harder?????? Can we just use the properties??
-
-
 class ECatalogueTask(BaseTask):
 
     table = 'ecatalogue'
-
-    metadata_mappings = (
-        # Record numbers
-        ('ColRecordType', 'record_type'),
-        ('MulMultiMediaRef', 'multimedia_irns'),
-        ('ColTaxonomicNameRef', 'taxonomy_irn'),
-        ('ColCurrentNameRef', 'taxonomy_irn'),
-        ('RegRegistrationParentRef', 'parent_irn'),
-        ('CardParasiteRef', 'parasite_taxonomy_irn')
-    )
 
     property_mappings = (
         # Record numbers
@@ -207,6 +189,18 @@ class ECatalogueTask(BaseTask):
 
     )
 
+    # Extra metadata fields to build the data views
+    metadata_mappings = (
+        # Record numbers
+        # FIXME: I prefer the old way of doing it
+        ('ColRecordType', 'record_type'),
+        ('MulMultiMediaRef', 'multimedia_irns'),
+        ('EntIndIndexLotTaxonNameLocalRef', 'indexlot_taxonomy_irn'),
+        ('RegRegistrationParentRef', 'parent_irn'),
+        ('CardParasiteRef', 'parasite_taxonomy_irn'),
+        # FIXME: Determinations??
+    )
+
     filters = {
         # Records must have a GUID
         'AdmGUIDPreferredValue': [
@@ -276,15 +270,11 @@ class ECatalogueTask(BaseTask):
                 "Palaeontology",
                 "Zoology"
             ])
+        ],
+        # Multiple records with IRN 4712749 returned in full export so
+        # full export throws integrity constraint duplicate key error
+        # Reported to Axiel - but in the meantime filter all records with irn=4712749
+        'irn': [
+            (ne, '4712749')
         ]
     }
-
-    def record_to_dict(self, record):
-        """
-        Add extra info to the record dict object
-        :param record:
-        :return:
-        """
-        record_dict = super(ECatalogueTask, self).record_to_dict(record)
-        # FIXME: Specimen - single etc.,
-        return record_dict
