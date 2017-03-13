@@ -1,2 +1,4 @@
 SQLAlchemy==1.1.5
-click==6.7
+cprompter==0.3.10
+luigi==2.6.0
+psycopg2==2.6.2
