@@ -9,9 +9,9 @@ from ke2sql.tasks.postgres import UpdateTable, CopyToTable
 
 from .emultimedia import EMultimediaTask
 from .ecatalogue import ECatalogueTask
+from .etaxonomy import ETaxonomyTask
 
 # Emultimedia tasks
-
 
 class EMultimediaUpdateTask(EMultimediaTask, UpdateTable):
     pass
@@ -24,8 +24,18 @@ class EMultimediaCopyTask(EMultimediaTask, CopyToTable):
 # ECatalogue tasks
 
 class ECatalogueUpdateTask(ECatalogueTask, UpdateTable):
+    # task_namespace = "ECatalogueTask"
+    pass
+
+class ECatalogueCopyTask(ECatalogueTask, CopyToTable):
+    # task_namespace = "ECatalogueTask"
+    pass
+
+# ETaxonomy tasks
+
+class ETaxonomyUpdateTask(ETaxonomyTask, UpdateTable):
     pass
 
 
-class ECatalogueCopyTask(ECatalogueTask, CopyToTable):
+class ETaxonomyCopyTask(ETaxonomyTask, CopyToTable):
     pass

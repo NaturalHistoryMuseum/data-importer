@@ -6,9 +6,7 @@ from ke2sql.tasks.base import BaseTask
 
 class EMultimediaTask(BaseTask):
 
-    table = 'emultimedia'
-
-    property_mappings = (
+    field_mappings = (
         # Record numbers
         ('GenDigitalMediaId', 'assetID'),
         ('MulTitle', 'title'),
@@ -22,8 +20,5 @@ class EMultimediaTask(BaseTask):
         'GenDigitalMediaId': [
             (is_not, None),
             (is_not, 'Pending')
-        ],
-        # 'irn': [
-        #     (ne, '80936')
-        # ]
+        ]
     }

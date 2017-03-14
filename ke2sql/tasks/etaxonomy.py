@@ -1,11 +1,11 @@
 import luigi
 
-from ke2sql.tasks.bulk import BaseTask
+from ke2sql.tasks.base import BaseTask
 
 
 class ETaxonomyTask(BaseTask):
 
-    property_mappings = (
+    field_mappings = (
         ('ClaScientificNameBuilt', 'scientificName'),
         ('ClaKingdom', 'kingdom'),
         ('ClaPhylum', 'phylum'),

@@ -1,13 +1,22 @@
-from operator import is_not, ne
+from operator import is_not
 
 from ke2sql.tasks.base import BaseTask
 from ke2sql.lib.operators import is_one_of, is_not_one_of
 
+
 class ECatalogueTask(BaseTask):
 
-    table = 'ecatalogue'
+    # Add extra fields for multimedia, taxonomy and parent references
+    columns = BaseTask.columns + [
+        ("record_type", "TEXT"),
+        ("multimedia_irns", "INTEGER[]"),  # Currently can't be used as foreign key - but under development
+        # Tried foreign key - but KE EMu doesn't enforce referential integrity, so getting foreign key violation
+        ("indexlot_taxonomy_irn", "INTEGER"),
+        ("parent_irn", "INTEGER"),
+        ("parasite_taxonomy_irn", "INTEGER"),
+    ]
 
-    property_mappings = (
+    field_mappings = (
         # Record numbers
         ('AdmGUIDPreferredValue', 'occurrenceID'),
         ('DarCatalogNumber', 'catalogNumber'),
@@ -177,28 +186,18 @@ class ECatalogueTask(BaseTask):
         ('MinMetRecoveryWeight', 'recoveryWeight'),
         ('MinMetWeightAsRegistered', 'registeredWeight'),
         ('MinMetWeightAsRegisteredUnit', 'registeredWeightUnit'),
+        # Determinations
+        ('IdeCitationTypeStatus', 'determinationTypes'),
+        ('EntIdeScientificNameLocal', 'determinationNames'),
+        ('EntIdeFiledAs', 'determinationFiledAs'),
         # Project
         ('NhmSecProjectName', 'project'),
-
-        # Internal
-        # ('RegRegistrationParentRef', '_parentRef', 'int32'),
-        # ('CardParasiteRef', '_cardParasiteRef', 'int32'),
-        # ('IdeCitationTypeStatus', '_determinationTypes'),
-        # ('EntIdeScientificNameLocal', '_determinationNames', 'string:250'),
-        # ('EntIdeFiledAs', '_determinationFiledAs'),
-
-    )
-
-    # Extra metadata fields to build the data views
-    metadata_mappings = (
-        # Record numbers
-        # FIXME: I prefer the old way of doing it
-        ('ColRecordType', 'record_type'),
+        # Extra column field mappings - not included in properties, have a column in their own right
         ('MulMultiMediaRef', 'multimedia_irns'),
+        ('ColRecordType', 'record_type'),
         ('EntIndIndexLotTaxonNameLocalRef', 'indexlot_taxonomy_irn'),
         ('RegRegistrationParentRef', 'parent_irn'),
         ('CardParasiteRef', 'parasite_taxonomy_irn'),
-        # FIXME: Determinations??
     )
 
     filters = {
@@ -271,10 +270,4 @@ class ECatalogueTask(BaseTask):
                 "Zoology"
             ])
         ],
-        # Multiple records with IRN 4712749 returned in full export so
-        # full export throws integrity constraint duplicate key error
-        # Reported to Axiel - but in the meantime filter all records with irn=4712749
-        'irn': [
-            (ne, '4712749')
-        ]
     }
