@@ -2,7 +2,6 @@
 import time
 import re
 import logging
-from datetime import datetime
 from abc import abstractproperty, abstractmethod
 import luigi
 import luigi.contrib.postgres
@@ -15,9 +14,12 @@ from ke2sql.tasks.file import FileTask
 logger = logging.getLogger('luigi-interface')
 
 
+# FIXME: This doesn't work with embargoed records!!
+
 class BaseTask(object):
 
     date = luigi.IntParameter()
+    # Limit - only used when testing
     limit = luigi.IntParameter(default=None, significant=False)
 
     # Luigi Postgres database connections
@@ -61,7 +63,7 @@ class BaseTask(object):
         List defining KE EMu fields and their aliases
         :return: List of tuples
         """
-        return {}
+        return ()
 
     @abstractmethod
     def delete_record(self, record):
@@ -120,21 +122,7 @@ class BaseTask(object):
         :param record:
         :return: boolean - false if not importable
         """
-        if record.AdmPublishWebNoPasswordFlag.lower() != 'y':
-            return False
-
-        today_timestamp = time.time()
-        embargo_dates = [
-            getattr(record, 'NhmSecEmbargoDate', None),
-            getattr(record, 'NhmSecEmbargoExtensionDate', None)
-        ]
-        for embargo_date in embargo_dates:
-            if embargo_date:
-                embargo_date_timestamp = time.mktime(datetime.strptime(embargo_date, "%Y-%m-%d").timetuple())
-                if embargo_date_timestamp > today_timestamp:
-                    return False
-
-        return True
+        return record.AdmPublishWebNoPasswordFlag.lower() == 'y'
 
     def _apply_filters(self, record):
         """
@@ -162,6 +150,10 @@ class BaseTask(object):
             'properties': self.get_properties(record),
             'import_date': self.date
         }
+        if record.irn == '2608561':
+            print(record_dict)
+            print(dir(record))
+
         for (ke_field, alias) in self._extra_field_mappings:
             record_dict[alias] = getattr(record, ke_field, None)
             # Ensure value is of type list
@@ -212,7 +204,7 @@ class BaseTask(object):
         :param connection:
         :return:
         """
-        query = "DROP TABLE IF EXISTS {table}".format(table=self.table)
+        query = "DROP TABLE IF EXISTS {table} CASCADE".format(table=self.table)
         connection.cursor().execute(query)
         connection.commit()
 

@@ -10,7 +10,7 @@ from collections import OrderedDict
 from psycopg2.extras import Json as PGJson
 from luigi.contrib.postgres import CopyToTable as LuigiCopyToTable
 from prompter import prompt, yesno
-
+from itertools import groupby
 
 class UpdateTable(LuigiCopyToTable):
     """
@@ -32,7 +32,7 @@ class UpdateTable(LuigiCopyToTable):
         Tries inserting, and on conflict performs update with modified date
         :return: SQL
         """
-        extra_fields = [f[1] for f in self._extra_field_mappings]
+        extra_fields = list(set([f[1] for f in self._extra_field_mappings]))
         insert_fields = ['irn', 'properties'] + extra_fields
         update_fields = ['properties'] + extra_fields
         return """

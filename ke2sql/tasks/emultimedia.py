@@ -14,11 +14,12 @@ class EMultimediaTask(BaseTask):
         ('MulCreator', 'creator'),
     )
 
-    # Field level filters
-    # FIXME: Do we want MIME type filters here?
+    # Field level filters - MIME type is not required;
+    # Non-images will not have a MAM asset identifier
     filters = {
+        # MAM Asset Identifier
         'GenDigitalMediaId': [
             (is_not, None),
-            (is_not, 'Pending')
+            (ne, 'Pending')
         ]
     }

@@ -7,6 +7,7 @@ class ETaxonomyTask(BaseTask):
 
     field_mappings = (
         ('ClaScientificNameBuilt', 'scientificName'),
+        ('ClaCurrentSciNameLocal', 'currentScientificName'),
         ('ClaKingdom', 'kingdom'),
         ('ClaPhylum', 'phylum'),
         ('ClaClass', 'class'),
