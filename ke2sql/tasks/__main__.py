@@ -7,6 +7,8 @@ main_task_cls=ETaxonomyCopyTask
 
 python tasks/ ECatalogueCopyTask --date 20170309 --local-scheduler --limit 1000
 
+python tasks/ ArtefactDatasetTask --date 20170309 --local-scheduler
+
 """
 
 import luigi

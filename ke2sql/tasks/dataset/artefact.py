@@ -16,7 +16,7 @@ class ArtefactDatasetTask(BaseDatasetTask):
 
     record_types = ['Artefact']
 
-    package_name = 'collection-artefacts'
+    package_name = 'collection-artefacts4'
     package_description = "Cultural and historical artefacts from The Natural History Museum"
     package_title = "Artefacts"
 

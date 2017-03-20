@@ -14,7 +14,6 @@ from ke2sql.tasks.dataset.base import BaseDatasetTask
 
 class IndexLotDatasetTask(BaseDatasetTask):
 
-    # Use this in the filter of records!!!
     record_types = ['Index Lot']
 
     package_name = 'collection-indexlots'
@@ -53,11 +52,9 @@ class IndexLotDatasetTask(BaseDatasetTask):
         ('etaxonomy.ClaSubgenus', 'subgenus'),
         ('etaxonomy.ClaSpecies', 'specificEpithet'),
         ('etaxonomy.ClaSubspecies', 'infraspecificEpithet'),
-        ('etaxonomy.ClaRank', 'taxonRank')  # NB: CKAN uses rank internally
-    ]
-
-    joins = [
-        ('etaxonomy', 'indexlot_taxonomy_irn')
+        ('etaxonomy.ClaRank', 'taxonRank'),  # NB: CKAN uses rank internally
+        # Join field
+        ('ecatalogue.EntIndIndexLotTaxonNameLocalRef', 'indexlot_taxonomy_irn'),
     ]
 
 if __name__ == "__main__":

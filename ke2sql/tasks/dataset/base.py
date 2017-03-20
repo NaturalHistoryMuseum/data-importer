@@ -31,6 +31,8 @@ class BaseDatasetTask(PostgresQuery):
     password = Config.get('database', 'password')
     table = 'ecatalogue'
 
+    resource_type = 'csv'
+
     @abstractproperty
     def fields(self):
         """
@@ -95,17 +97,17 @@ class BaseDatasetTask(PostgresQuery):
         super(BaseDatasetTask, self).__init__(*args, **kwargs)
         # Get the dataset ID - or create dataset if it doesn't already exist
         self.remote_ckan = ckanapi.RemoteCKAN(Config.get('ckan', 'site_url'), apikey=Config.get('ckan', 'api_key'))
-        # FIXME: Get or create a dataset
-        # resource = self.get_or_create_resource()
-        resource = {
-            'id': 'indexlot1'
-        }
+        resource = self.get_or_create_resource()
 
-        _src_properties = [tuple(src_prop.split('.')) for src_prop, _ in self.properties]
-        # Create list of properties tuple, consisting of module name and destination field name
-        self._dest_properties = [tuple([src_prop.split('.')[0], dest_prop]) for src_prop, dest_prop in self.properties]
-
-        self.dataset_id = self.package_name.replace('-', '')
+        # resource = {
+        #     'id': 'indexlot1'
+        # }
+        #
+        # _src_properties = [tuple(src_prop.split('.')) for src_prop, _ in self.properties]
+        # # Create list of properties tuple, consisting of module name and destination field name
+        # self._dest_properties = [tuple([src_prop.split('.')[0], dest_prop]) for src_prop, dest_prop in self.properties]
+        #
+        # self.dataset_id = self.package_name.replace('-', '')
 
     def view_exists(self, connection):
         cursor = connection.cursor()
@@ -130,17 +132,28 @@ class BaseDatasetTask(PostgresQuery):
             if yesno('Dataset {package_name} does not exist. Do you want to create it now?'.format(
                     package_name=self.package_name
             )):
-                # FIXME: Add alias
-                ckan_package = self.remote_ckan.action.package_create({
+                package_dict = {
                     'name': self.package_name,
                     'notes': self.package_description,
                     'title': self.package_title,
                     'author': Config.get('ckan', 'dataset_author'),
                     'license_id': Config.get('ckan', 'dataset_licence'),
-                    'resources': [],
+                    'resources': [
+                        {
+                            'name': self.resource_title,
+                            'description': self.resource_description,
+                            'format': self.resource_type,
+                            'url': '_datastore_only_resource',
+                            'url_type': 'dataset'
+                        }
+                    ],
                     'dataset_category': Config.get('ckan', 'dataset_type'),
-                    'owner_org': Config.get('ckan', 'owner_org')
-                })
+                    'owner_org': Config.get('ckan', 'owner_org'),
+                }
+
+                ckan_package = self.remote_ckan.action.package_create(**package_dict)
+
+                print(ckan_package)
 
         # # If we don't have the resource ID, create
         # if not resource_id:

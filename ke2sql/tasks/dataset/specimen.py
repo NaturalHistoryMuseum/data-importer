@@ -16,12 +16,16 @@ class SpecimenDatasetTask(BaseDatasetTask):
 
     record_types = [
         'Specimen',
-        'DNA Prep',
         'Specimen - single',
+        "Specimen - multiple",
+        'DNA Prep',
         'Mammal Group Parent',
         'Mammal Group Part',
+        "Bird Group Parent",
+        "Bird Group Part",
         'Bryozoa Part Specimen',
-        'Silica Gel Specimen'
+        'Silica Gel Specimen',
+        "Parasite Card",
     ]
 
     package_name = 'collection-specimens'
@@ -30,8 +34,9 @@ class SpecimenDatasetTask(BaseDatasetTask):
 
     resource_title = 'Specimen records'
     resource_description = 'Specimen records'
+    resource_type = 'dwc'  # Darwin Core
 
-    indexed_fields = ['collectionCode', 'catalogNumber', 'created', 'project']
+    # indexed_fields = ['collectionCode', 'catalogNumber', 'created', 'project']
 
     fields = [
         # Update fields
@@ -216,7 +221,6 @@ class SpecimenDatasetTask(BaseDatasetTask):
         # Extra column field mappings - not included in properties, have a column in their own right
         ('ecatalogue.MulMultiMediaRef', 'multimedia_irns'),
         ('ecatalogue.ColRecordType', 'record_type'),
-        ('ecatalogue.EntIndIndexLotTaxonNameLocalRef', 'indexlot_taxonomy_irn'),
         ('ecatalogue.RegRegistrationParentRef', 'parent_irn'),
         ('ecatalogue.CardParasiteRef', 'parasite_taxonomy_irn'),
         # Populate embargo date
