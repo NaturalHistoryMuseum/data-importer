@@ -1,12 +1,15 @@
 import luigi
 from operator import is_not, ne
 
-from ke2sql.tasks.base import BaseTask
+from ke2sql.tasks.keemu.base import KeemuBaseMixin
 
 
-class EMultimediaTask(BaseTask):
+class KeemuEMultimediaMixin(KeemuBaseMixin):
 
-    field_mappings = (
+    module = 'emultimedia'
+
+    # All datasets use the same multimedia fields, so there is no need to build these
+    fields = (
         # Record numbers
         ('GenDigitalMediaId', 'assetID'),
         ('MulTitle', 'title'),

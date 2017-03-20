@@ -14,7 +14,7 @@ from ke2sql.tasks.dataset.base import BaseDatasetTask
 
 class ArtefactDatasetTask(BaseDatasetTask):
 
-    record_type = 'Artefact'
+    record_types = ['Artefact']
 
     package_name = 'collection-artefacts'
     package_description = "Cultural and historical artefacts from The Natural History Museum"
@@ -23,7 +23,7 @@ class ArtefactDatasetTask(BaseDatasetTask):
     resource_title = 'Artefacts'
     resource_description = 'Museum Artefacts'
 
-    properties = [
+    fields = [
         ('ecatalogue.AdmGUIDPreferredValue', 'GUID'),
         ('ecatalogue.PalArtObjectName', 'artefactName'),
         ('ecatalogue.PalArtType', 'artefactType'),
@@ -34,5 +34,3 @@ class ArtefactDatasetTask(BaseDatasetTask):
 if __name__ == "__main__":
     luigi.run(main_task_cls=ArtefactDatasetTask)
 
-
-#

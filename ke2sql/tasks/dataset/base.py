@@ -24,7 +24,6 @@ class BaseDatasetTask(PostgresQuery):
     """
     Base Dataset Task
     """
-
     # Luigi Postgres database connections
     host = Config.get('database', 'host')
     database = Config.get('database', 'database')
@@ -32,32 +31,22 @@ class BaseDatasetTask(PostgresQuery):
     password = Config.get('database', 'password')
     table = 'ecatalogue'
 
-    def __init__(self, *args, **kwargs):
-        super(BaseDatasetTask, self).__init__(*args, **kwargs)
-        # Get the dataset ID - or create dataset if it doesn't already exist
-        self.remote_ckan = ckanapi.RemoteCKAN(Config.get('ckan', 'site_url'), apikey=Config.get('ckan', 'api_key'))
-        # FIXME: Get or create a dataset
-        # resource = self.get_or_create_resource()
-        resource = {
-            'id': 'indexlot1'
-        }
-
-        _src_properties = [tuple(src_prop.split('.')) for src_prop, _ in self.properties]
-        # Create list of properties tuple, consisting of module name and destination field name
-        self._dest_properties = [tuple([src_prop.split('.')[0], dest_prop]) for src_prop, dest_prop in self.properties]
-
-        self.dataset_id = self.package_name.replace('-', '')
+    @abstractproperty
+    def fields(self):
+        """
+        List of all fields, as tuples:
+            (KE EMu field, Dataset field)
+        :return: List of tuples
+        """
+        return []
 
     @abstractproperty
-    def properties(self):
+    def record_types(self):
         """
-        List of properties to use from the properties jsonp
-        NB: These will not be needed for long
-        When using JSON, it should only hold properties
-        relating to that object
-        :return: String
+        List of record types to use to build this dataset - Index Lot etc.,
+        :return: List
         """
-        return None
+        return []
 
     @property
     def update_id(self):
@@ -101,6 +90,22 @@ class BaseDatasetTask(PostgresQuery):
                 table=self.table
             )
         return query
+
+    def __init__(self, *args, **kwargs):
+        super(BaseDatasetTask, self).__init__(*args, **kwargs)
+        # Get the dataset ID - or create dataset if it doesn't already exist
+        self.remote_ckan = ckanapi.RemoteCKAN(Config.get('ckan', 'site_url'), apikey=Config.get('ckan', 'api_key'))
+        # FIXME: Get or create a dataset
+        # resource = self.get_or_create_resource()
+        resource = {
+            'id': 'indexlot1'
+        }
+
+        _src_properties = [tuple(src_prop.split('.')) for src_prop, _ in self.properties]
+        # Create list of properties tuple, consisting of module name and destination field name
+        self._dest_properties = [tuple([src_prop.split('.')[0], dest_prop]) for src_prop, dest_prop in self.properties]
+
+        self.dataset_id = self.package_name.replace('-', '')
 
     def view_exists(self, connection):
         cursor = connection.cursor()

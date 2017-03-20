@@ -14,7 +14,15 @@ from ke2sql.tasks.dataset.base import BaseDatasetTask
 
 class SpecimenDatasetTask(BaseDatasetTask):
 
-    record_type = 'Index Lot'
+    record_types = [
+        'Specimen',
+        'DNA Prep',
+        'Specimen - single',
+        'Mammal Group Parent',
+        'Mammal Group Part',
+        'Bryozoa Part Specimen',
+        'Silica Gel Specimen'
+    ]
 
     package_name = 'collection-specimens'
     package_description = "Specimen records from the Natural History Museum\'s collection"
@@ -25,11 +33,11 @@ class SpecimenDatasetTask(BaseDatasetTask):
 
     indexed_fields = ['collectionCode', 'catalogNumber', 'created', 'project']
 
-    properties = [
+    fields = [
         # Update fields
         ('ecatalogue.AdmDateModified', 'dateModified'),
         ('ecatalogue.AdmDateInserted', 'dateCreated'),
-        ('ecatalogue.AdmGUIDPreferredValue', 'GUID'),  # occurrenceID
+        ('ecatalogue.AdmGUIDPreferredValue', 'occurrenceID'),
         # Record numbers
         ('ecatalogue.DarCatalogNumber', 'catalogNumber'),
         # Used if DarCatalogueNumber is empty
@@ -204,26 +212,6 @@ class SpecimenDatasetTask(BaseDatasetTask):
         ('ecatalogue.EntIdeFiledAs', 'determinationFiledAs'),
         # Project
         ('ecatalogue.NhmSecProjectName', 'project'),
-
-        # Index lot fields
-        ('ecatalogue.EntIndMaterial', 'material'),
-        ('ecatalogue.EntIndType', 'type'),
-        ('ecatalogue.EntIndMedia', 'media'),
-        ('ecatalogue.EntIndBritish', 'british'),
-        ('ecatalogue.EntIndKindOfMaterial', 'kindOfMaterial'),
-        ('ecatalogue.EntIndKindOfMedia', 'kindOfMedia'),
-        # Index lot - Material detail
-        ('ecatalogue.EntIndCount', 'materialCount'),
-        ('ecatalogue.EntIndSex', 'materialSex'),
-        ('ecatalogue.EntIndStage', 'materialStage'),
-        ('ecatalogue.EntIndTypes', 'materialTypes'),
-        ('ecatalogue.EntIndPrimaryTypeNo', 'materialPrimaryTypeNumber'),
-
-        # Artefact fields
-        ('ecatalogue.PalArtObjectName', 'artefactName'),
-        ('ecatalogue.PalArtType', 'artefactType'),
-        ('ecatalogue.PalArtDescription', 'artefactDescription'),
-        ('ecatalogue.IdeCurrentScientificName', 'scientificName'),
 
         # Extra column field mappings - not included in properties, have a column in their own right
         ('ecatalogue.MulMultiMediaRef', 'multimedia_irns'),

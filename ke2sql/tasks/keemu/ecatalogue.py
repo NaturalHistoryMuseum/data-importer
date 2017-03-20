@@ -1,13 +1,18 @@
 from operator import is_not
 
-from ke2sql.tasks.base import BaseTask
+from ke2sql.tasks.keemu.base import KeemuBaseMixin
 from ke2sql.lib.operators import is_one_of, is_not_one_of
+from ke2sql.tasks.dataset import dataset_get_module_fields, dataset_get_all_record_types
 
 
-class ECatalogueTask(BaseTask):
+class KeemuECatalogueMixin(KeemuBaseMixin):
+
+    module_name = 'ecatalogue'
+
+    fields = dataset_get_module_fields(module_name)
 
     # Add extra fields for multimedia, taxonomy and parent references
-    columns = BaseTask.columns + [
+    columns = KeemuBaseMixin.columns + [
         ("record_type", "TEXT"),
         ("multimedia_irns", "INTEGER[]"),  # Currently can't be used as foreign key - but under development
         # Tried foreign key - but KE EMu doesn't enforce referential integrity, so getting foreign key violation
@@ -52,31 +57,8 @@ class ECatalogueTask(BaseTask):
         # Exclude records without the proper record type
         'ColRecordType': [
             (is_not, None),
-            (is_not_one_of, [
-                'Acquisition',
-                'Bound Volume',
-                'Bound Volume Page',
-                'Collection Level Description',
-                'DNA Card',  # 1 record, but keep an eye on this
-                'Field Notebook',
-                'Field Notebook (Double Page)',
-                'Image',
-                'Image (electronic)',
-                'Image (non-digital)',
-                'Image (digital)',
-                'Incoming Loan',
-                'L&A Catalogue',
-                'Missing',
-                'Object Entry',
-                'object entry',  # FFS
-                'Object entry',  # FFFS
-                'PEG Specimen',
-                'PEG Catalogue',
-                'Preparation',
-                'Rack File',
-                'Tissue',  # Only 2 records. Watch.
-                'Transient Lot'
-            ])
+            # Record type must be one defined in a dataset task
+            (is_one_of, dataset_get_all_record_types())
         ],
         # Record must be in one of the known collection departments
         # (Otherwise the home page breaks)

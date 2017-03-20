@@ -5,37 +5,52 @@ Created by 'bens3' on 2013-06-21.
 Copyright (c) 2013 'bens3'. All rights reserved.
 """
 
-from ke2sql.tasks.postgres import UpdateTable, CopyToTable
+from ke2sql.tasks.postgres import PostgresUpsertMixin, PostgresCopyMixin
+from ke2sql.tasks.keemu.emultimedia import KeemuEMultimediaMixin
+from ke2sql.tasks.keemu.ecatalogue import KeemuECatalogueMixin
+from ke2sql.tasks.keemu.etaxonomy import KeemuETaxonomyMixin
+from ke2sql.tasks.dataset import (
+    ArtefactDatasetTask,
+    IndexLotDatasetTask,
+    SpecimenDatasetTask
+)
 
-from .emultimedia import EMultimediaTask
-from .ecatalogue import ECatalogueTask
-from .etaxonomy import ETaxonomyTask
-
+__all__ = [
+    'EMultimediaUpsertTask',
+    'EMultimediaCopyTask',
+    'ECatalogueUpsertTask',
+    'ECatalogueCopyTask',
+    'ETaxonomyUpsertTask',
+    'ETaxonomyCopyTask',
+    'ArtefactDatasetTask',
+    'IndexLotDatasetTask',
+    'SpecimenDatasetTask'
+]
 # Emultimedia tasks
 
-class EMultimediaUpdateTask(EMultimediaTask, UpdateTable):
+class EMultimediaUpsertTask(KeemuEMultimediaMixin, PostgresUpsertMixin):
     pass
 
 
-class EMultimediaCopyTask(EMultimediaTask, CopyToTable):
+class EMultimediaCopyTask(KeemuEMultimediaMixin, PostgresCopyMixin):
     pass
 
 
 # ECatalogue tasks
 
-class ECatalogueUpdateTask(ECatalogueTask, UpdateTable):
-    # task_namespace = "ECatalogueTask"
+class ECatalogueUpsertTask(KeemuECatalogueMixin, PostgresUpsertMixin):
     pass
 
-class ECatalogueCopyTask(ECatalogueTask, CopyToTable):
-    # task_namespace = "ECatalogueTask"
+
+class ECatalogueCopyTask(KeemuECatalogueMixin, PostgresCopyMixin):
     pass
+
 
 # ETaxonomy tasks
 
-class ETaxonomyUpdateTask(ETaxonomyTask, UpdateTable):
+class ETaxonomyUpsertTask(KeemuETaxonomyMixin, PostgresUpsertMixin):
     pass
 
 
-class ETaxonomyCopyTask(ETaxonomyTask, CopyToTable):
+class ETaxonomyCopyTask(KeemuETaxonomyMixin, PostgresCopyMixin):
     pass

@@ -10,9 +10,9 @@ import luigi
 from ke2sql.lib.config import Config
 
 
-class FileTask(luigi.ExternalTask):
+class KeemuFileTask(luigi.ExternalTask):
     """
-    Wrapper around local file
+    Wrapper around a KE EMu export file
     Luigi requires LocalTarget tasks to be  external tasks
     """
     date = luigi.IntParameter()

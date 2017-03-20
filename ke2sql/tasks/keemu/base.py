@@ -2,22 +2,23 @@
 import time
 import re
 import logging
-from abc import abstractproperty, abstractmethod
+import abc
+# from abc import ABCMeta, abstractproperty, abstractmethod
 import luigi
 import luigi.contrib.postgres
 from luigi.task import task_id_str
 from ke2sql.lib.parser import Parser
 from ke2sql.lib.config import Config
-from ke2sql.tasks.file import FileTask
+from ke2sql.tasks.keemu.file import KeemuFileTask
 
 
 logger = logging.getLogger('luigi-interface')
 
 
-# FIXME: This doesn't work with embargoed records!!
-
-class BaseTask(object):
-
+class KeemuBaseMixin(object):
+    """
+    Abstract base class for processing a KE EMu export file
+    """
     date = luigi.IntParameter()
     # Limit - only used when testing
     limit = luigi.IntParameter(default=None, significant=False)
@@ -45,50 +46,55 @@ class BaseTask(object):
     # Count of records inserted / written to CSV
     insert_count = 0
 
+    @abc.abstractproperty
+    def module_name(self):
+        """
+        Name of the module
+        :return: String
+        """
+        return None
+
+    @abc.abstractproperty
+    def fields(self):
+        """
+        List defining KE EMu fields and their aliases
+        :rtype: list
+        :return: List of tuples
+        """
+        return []
+
     @property
     def table(self):
         """
-        Table name - lower case class name up to third capital
-        ECatalogueCopyTask => ecatalogue
-        ECatalogueUpdateTask => ecatalogue
-        ECatalogueTask => ecatalogue
-        :return:
+        By default table name is just module name
+        :return: string
         """
-        m = re.match('(^[A-Z]{2}[a-z]+)',  self.__class__.__name__)
-        return m.group(1).lower()
+        return self.module_name
 
-    @abstractproperty
-    def field_mappings(self):
-        """
-        List defining KE EMu fields and their aliases
-        :return: List of tuples
-        """
-        return ()
-
-    @abstractmethod
+    @abc.abstractmethod
     def delete_record(self, record):
         """
         Method for deleting records - Over-ridden in mixins
         :param record:
-        :return:
+        :return: None
         """
-        pass
-
     def __init__(self, *args, **kwargs):
         # Initiate a DB connection
-        super(BaseTask, self).__init__(*args, **kwargs)
+        super(KeemuBaseMixin, self).__init__(*args, **kwargs)
         # List of column field names
         self.columns_dict = dict(self.columns)
         # For faster processing, separate field mappings into those used
         # As properties (without a corresponding table column) and extra fields
-        self._property_field_mappings = []
-        self._extra_field_mappings = []
-        for field_mapping in self.field_mappings:
+        self._property_fields = []
+        self._metadata_fields = []
+        # Build a list of fields, separated into metadata and property
+        for field in self.fields:
             # Is the field alias a defined column?
-            if field_mapping[1] in self.columns_dict.keys():
-                self._extra_field_mappings.append(field_mapping)
+            if field[1] in self.columns_dict.keys():
+                self._metadata_fields.append(field)
             else:
-                self._property_field_mappings.append(field_mapping)
+                self._property_fields.append(field)
+
         # List of fields that are of type array
         self._array_fields = [col_name for col_name, col_def in self.get_column_types() if self._column_is_array(col_def)]
         # Set task ID so both Update & Copy tasks share the same identifier
@@ -96,7 +102,7 @@ class BaseTask(object):
         self.task_id = task_id_str(self.table, self.to_str_params(only_significant=True))
 
     def requires(self):
-        return FileTask(module_name=self.table, date=self.date)
+        return KeemuFileTask(module_name=self.table, date=self.date)
 
     def records(self):
         start_time = time.time()
@@ -150,16 +156,11 @@ class BaseTask(object):
             'properties': self.get_properties(record),
             'import_date': self.date
         }
-        if record.irn == '2608561':
-            print(record_dict)
-            print(dir(record))
-
-        for (ke_field, alias) in self._extra_field_mappings:
+        for (ke_field, alias) in self._metadata_fields:
             record_dict[alias] = getattr(record, ke_field, None)
             # Ensure value is of type list
             if record_dict[alias] and alias in self._array_fields and type(record_dict[alias]) != list:
                 record_dict[alias] = [record_dict[alias]]
-
         return record_dict
 
     def get_properties(self, record):
@@ -169,7 +170,7 @@ class BaseTask(object):
         :param record:
         :return: dict
         """
-        return {alias: getattr(record, ke_field, None) for (ke_field, alias) in self._property_field_mappings if getattr(record, ke_field, None)}
+        return {dataset_field: getattr(record, ke_field, None) for (ke_field, dataset_field) in self._property_fields if getattr(record, ke_field, None)}
 
     def get_column_types(self):
         """

@@ -14,7 +14,8 @@ from ke2sql.tasks.dataset.base import BaseDatasetTask
 
 class IndexLotDatasetTask(BaseDatasetTask):
 
-    record_type = 'Index Lot'
+    # Use this in the filter of records!!!
+    record_types = ['Index Lot']
 
     package_name = 'collection-indexlots'
     package_description = "Index Lot records from the Natural History Museum's collection"
@@ -23,7 +24,7 @@ class IndexLotDatasetTask(BaseDatasetTask):
     resource_title = 'Index Lots'
     resource_description = 'Species level record denoting the presence of a taxon in the Museum collection'
 
-    properties = [
+    fields = [
         ('ecatalogue.AdmGUIDPreferredValue', 'GUID'),
         ('ecatalogue.EntIndMaterial', 'material'),
         ('ecatalogue.EntIndType', 'type'),
