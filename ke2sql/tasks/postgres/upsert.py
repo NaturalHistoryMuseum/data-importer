@@ -6,7 +6,8 @@ Created by Ben Scott on '03/03/2017'.
 
 from psycopg2.extras import Json as PGJson
 from luigi.contrib.postgres import CopyToTable as LuigiCopyToTable
-
+from ke2sql.lib.db import db_table_exists
+from ke2sql.lib.helpers import get_dataset_tasks
 
 class PostgresUpsertMixin(LuigiCopyToTable):
     """
@@ -27,10 +28,10 @@ class PostgresUpsertMixin(LuigiCopyToTable):
         Tries inserting, and on conflict performs update with modified date
         :return: SQL
         """
-        extra_fields = list(set([f[1] for f in self._extra_field_mappings]))
-        insert_fields = ['irn', 'properties'] + extra_fields
-        update_fields = ['properties'] + extra_fields
-        return """
+        metadata_fields = self._get_metadata_fields()
+        insert_fields = ['irn', 'properties'] + metadata_fields
+        update_fields = ['properties'] + metadata_fields
+        sql = """
             INSERT INTO {table_name} ({insert_fields}, created) VALUES ({insert_fields_placeholders}, NOW())
             ON CONFLICT (irn)
             DO UPDATE SET ({update_fields}, modified) = ({update_fields_placeholders}, NOW()) WHERE {table_name}.irn = %(irn)s
@@ -41,9 +42,12 @@ class PostgresUpsertMixin(LuigiCopyToTable):
             update_fields=','.join(update_fields),
             update_fields_placeholders=','.join(map(lambda field: "%({0})s".format(field), update_fields)),
         )
+        print(sql)
+        return sql
 
     def ensure_table(self):
-        if not self.table_exists(self.connection):
+        connection = self.output().connect()
+        if not db_table_exists(self.table, connection):
             self.create_table(self.connection)
 
     def run(self):
@@ -59,6 +63,8 @@ class PostgresUpsertMixin(LuigiCopyToTable):
                 # map the values to int as psycopg2 doesn't transform arrays
                 elif type(record[key]) is list and key in self._int_fields:
                     record[key] = list(map(int, record[key]))
+
+            print(record)
             self.cursor.execute(self.sql, record)
         # mark as complete in same transaction
         self.output().touch(self.connection)
@@ -73,3 +79,12 @@ class PostgresUpsertMixin(LuigiCopyToTable):
             table_name=self.table,
         )
         self.connection.execute(sql, irn=record.irn)
+
+    def _get_metadata_fields(self):
+        metadata_fields = set()
+        for dataset_task in get_dataset_tasks():
+            for metadata_field in dataset_task.metadata_fields:
+                if metadata_field.module_name == self.module_name:
+                    metadata_fields.add(metadata_field.field_alias)
+        return list(metadata_fields)
+

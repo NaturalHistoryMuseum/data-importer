@@ -4,7 +4,6 @@
 Created by Ben Scott on '20/03/2017'.
 """
 
-import luigi
 from ke2sql.tasks.postgres import PostgresUpsertMixin, PostgresCopyMixin
 from ke2sql.tasks.keemu.mixin import KeemuMixin
 

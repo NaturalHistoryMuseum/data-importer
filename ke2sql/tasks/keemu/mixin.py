@@ -9,18 +9,19 @@ import luigi.contrib.postgres
 
 from ke2sql.lib.parser import Parser
 from ke2sql.lib.config import Config
+from ke2sql.lib.helpers import get_dataset_tasks
 from ke2sql.tasks.keemu.file import FileTask
 
 
 logger = logging.getLogger('luigi-interface')
 
-# FIXME: CKAN
-# FIXME: UPDATE ID
-
-# FIXME: Create MAT VIEW
 
 # FIXME: Copy VS Update
+# FIXME: UPDATE ID
+# CHOICE PARAM
 
+# FIXME: Query
+# FIXME: Create MAT VIEW
 # FIXME: Delete
 
 
@@ -85,7 +86,7 @@ class KeemuMixin(object):
         # Relevant to that particular dataset - we can therefore prevent index lots & artefacts
         # Getting a whole butch of extra specimen properties
         self.dataset_filters = []
-        for dataset_task in self.get_dataset_tasks():
+        for dataset_task in get_dataset_tasks():
             dataset_filter = {
                 # List of fields matching the module name, with the module name removed
                 'fields': [(f.field_name, f.field_alias) for f in dataset_task.fields if f.module_name == self.module_name],
@@ -135,7 +136,7 @@ class KeemuMixin(object):
                         self.insert_count += 1
                         yield self.record_to_dict(record, dataset_filter)
                         # Break out of dataset filter loop as soon as a record
-                        # gets through the filters
+                        # passes through the filters
                         break
             else:
                 # Just in case a record has been marked Non web publishable,
@@ -224,10 +225,3 @@ class KeemuMixin(object):
         :return:
         """
         return '[]' in col_def
-
-    @staticmethod
-    def get_dataset_tasks():
-        from ke2sql.tasks.specimen import SpecimenDatasetTask
-        from ke2sql.tasks.indexlot import IndexLotDatasetTask
-        from ke2sql.tasks.artefact import ArtefactDatasetTask
-        return [SpecimenDatasetTask, IndexLotDatasetTask, ArtefactDatasetTask]
