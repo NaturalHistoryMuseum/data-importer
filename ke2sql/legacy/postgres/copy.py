@@ -10,8 +10,6 @@ from collections import OrderedDict
 from luigi.contrib.postgres import CopyToTable as LuigiCopyToTable
 from prompter import prompt, yesno
 
-from ke2sql.lib.db import db_create_index, db_table_exists, db_drop_table
-
 
 class PostgresCopyMixin(LuigiCopyToTable):
     """
@@ -58,11 +56,11 @@ class PostgresCopyMixin(LuigiCopyToTable):
 
     def run(self):
         connection = self.output().connect()
-        if db_table_exists(self.table, connection):
+        if self.table_exists(connection):
             if yesno('Your are performing a full import - all existing {table} data will be deleted. Are you sure you want to continue?'.format(
                     table=self.table
             )):
-                db_drop_table(self.table, connection)
+                self.drop_table(connection)
             else:
                 sys.exit("Import cancelled")
 
@@ -75,12 +73,3 @@ class PostgresCopyMixin(LuigiCopyToTable):
         :return:
         """
         self.ensure_indexes(connection)
-
-    def ensure_indexes(self, connection):
-        for col_name, col_def in self.get_column_types():
-            # Don't create index on irn or properties column
-            if col_name in ['irn', 'properties']:
-                continue
-            # Use a GIN index on array column types; otherwise BTREE
-            index_type = 'GIN' if self._column_is_array(col_def) else 'BTREE'
-            db_create_index(self.table, col_name, index_type, connection)

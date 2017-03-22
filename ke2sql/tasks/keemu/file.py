@@ -10,7 +10,7 @@ import luigi
 from ke2sql.lib.config import Config
 
 
-class KeemuFileTask(luigi.ExternalTask):
+class FileTask(luigi.ExternalTask):
     """
     Wrapper around a KE EMu export file
     Luigi requires LocalTarget tasks to be  external tasks
