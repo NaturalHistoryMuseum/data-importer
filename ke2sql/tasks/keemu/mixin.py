@@ -14,6 +14,15 @@ from ke2sql.tasks.keemu.file import FileTask
 
 logger = logging.getLogger('luigi-interface')
 
+# FIXME: CKAN
+# FIXME: UPDATE ID
+
+# FIXME: Create MAT VIEW
+
+# FIXME: Copy VS Update
+
+# FIXME: Delete
+
 
 class KeemuMixin(object):
     """
@@ -29,6 +38,11 @@ class KeemuMixin(object):
     user = Config.get('database', 'username')
     password = Config.get('database', 'password')
 
+    # Count total number of records (including skipped)
+    record_count = 0
+    # Count of records inserted / written to CSV
+    insert_count = 0
+
     columns = [
         ("irn", "INTEGER PRIMARY KEY"),
         ("created", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
@@ -37,11 +51,6 @@ class KeemuMixin(object):
         ("properties", "JSONB"),
         ("import_date", "INTEGER"),  # Date of import
     ]
-
-    # Count total number of records (including skipped)
-    record_count = 0
-    # Count of records inserted / written to CSV
-    insert_count = 0
 
     @abc.abstractproperty
     def fields(self):
@@ -70,68 +79,44 @@ class KeemuMixin(object):
 
     def __init__(self, *args, **kwargs):
         super(KeemuMixin, self).__init__(*args, **kwargs)
-        # Import the dataset tasks - needs to be here to prevent circular references
-        from ke2sql.tasks.specimen import SpecimenDatasetTask
-        from ke2sql.tasks.indexlot import IndexLotDatasetTask
-        from ke2sql.tasks.artefact import ArtefactDatasetTask
-        self.dataset_tasks = [SpecimenDatasetTask, IndexLotDatasetTask, ArtefactDatasetTask]
         # Get all fields and filters for this module
         # We will loop through all of the potentially applicable filters for a record,
         # And then use the corresponding field definitions to only include fields
         # Relevant to that particular dataset - we can therefore prevent index lots & artefacts
         # Getting a whole butch of extra specimen properties
-        self.fields_per_filter = []
-        for dataset_task in self.dataset_tasks:
-            fields = [f for f in dataset_task.fields if f[0].split('.')[0] == self.module_name]
-            filters = {}
-            for filter_field, filter_ in dataset_task.filters.items():
-                filter_module, filter_field_name = filter_field.split('.')
-                if filter_module == self.module_name:
-                    filters[filter_field_name] = filter_
+        self.dataset_filters = []
+        for dataset_task in self.get_dataset_tasks():
+            dataset_filter = {
+                # List of fields matching the module name, with the module name removed
+                'fields': [(f.field_name, f.field_alias) for f in dataset_task.fields if f.module_name == self.module_name],
+                'filters': {},
+                'metadata_fields': [],
+                'metadata_array_fields': [],
+            }
+            # If we don't have any fields at this point, continue to next dataset
+            if not len(dataset_filter['fields']):
+                continue
 
-            # If we have fields for this dataset, add to the list to be checked against
-            if len(fields):
-                self.fields_per_filter.append({
-                    'filters': filters,
-                    # The fields to use for a record matching this filter
-                    'fields': fields
-                })
+            for dataset_task_filter in dataset_task.filters:
+                if dataset_task_filter.module_name == self.module_name:
+                    dataset_filter['filters'][dataset_task_filter.field_name] = dataset_task_filter.filters
 
-        # print(filters)
+            # Add all the metadata fields to the table columns
+            # Which is used to create the base table
+            for metadata_field in dataset_task.metadata_fields:
+                # Only add the field if it matches the module name being imported
+                if metadata_field.module_name == self.module_name:
+                    col = (metadata_field.field_alias, metadata_field.field_type)
+                    if col not in self.columns:
+                        self.columns.append(col)
+                    # We also want to add this to the metadata fields list, used for building the record
+                    dataset_filter['metadata_fields'].append((metadata_field.field_name, metadata_field.field_alias))
+                    # Keep a not of all extra metadata fields that need to be arrays
+                    if self._column_is_array(metadata_field.field_type):
+                        dataset_filter['metadata_array_fields'].append(metadata_field.field_alias)
 
-                # filer_module, filter_field_name = filter_field.split('.')
+            self.dataset_filters.append(dataset_filter)
 
-        # Build a dictionary of record type fields & filters
-        # We can then filter records by record type, and build
-        # per record type property dicts
-        # self.fields_and_filters_per_record_type = {}
-        # for dataset_task in self.dataset_tasks:
-        #     for record_type in dataset_task.record_types:
-        #         self.fields_and_filters_per_record_type[record_type] = {
-        #             'filters': dataset_task.filters
-        #         }
-
-        # print(self.record_types)
-        # print(self.filters)
-
-    #     # List of column field names
-    #     self.columns_dict = dict(self.columns)
-    #     # For faster processing, separate field mappings into those used
-    #     # As properties (without a corresponding table column) and extra fields
-    #     self._property_fields = []
-    #     self._metadata_fields = []
-    #     # Build a list of fields, separated into metadata and property
-    #     for field in self.fields:
-    #         # Is the field alias a defined column?
-    #         if field[1] in self.columns_dict.keys():
-    #             self._metadata_fields.append(field)
-    #         else:
-    #             self._property_fields.append(field)
-    #
-    #     # List of fields that are of type array
-    #     self._array_fields = [col_name for col_name, col_def in self.get_column_types() if self._column_is_array(col_def)]
-    #     # Set task ID so both Update & Copy tasks share the same identifier
-    #     # If the copy task has run, the update task should be seen to be complete
     #     self.task_id = task_id_str(self.table, self.to_str_params(only_significant=True))
 
     def requires(self):
@@ -141,37 +126,27 @@ class KeemuMixin(object):
         start_time = time.time()
         for record in Parser(self.input().path):
             self.record_count += 1
-            if self._is_web_publishable(record) and self._apply_filters(record):
-                self.insert_count += 1
-                yield self.record_to_dict(record)
+            if self._is_web_publishable(record):
+                # Loop through all the dataset filters - if one passes
+                # we can then use the corresponding fields to build a record dict
+                # If non passes then we skip the record
+                for dataset_filter in self.dataset_filters:
+                    if self._apply_filters(dataset_filter['filters'], record):
+                        self.insert_count += 1
+                        yield self.record_to_dict(record, dataset_filter)
+                        # Break out of dataset filter loop as soon as a record
+                        # gets through the filters
+                        break
             else:
+                # Just in case a record has been marked Non web publishable,
+                # Try and delete the record
                 self.delete_record(record)
             if self.limit and self.record_count >= self.limit:
                 break
             if self.record_count % 1000 == 0:
                 logger.debug('Record count: %d', self.record_count)
-        logger.info('Inserted %d %s records in %d seconds', self.insert_count, self.table, time.time() - start_time)
 
-    # def get_filters(self):
-    #     filters = {}
-    #     for dataset_task in self.dataset_tasks:
-    #         for filter_field, filter_ops in dataset_task.filters.items():
-    #             filer_module, filter_field_name = filter_field.split('.')
-    #             if filer_module == self.module_name:
-    #                 if filter_field_name in filters:
-    #                     # If we already have the field filtered on the same field, skip it
-    #                     if filters[filter_field_name] == filter_ops:
-    #                         continue
-    #                     for filter_op in filter_ops:
-    #
-    #                         print('----')
-    #                     # print(filters[filter_field_name])
-    #                         print(filter_op)
-    #                         print('----')
-    #                 else:
-    #                     filters[filter_field_name] = filter_ops
-    #
-    #     return filters
+        logger.info('Inserted %d %s records in %d seconds', self.insert_count, self.table, time.time() - start_time)
 
     @staticmethod
     def _is_web_publishable(record):
@@ -184,7 +159,8 @@ class KeemuMixin(object):
         """
         return record.AdmPublishWebNoPasswordFlag.lower() == 'y'
 
-    def _apply_filters(self, record):
+    @staticmethod
+    def _apply_filters(dataset_filters, record):
         """
         Apply any filters to exclude records based on any field filters
         See emultimedia::filters for example filters
@@ -192,39 +168,46 @@ class KeemuMixin(object):
         If all filters pass, will return True
         :return:
         """
-        for field, filters in self.filters.items():
+        for field, filters in dataset_filters.items():
             value = getattr(record, field, None)
             for filter_operator, filter_value in filters:
                 if not filter_operator(value, filter_value):
                     return False
         return True
 
-    def record_to_dict(self, record):
+    def record_to_dict(self, record, dataset_filter):
         """
         Convert record object to a dict
         :param record:
+        :param dataset_filter:
         :return:
         """
         record_dict = {
             'irn': record.irn,
-            'properties': self.get_properties(record),
+            'properties': self._record_map_fields(record, dataset_filter['fields']),
             'import_date': self.date
         }
-        for (ke_field, alias) in self._metadata_fields:
-            record_dict[alias] = getattr(record, ke_field, None)
-            # Ensure value is of type list
-            if record_dict[alias] and alias in self._array_fields and type(record_dict[alias]) != list:
-                record_dict[alias] = [record_dict[alias]]
+        # Get any extra metadata fields, and add it the record dict
+        metadata = self._record_map_fields(record, dataset_filter['metadata_fields'])
+        # If we have any metadata array fields, ensure they are indeed arrays
+        for metadata_array_field in dataset_filter['metadata_array_fields']:
+            if metadata.get(metadata_array_field, None) and type(metadata[metadata_array_field]) != list:
+                metadata[metadata_array_field] = [metadata[metadata_array_field]]
+
+        record_dict.update(metadata)
         return record_dict
 
-    def get_properties(self, record):
+    @staticmethod
+    def _record_map_fields(record, fields):
         """
-        Build dictionary of record properties
-        If a field alias is an actual column, it will not be included in the property dict
+        Helper function - pass in a list of tuples
+        (source field, destination field)
+        And return a dict of values keyed by destination field
         :param record:
-        :return: dict
+        :param fields:
+        :return:
         """
-        return {dataset_field: getattr(record, ke_field, None) for (ke_field, dataset_field) in self._property_fields if getattr(record, ke_field, None)}
+        return {dataset_field: getattr(record, ke_field, None) for (ke_field, dataset_field) in fields if getattr(record, ke_field, None)}
 
     def get_column_types(self):
         """
@@ -241,3 +224,10 @@ class KeemuMixin(object):
         :return:
         """
         return '[]' in col_def
+
+    @staticmethod
+    def get_dataset_tasks():
+        from ke2sql.tasks.specimen import SpecimenDatasetTask
+        from ke2sql.tasks.indexlot import IndexLotDatasetTask
+        from ke2sql.tasks.artefact import ArtefactDatasetTask
+        return [SpecimenDatasetTask, IndexLotDatasetTask, ArtefactDatasetTask]

@@ -3,19 +3,23 @@
 """
 Created by Ben Scott on '14/03/2017'.
 
-
-
 """
 
+import sys
 import time
 import logging
 import abc
 import luigi
 from operator import is_not, ne
 from luigi.contrib.postgres import PostgresQuery
+from prompter import yesno
 
 from ke2sql.lib.config import Config
+from ke2sql.lib.field import Field, MetadataField
+from ke2sql.lib.filter import Filter
+from ke2sql.lib.ckan import ckan_get_resource, ckan_get_package, ckan_create_package
 from ke2sql.tasks.keemu import KeemuCopyTask, KeemuUpsertTask
+
 
 logger = logging.getLogger('luigi-interface')
 
@@ -40,25 +44,50 @@ class DatasetTask(PostgresQuery):
     #     (KE EMu field, Dataset field)
     fields = [
         # All datasets include multimedia fields
-        ('emultimedia.GenDigitalMediaId', 'assetID'),
-        ('emultimedia.MulTitle', 'title'),
-        ('emultimedia.MulMimeFormat', 'mime'),
-        ('emultimedia.MulCreator', 'creator'),
+        Field('emultimedia', 'GenDigitalMediaId', 'assetID'),
+        Field('emultimedia', 'MulTitle', 'title'),
+        Field('emultimedia', 'MulMimeFormat', 'mime'),
+        Field('emultimedia', 'MulCreator', 'creator'),
+    ]
+
+    metadata_fields = [
+        # All datasets will populate record type
+        MetadataField("ecatalogue", "ColRecordType", "record_type", "TEXT"),
+        # Populate embargo date
+        # Will use NhmSecEmbargoExtensionDate if set; otherwise NhmSecEmbargoDate
+        MetadataField('ecatalogue', 'NhmSecEmbargoDate', 'embargo_date', "DATE"),
+        MetadataField('ecatalogue', 'NhmSecEmbargoExtensionDate', 'embargo_date', "DATE"),
     ]
 
     # List of filters to apply to build this dataset
-    filters = {
+    filters = [
         # All datasets include multimedia records, which are filtered on having a MAM Asset ID
-        'emultimedia.GenDigitalMediaId': [
+        Filter('emultimedia', 'GenDigitalMediaId', [
             (is_not, None),
             (ne, 'Pending')
-        ]
-    }
+        ])
+    ]
 
     @abc.abstractproperty
     def package_name(self):
         """
         Name of the package being created
+        :return: String
+        """
+        return None
+
+    @abc.abstractproperty
+    def resource_title(self):
+        """
+        Title of the resource
+        :return: String
+        """
+        return None
+
+    @abc.abstractproperty
+    def resource_id(self):
+        """
+        ID of the resource
         :return: String
         """
         return None
@@ -88,6 +117,9 @@ class DatasetTask(PostgresQuery):
         :return:
         """
 
+        # FIXME: BUILD FROM PARTS - select, from, where
+
+
         return 'SELECT 1'
 
         connection = self.output().connect()
@@ -113,31 +145,56 @@ class DatasetTask(PostgresQuery):
             )
         return query
 
+    def __init__(self, *args, **kwargs):
+        super(DatasetTask, self).__init__(*args, **kwargs)
+        self.create_ckan_dataset()
 
+    def create_ckan_dataset(self):
+        """
+        Create a dataset on CKAN
+        :return:
+        """
+        pkg_dict = {
+            'name': self.package_name,
+            'notes': self.package_description,
+            'title': self.package_title,
+            'author': Config.get('ckan', 'dataset_author'),
+            'license_id': Config.get('ckan', 'dataset_licence'),
+            'resources': [
+                {
+                    'id': self.resource_id,
+                    'name': self.resource_title,
+                    'description': self.resource_description,
+                    'format': self.resource_type,
+                    'url': '_datastore_only_resource',
+                    'url_type': 'dataset'
+                }
+            ],
+            'dataset_category': Config.get('ckan', 'dataset_type'),
+            'owner_org': Config.get('ckan', 'owner_org')
+        }
 
-    # def __init__(self, *args, **kwargs):
-    #     super(BaseDatasetTask, self).__init__(*args, **kwargs)
-        # Get the dataset ID - or create dataset if it doesn't already exist
+        package = ckan_get_package(self.package_name)
+        # If we don't have a package, create it now
+        if not package:
+            if not yesno('Package {package_name} does not exist.  Do you want to create it?'.format(
+                    package_name=self.package_name
+            )):
+                sys.exit("Import cancelled")
 
-        # resource = self.get_or_create_resource()
+            # Check the resource doesn't exist
+            resource = ckan_get_resource(self.resource_id)
+            if resource:
+                raise Exception('Resource {resource_title} ({resource_id}) already exists - package cannot be created')
 
-        # resource = {
-        #     'id': 'indexlot1'
-        # }
-        #
-        # _src_properties = [tuple(src_prop.split('.')) for src_prop, _ in self.properties]
-        # # Create list of properties tuple, consisting of module name and destination field name
-        # self._dest_properties = [tuple([src_prop.split('.')[0], dest_prop]) for src_prop, dest_prop in self.properties]
-        #
-        # self.dataset_id = self.package_name.replace('-', '')
+            # Create the package
+            ckan_create_package(pkg_dict)
 
     def requires(self):
         # Set comprehension - build set of all modules used in this dataset
-        modules = list({f[0].split('.')[0] for f in self.fields})
+        modules = list({f.module_name for f in self.fields})
         for module in modules:
-            if module != 'ecatalogue':
-                continue
-            yield KeemuCopyTask(module_name=module, date=self.date)
+            yield KeemuCopyTask(module_name=module, date=self.date, limit=self.limit)
 
 
 

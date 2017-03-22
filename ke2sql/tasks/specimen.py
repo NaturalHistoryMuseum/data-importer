@@ -11,6 +11,8 @@ import luigi
 from operator import is_not
 from ke2sql.tasks.dataset import DatasetTask
 from ke2sql.lib.operators import is_one_of, is_not_one_of
+from ke2sql.lib.field import Field, MetadataField
+from ke2sql.lib.filter import Filter
 
 
 class SpecimenDatasetTask(DatasetTask):
@@ -20,209 +22,199 @@ class SpecimenDatasetTask(DatasetTask):
     package_title = "Collection specimens"
 
     resource_title = 'Specimen records'
+    resource_id = '05ff2255-c38a-40c9-b657-4ccb55ab2feb'
     resource_description = 'Specimen records'
     resource_type = 'dwc'  # Darwin Core
 
-    # indexed_fields = ['collectionCode', 'catalogNumber', 'created', 'project']
-
-    fields = [
+    fields = DatasetTask.fields + [
         # Update fields
-        ('ecatalogue.AdmDateModified', 'dateModified'),
-        ('ecatalogue.AdmDateInserted', 'dateCreated'),
-        ('ecatalogue.AdmGUIDPreferredValue', 'occurrenceID'),
+        Field('ecatalogue', 'AdmDateModified', 'dateModified'),
+        Field('ecatalogue', 'AdmDateInserted', 'dateCreated'),
+        Field('ecatalogue', 'AdmGUIDPreferredValue', 'occurrenceID'),
         # Record numbers
-        ('ecatalogue.DarCatalogNumber', 'catalogNumber'),
+        Field('ecatalogue', 'DarCatalogNumber', 'catalogNumber'),
         # Used if DarCatalogueNumber is empty
-        ('ecatalogue.RegRegistrationNumber', 'catalogNumber'),
+        Field('ecatalogue', 'RegRegistrationNumber', 'catalogNumber'),
         # Taxonomy
-        ('ecatalogue.DarScientificName', 'scientificName'),
+        Field('ecatalogue', 'DarScientificName', 'scientificName'),
         # Rather than using the two darwin core fields DarScientificNameAuthorYear and ScientificNameAuthor
         # It's easier to just use IdeFiledAsAuthors which has them both concatenated
-        ('ecatalogue.IdeFiledAsAuthors', 'scientificNameAuthorship'),
-        ('ecatalogue.DarTypeStatus', 'typeStatus'),
+        Field('ecatalogue', 'IdeFiledAsAuthors', 'scientificNameAuthorship'),
+        Field('ecatalogue', 'DarTypeStatus', 'typeStatus'),
         # If DarTypeStatus is empty, we'll use sumTypeStatus which has previous determinations
-        ('ecatalogue.sumTypeStatus', 'typeStatus'),
-        # Use nearest name place rather than precise locality https://github.com/NaturalHistoryMuseum/ke2mongo/issues/29
-        ('ecatalogue.PalNearestNamedPlaceLocal', 'locality'),
+        Field('ecatalogue', 'sumTypeStatus', 'typeStatus'),
+        # Use nearest name place rather than precise locality https://github', 'com/NaturalHistoryMuseum/ke2mongo/issues/29
+        Field('ecatalogue', 'PalNearestNamedPlaceLocal', 'locality'),
         # Locality if nearest named place is empty
         # The encoding of DarLocality is buggered - see 1804973
         # So better to use the original field with the correct encoding
-        ('ecatalogue.sumPreciseLocation', 'locality'),
+        Field('ecatalogue', 'sumPreciseLocation', 'locality'),
         # Locality if precise and nearest named place is empty
-        ('ecatalogue.MinNhmVerbatimLocalityLocal', 'locality'),
-        ('ecatalogue.DarCountry', 'country'),
-        ('ecatalogue.DarWaterBody', 'waterBody'),
-        ('ecatalogue.EntLocExpeditionNameLocal', 'expedition'),
-        ('ecatalogue.sumParticipantFullName', 'recordedBy'),
-        ('ecatalogue.ColDepartment', 'collectionCode'),
+        Field('ecatalogue', 'MinNhmVerbatimLocalityLocal', 'locality'),
+        Field('ecatalogue', 'DarCountry', 'country'),
+        Field('ecatalogue', 'DarWaterBody', 'waterBody'),
+        Field('ecatalogue', 'EntLocExpeditionNameLocal', 'expedition'),
+        Field('ecatalogue', 'sumParticipantFullName', 'recordedBy'),
+        Field('ecatalogue', 'ColDepartment', 'collectionCode'),
         # Taxonomy
-        ('ecatalogue.DarScientificName', 'scientificName'),
-        ('ecatalogue.DarKingdom', 'kingdom'),
-        ('ecatalogue.DarPhylum', 'phylum'),
-        ('ecatalogue.DarClass', 'class'),
-        ('ecatalogue.DarOrder', 'order'),
-        ('ecatalogue.DarFamily', 'family'),
-        ('ecatalogue.DarGenus', 'genus'),
-        ('ecatalogue.DarSubgenus', 'subgenus'),
-        ('ecatalogue.DarSpecies', 'specificEpithet'),
-        ('ecatalogue.DarSubspecies', 'infraspecificEpithet'),
-        ('ecatalogue.DarHigherTaxon', 'higherClassification'),
-        ('ecatalogue.DarInfraspecificRank', 'taxonRank'),
+        Field('ecatalogue', 'DarScientificName', 'scientificName'),
+        Field('ecatalogue', 'DarKingdom', 'kingdom'),
+        Field('ecatalogue', 'DarPhylum', 'phylum'),
+        Field('ecatalogue', 'DarClass', 'class'),
+        Field('ecatalogue', 'DarOrder', 'order'),
+        Field('ecatalogue', 'DarFamily', 'family'),
+        Field('ecatalogue', 'DarGenus', 'genus'),
+        Field('ecatalogue', 'DarSubgenus', 'subgenus'),
+        Field('ecatalogue', 'DarSpecies', 'specificEpithet'),
+        Field('ecatalogue', 'DarSubspecies', 'infraspecificEpithet'),
+        Field('ecatalogue', 'DarHigherTaxon', 'higherClassification'),
+        Field('ecatalogue', 'DarInfraspecificRank', 'taxonRank'),
         # Location
-        ('ecatalogue.DarStateProvince', 'stateProvince'),
-        ('ecatalogue.DarContinent', 'continent'),
-        ('ecatalogue.DarIsland', 'island'),
-        ('ecatalogue.DarIslandGroup', 'islandGroup'),
-        ('ecatalogue.DarHigherGeography', 'higherGeography'),
-        ('ecatalogue.ColHabitatVerbatim', 'habitat'),
-        ('ecatalogue.DarDecimalLongitude', 'decimalLongitude'),
-        ('ecatalogue.DarDecimalLatitude', 'decimalLatitude'),
-        ('ecatalogue.sumPreferredCentroidLongitude', 'verbatimLongitude'),
-        ('ecatalogue.sumPreferredCentroidLatitude', 'verbatimLatitude'),
-        ('ecatalogue.DarGeodeticDatum', 'geodeticDatum'),
-        ('ecatalogue.DarGeorefMethod', 'georeferenceProtocol'),
+        Field('ecatalogue', 'DarStateProvince', 'stateProvince'),
+        Field('ecatalogue', 'DarContinent', 'continent'),
+        Field('ecatalogue', 'DarIsland', 'island'),
+        Field('ecatalogue', 'DarIslandGroup', 'islandGroup'),
+        Field('ecatalogue', 'DarHigherGeography', 'higherGeography'),
+        Field('ecatalogue', 'ColHabitatVerbatim', 'habitat'),
+        Field('ecatalogue', 'DarDecimalLongitude', 'decimalLongitude'),
+        Field('ecatalogue', 'DarDecimalLatitude', 'decimalLatitude'),
+        Field('ecatalogue', 'sumPreferredCentroidLongitude', 'verbatimLongitude'),
+        Field('ecatalogue', 'sumPreferredCentroidLatitude', 'verbatimLatitude'),
+        Field('ecatalogue', 'DarGeodeticDatum', 'geodeticDatum'),
+        Field('ecatalogue', 'DarGeorefMethod', 'georeferenceProtocol'),
         # Occurrence
-        ('ecatalogue.DarMinimumElevationInMeters', 'minimumElevationInMeters'),
-        ('ecatalogue.DarMaximumElevationInMeters', 'maximumElevationInMeters'),
-        ('ecatalogue.DarMinimumDepthInMeters', 'minimumDepthInMeters'),
-        ('ecatalogue.DarMaximumDepthInMeters', 'maximumDepthInMeters'),
-        ('ecatalogue.CollEventFromMetres', 'minimumDepthInMeters'),
-        ('ecatalogue.CollEventToMetres', 'maximumDepthInMeters'),
-        ('ecatalogue.DarCollectorNumber', 'recordNumber'),
-        ('ecatalogue.DarIndividualCount', 'individualCount'),
+        Field('ecatalogue', 'DarMinimumElevationInMeters', 'minimumElevationInMeters'),
+        Field('ecatalogue', 'DarMaximumElevationInMeters', 'maximumElevationInMeters'),
+        Field('ecatalogue', 'DarMinimumDepthInMeters', 'minimumDepthInMeters'),
+        Field('ecatalogue', 'DarMaximumDepthInMeters', 'maximumDepthInMeters'),
+        Field('ecatalogue', 'CollEventFromMetres', 'minimumDepthInMeters'),
+        Field('ecatalogue', 'CollEventToMetres', 'maximumDepthInMeters'),
+        Field('ecatalogue', 'DarCollectorNumber', 'recordNumber'),
+        Field('ecatalogue', 'DarIndividualCount', 'individualCount'),
         # Duplicate lifeStage fields - only fields with a value get populated so
         # there is no risk in doing this
-        ('ecatalogue.DarLifeStage', 'lifeStage'),
+        Field('ecatalogue', 'DarLifeStage', 'lifeStage'),
         # Parasite cards use a different field for life stage
-        ('ecatalogue.CardParasiteStage', 'lifeStage'),
-        ('ecatalogue.DarSex', 'sex'),
-        ('ecatalogue.DarPreparations', 'preparations'),
+        Field('ecatalogue', 'CardParasiteStage', 'lifeStage'),
+        Field('ecatalogue', 'DarSex', 'sex'),
+        Field('ecatalogue', 'DarPreparations', 'preparations'),
         # Identification
-        ('ecatalogue.DarIdentifiedBy', 'identifiedBy'),
+        Field('ecatalogue', 'DarIdentifiedBy', 'identifiedBy'),
         # KE Emu has 3 fields for identification date: DarDayIdentified, DarMonthIdentified and DarYearIdentified
         # But EntIdeDateIdentified holds them all - which is what we want for dateIdentified
-        ('ecatalogue.EntIdeDateIdentified', 'dateIdentified'),
-        ('ecatalogue.DarIdentificationQualifier', 'identificationQualifier'),
-        ('ecatalogue.DarTimeOfDay', 'eventTime'),
-        ('ecatalogue.DarDayCollected', 'day'),
-        ('ecatalogue.DarMonthCollected', 'month'),
-        ('ecatalogue.DarYearCollected', 'year'),
+        Field('ecatalogue', 'EntIdeDateIdentified', 'dateIdentified'),
+        Field('ecatalogue', 'DarIdentificationQualifier', 'identificationQualifier'),
+        Field('ecatalogue', 'DarTimeOfDay', 'eventTime'),
+        Field('ecatalogue', 'DarDayCollected', 'day'),
+        Field('ecatalogue', 'DarMonthCollected', 'month'),
+        Field('ecatalogue', 'DarYearCollected', 'year'),
         # Geology
-        ('ecatalogue.DarEarliestEon', 'earliestEonOrLowestEonothem'),
-        ('ecatalogue.DarLatestEon', 'latestEonOrHighestEonothem'),
-        ('ecatalogue.DarEarliestEra', 'earliestEraOrLowestErathem'),
-        ('ecatalogue.DarLatestEra', 'latestEraOrHighestErathem'),
-        ('ecatalogue.DarEarliestPeriod', 'earliestPeriodOrLowestSystem'),
-        ('ecatalogue.DarLatestPeriod', 'latestPeriodOrHighestSystem'),
-        ('ecatalogue.DarEarliestEpoch', 'earliestEpochOrLowestSeries'),
-        ('ecatalogue.DarLatestEpoch', 'latestEpochOrHighestSeries'),
-        ('ecatalogue.DarEarliestAge', 'earliestAgeOrLowestStage'),
-        ('ecatalogue.DarLatestAge', 'latestAgeOrHighestStage'),
-        ('ecatalogue.DarLowestBiostrat', 'lowestBiostratigraphicZone'),
-        ('ecatalogue.DarHighestBiostrat', 'highestBiostratigraphicZone'),
-        ('ecatalogue.DarGroup', 'group'),
-        ('ecatalogue.DarFormation', 'formation'),
-        ('ecatalogue.DarMember', 'member'),
-        ('ecatalogue.DarBed', 'bed'),
+        Field('ecatalogue', 'DarEarliestEon', 'earliestEonOrLowestEonothem'),
+        Field('ecatalogue', 'DarLatestEon', 'latestEonOrHighestEonothem'),
+        Field('ecatalogue', 'DarEarliestEra', 'earliestEraOrLowestErathem'),
+        Field('ecatalogue', 'DarLatestEra', 'latestEraOrHighestErathem'),
+        Field('ecatalogue', 'DarEarliestPeriod', 'earliestPeriodOrLowestSystem'),
+        Field('ecatalogue', 'DarLatestPeriod', 'latestPeriodOrHighestSystem'),
+        Field('ecatalogue', 'DarEarliestEpoch', 'earliestEpochOrLowestSeries'),
+        Field('ecatalogue', 'DarLatestEpoch', 'latestEpochOrHighestSeries'),
+        Field('ecatalogue', 'DarEarliestAge', 'earliestAgeOrLowestStage'),
+        Field('ecatalogue', 'DarLatestAge', 'latestAgeOrHighestStage'),
+        Field('ecatalogue', 'DarLowestBiostrat', 'lowestBiostratigraphicZone'),
+        Field('ecatalogue', 'DarHighestBiostrat', 'highestBiostratigraphicZone'),
+        Field('ecatalogue', 'DarGroup', 'group'),
+        Field('ecatalogue', 'DarFormation', 'formation'),
+        Field('ecatalogue', 'DarMember', 'member'),
+        Field('ecatalogue', 'DarBed', 'bed'),
         # These fields do not map to DwC, but are still very useful
-        ('ecatalogue.ColSubDepartment', 'subDepartment'),
-        ('ecatalogue.PrtType', 'partType'),
-        ('ecatalogue.RegCode', 'registrationCode'),
-        ('ecatalogue.CatKindOfObject', 'kindOfObject'),
-        ('ecatalogue.CatKindOfCollection', 'kindOfCollection'),
-        ('ecatalogue.CatPreservative', 'preservative'),
+        Field('ecatalogue', 'ColSubDepartment', 'subDepartment'),
+        Field('ecatalogue', 'PrtType', 'partType'),
+        Field('ecatalogue', 'RegCode', 'registrationCode'),
+        Field('ecatalogue', 'CatKindOfObject', 'kindOfObject'),
+        Field('ecatalogue', 'CatKindOfCollection', 'kindOfCollection'),
+        Field('ecatalogue', 'CatPreservative', 'preservative'),
         # Used if CatPreservative is empty
-        ('ecatalogue.EntCatPreservation', 'preservative'),
-        ('ecatalogue.ColKind', 'collectionKind'),
-        ('ecatalogue.EntPriCollectionName', 'collectionName'),
-        ('ecatalogue.PalAcqAccLotDonorFullName', 'donorName'),
-        ('ecatalogue.DarPreparationType', 'preparationType'),
-        ('ecatalogue.DarObservedWeight', 'observedWeight'),
+        Field('ecatalogue', 'EntCatPreservation', 'preservative'),
+        Field('ecatalogue', 'ColKind', 'collectionKind'),
+        Field('ecatalogue', 'EntPriCollectionName', 'collectionName'),
+        Field('ecatalogue', 'PalAcqAccLotDonorFullName', 'donorName'),
+        Field('ecatalogue', 'DarPreparationType', 'preparationType'),
+        Field('ecatalogue', 'DarObservedWeight', 'observedWeight'),
         # Location
         # Data is stored in sumViceCountry field in ecatalogue data - but actually this
-        # should be viceCountry (which it is in esites)
-        ('ecatalogue.sumViceCountry', 'viceCounty'),
+        # should be viceCountry Field(which it is in esites)
+        Field('ecatalogue', 'sumViceCountry', 'viceCounty'),
         # DNA
-        ('ecatalogue.DnaExtractionMethod', 'extractionMethod'),
-        ('ecatalogue.DnaReSuspendedIn', 'resuspendedIn'),
-        ('ecatalogue.DnaTotalVolume', 'totalVolume'),
+        Field('ecatalogue', 'DnaExtractionMethod', 'extractionMethod'),
+        Field('ecatalogue', 'DnaReSuspendedIn', 'resuspendedIn'),
+        Field('ecatalogue', 'DnaTotalVolume', 'totalVolume'),
         # Parasite card
-        ('ecatalogue.EntCatBarcode', 'barcode'),
-        ('ecatalogue.CardBarcode', 'barcode'),
+        Field('ecatalogue', 'EntCatBarcode', 'barcode'),
+        Field('ecatalogue', 'CardBarcode', 'barcode'),
         # Egg
-        ('ecatalogue.EggClutchSize', 'clutchSize'),
-        ('ecatalogue.EggSetMark', 'setMark'),
+        Field('ecatalogue', 'EggClutchSize', 'clutchSize'),
+        Field('ecatalogue', 'EggSetMark', 'setMark'),
         # Nest
-        ('ecatalogue.NesShape', 'nestShape'),
-        ('ecatalogue.NesSite', 'nestSite'),
+        Field('ecatalogue', 'NesShape', 'nestShape'),
+        Field('ecatalogue', 'NesSite', 'nestSite'),
         # Silica gel
-        ('ecatalogue.SilPopulationCode', 'populationCode'),
+        Field('ecatalogue', 'SilPopulationCode', 'populationCode'),
         # Botany
-        ('ecatalogue.CollExsiccati', 'exsiccati'),
-        ('ecatalogue.ColExsiccatiNumber', 'exsiccatiNumber'),
-        ('ecatalogue.ColSiteDescription', 'labelLocality'),
-        ('ecatalogue.ColPlantDescription', 'plantDescription'),
-        ('ecatalogue.FeaCultivated', 'cultivated'),
+        Field('ecatalogue', 'CollExsiccati', 'exsiccati'),
+        Field('ecatalogue', 'ColExsiccatiNumber', 'exsiccatiNumber'),
+        Field('ecatalogue', 'ColSiteDescription', 'labelLocality'),
+        Field('ecatalogue', 'ColPlantDescription', 'plantDescription'),
+        Field('ecatalogue', 'FeaCultivated', 'cultivated'),
         # Paleo
-        ('ecatalogue.PalDesDescription', 'catalogueDescription'),
-        ('ecatalogue.PalStrChronostratLocal', 'chronostratigraphy'),
-        ('ecatalogue.PalStrLithostratLocal', 'lithostratigraphy'),
+        Field('ecatalogue', 'PalDesDescription', 'catalogueDescription'),
+        Field('ecatalogue', 'PalStrChronostratLocal', 'chronostratigraphy'),
+        Field('ecatalogue', 'PalStrLithostratLocal', 'lithostratigraphy'),
         # Mineralogy
-        ('ecatalogue.MinDateRegistered', 'dateRegistered'),
-        ('ecatalogue.MinIdentificationAsRegistered', 'identificationAsRegistered'),
-        ('ecatalogue.MinIdentificationDescription', 'identificationDescription'),
-        ('ecatalogue.MinPetOccurance', 'occurrence'),
-        ('ecatalogue.MinOreCommodity', 'commodity'),
-        ('ecatalogue.MinOreDepositType', 'depositType'),
-        ('ecatalogue.MinTextureStructure', 'texture'),
-        ('ecatalogue.MinIdentificationVariety', 'identificationVariety'),
-        ('ecatalogue.MinIdentificationOther', 'identificationOther'),
-        ('ecatalogue.MinHostRock', 'hostRock'),
-        ('ecatalogue.MinAgeDataAge', 'age'),
-        ('ecatalogue.MinAgeDataType', 'ageType'),
+        Field('ecatalogue', 'MinDateRegistered', 'dateRegistered'),
+        Field('ecatalogue', 'MinIdentificationAsRegistered', 'identificationAsRegistered'),
+        Field('ecatalogue', 'MinIdentificationDescription', 'identificationDescription'),
+        Field('ecatalogue', 'MinPetOccurance', 'occurrence'),
+        Field('ecatalogue', 'MinOreCommodity', 'commodity'),
+        Field('ecatalogue', 'MinOreDepositType', 'depositType'),
+        Field('ecatalogue', 'MinTextureStructure', 'texture'),
+        Field('ecatalogue', 'MinIdentificationVariety', 'identificationVariety'),
+        Field('ecatalogue', 'MinIdentificationOther', 'identificationOther'),
+        Field('ecatalogue', 'MinHostRock', 'hostRock'),
+        Field('ecatalogue', 'MinAgeDataAge', 'age'),
+        Field('ecatalogue', 'MinAgeDataType', 'ageType'),
         # Mineralogy location
-        ('ecatalogue.MinNhmTectonicProvinceLocal', 'tectonicProvince'),
-        ('ecatalogue.MinNhmStandardMineLocal', 'mine'),
-        ('ecatalogue.MinNhmMiningDistrictLocal', 'miningDistrict'),
-        ('ecatalogue.MinNhmComplexLocal', 'mineralComplex'),
-        ('ecatalogue.MinNhmRegionLocal', 'geologyRegion'),
+        Field('ecatalogue', 'MinNhmTectonicProvinceLocal', 'tectonicProvince'),
+        Field('ecatalogue', 'MinNhmStandardMineLocal', 'mine'),
+        Field('ecatalogue', 'MinNhmMiningDistrictLocal', 'miningDistrict'),
+        Field('ecatalogue', 'MinNhmComplexLocal', 'mineralComplex'),
+        Field('ecatalogue', 'MinNhmRegionLocal', 'geologyRegion'),
         # Meteorite
-        ('ecatalogue.MinMetType', 'meteoriteType'),
-        ('ecatalogue.MinMetGroup', 'meteoriteGroup'),
-        ('ecatalogue.MinMetChondriteAchondrite', 'chondriteAchondrite'),
-        ('ecatalogue.MinMetClass', 'meteoriteClass'),
-        ('ecatalogue.MinMetPetType', 'petrologyType'),
-        ('ecatalogue.MinMetPetSubtype', 'petrologySubtype'),
-        ('ecatalogue.MinMetRecoveryFindFall', 'recovery'),
-        ('ecatalogue.MinMetRecoveryDate', 'recoveryDate'),
-        ('ecatalogue.MinMetRecoveryWeight', 'recoveryWeight'),
-        ('ecatalogue.MinMetWeightAsRegistered', 'registeredWeight'),
-        ('ecatalogue.MinMetWeightAsRegisteredUnit', 'registeredWeightUnit'),
+        Field('ecatalogue', 'MinMetType', 'meteoriteType'),
+        Field('ecatalogue', 'MinMetGroup', 'meteoriteGroup'),
+        Field('ecatalogue', 'MinMetChondriteAchondrite', 'chondriteAchondrite'),
+        Field('ecatalogue', 'MinMetClass', 'meteoriteClass'),
+        Field('ecatalogue', 'MinMetPetType', 'petrologyType'),
+        Field('ecatalogue', 'MinMetPetSubtype', 'petrologySubtype'),
+        Field('ecatalogue', 'MinMetRecoveryFindFall', 'recovery'),
+        Field('ecatalogue', 'MinMetRecoveryDate', 'recoveryDate'),
+        Field('ecatalogue', 'MinMetRecoveryWeight', 'recoveryWeight'),
+        Field('ecatalogue', 'MinMetWeightAsRegistered', 'registeredWeight'),
+        Field('ecatalogue', 'MinMetWeightAsRegisteredUnit', 'registeredWeightUnit'),
         # Determinations
-        ('ecatalogue.IdeCitationTypeStatus', 'determinationTypes'),
-        ('ecatalogue.EntIdeScientificNameLocal', 'determinationNames'),
-        ('ecatalogue.EntIdeFiledAs', 'determinationFiledAs'),
+        Field('ecatalogue', 'IdeCitationTypeStatus', 'determinationTypes'),
+        Field('ecatalogue', 'EntIdeScientificNameLocal', 'determinationNames'),
+        Field('ecatalogue', 'EntIdeFiledAs', 'determinationFiledAs'),
         # Project
-        ('ecatalogue.NhmSecProjectName', 'project'),
-
-        # Extra column field mappings - not included in properties, have a column in their own right
-        ('ecatalogue.MulMultiMediaRef', 'multimedia_irns'),
-        ('ecatalogue.ColRecordType', 'record_type'),
-        ('ecatalogue.RegRegistrationParentRef', 'parent_irn'),
-        ('ecatalogue.CardParasiteRef', 'parasite_taxonomy_irn'),
-        # Populate embargo date
-        # Will use NhmSecEmbargoExtensionDate if set; otherwise NhmSecEmbargoDate
-        ('ecatalogue.NhmSecEmbargoDate', 'embargo_date'),
-        ('ecatalogue.NhmSecEmbargoExtensionDate', 'embargo_date'),
+        Field('ecatalogue', 'NhmSecProjectName', 'project'),
     ]
 
-    filters = {
+    # Combine filters with default dataset task filters
+    filters = DatasetTask.filters + [
         # Records must have a GUID
-        'ecatalogue.AdmGUIDPreferredValue': [
+        Filter('ecatalogue', 'AdmGUIDPreferredValue', [
             (is_not, None)
-        ],
+        ]),
         # Does this record have an excluded status - Stub etc.,
-        'ecatalogue.SecRecordStatus': [
+        Filter('ecatalogue', 'SecRecordStatus', [
             (is_not, None),
             (is_not_one_of, [
                 "DELETE",
@@ -245,10 +237,10 @@ class SpecimenDatasetTask(DatasetTask):
                 "Stub Record",
                 "Stub record"
             ])
-        ],
+        ]),
         # Record must be in one of the known collection departments
         # (Otherwise the home page breaks)
-        'ecatalogue.ColDepartment': [
+        Filter('ecatalogue', 'ColDepartment', [
             (is_one_of, [
                 "Botany",
                 "Entomology",
@@ -256,8 +248,8 @@ class SpecimenDatasetTask(DatasetTask):
                 "Palaeontology",
                 "Zoology"
             ])
-        ],
-        'ecatalogue.ColRecordType': [
+        ]),
+        Filter('ecatalogue', 'ColRecordType', [
             (is_one_of, [
                 'Specimen',
                 'Specimen - single',
@@ -271,12 +263,17 @@ class SpecimenDatasetTask(DatasetTask):
                 'Silica Gel Specimen',
                 "Parasite Card",
             ]),
-        ],
-    }
+        ])
+    ]
 
-    # joins = [
-    #     # ('etaxonomy', 'indexlot_taxonomy_irn')
-    # ]
+    # Extra metadata fields, used to build the dataset views (JOINS etc.,)
+    metadata_fields = DatasetTask.metadata_fields + [
+        # Extra column field mappings - not included in properties, have a column in their own right
+        MetadataField('ecatalogue', 'MulMultiMediaRef', 'multimedia_irns', "INTEGER[]"),
+        MetadataField('ecatalogue', 'ColRecordType', 'record_type', "TEXT"),
+        MetadataField('ecatalogue', 'RegRegistrationParentRef', 'parent_irn', "INTEGER"),
+        MetadataField('ecatalogue', 'CardParasiteRef', 'parasite_taxonomy_irn', "INTEGER"),
+    ]
 
 if __name__ == "__main__":
     luigi.run(main_task_cls=SpecimenDatasetTask)
