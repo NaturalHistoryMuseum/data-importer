@@ -32,7 +32,7 @@ class DatasetTask(PostgresQuery):
     # Limit - only used when testing
     limit = luigi.IntParameter(default=None, significant=False)
     # Import method - copy or upsert
-    method = luigi.ChoiceParameter(choices=['copy', 'upsert'], default='upsert')
+    bulk_copy = luigi.BoolParameter(default=False, significant=False)
 
     # Luigi Postgres database connections
     host = Config.get('database', 'host')
@@ -195,8 +195,9 @@ class DatasetTask(PostgresQuery):
     def requires(self):
         # Set comprehension - build set of all modules used in this dataset
         modules = list({f.module_name for f in self.fields})
-        cls = KeemuCopyTask if self.method == 'copy' else KeemuUpsertTask
+        cls = KeemuCopyTask if self.bulk_copy else KeemuUpsertTask
         for module in modules:
+            logger.info('Importing %s with %s method', module, cls)
             yield cls(module_name=module, date=self.date, limit=self.limit)
 
 

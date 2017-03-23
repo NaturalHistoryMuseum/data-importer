@@ -6,6 +6,7 @@ import abc
 # from abc import ABCMeta, abstractproperty, abstractmethod
 import luigi
 import luigi.contrib.postgres
+from luigi.task import task_id_str
 
 from ke2sql.lib.parser import Parser
 from ke2sql.lib.config import Config
@@ -15,10 +16,6 @@ from ke2sql.tasks.keemu.file import FileTask
 
 logger = logging.getLogger('luigi-interface')
 
-
-# FIXME: Copy VS Update
-# FIXME: UPDATE ID
-# CHOICE PARAM
 
 # FIXME: Query
 # FIXME: Create MAT VIEW
@@ -90,9 +87,7 @@ class KeemuMixin(object):
             dataset_filter = {
                 # List of fields matching the module name, with the module name removed
                 'fields': [(f.field_name, f.field_alias) for f in dataset_task.fields if f.module_name == self.module_name],
-                'filters': {},
-                'metadata_fields': [],
-                'metadata_array_fields': [],
+                'filters': {}
             }
             # If we don't have any fields at this point, continue to next dataset
             if not len(dataset_filter['fields']):
@@ -102,23 +97,22 @@ class KeemuMixin(object):
                 if dataset_task_filter.module_name == self.module_name:
                     dataset_filter['filters'][dataset_task_filter.field_name] = dataset_task_filter.filters
 
-            # Add all the metadata fields to the table columns
-            # Which is used to create the base table
-            for metadata_field in dataset_task.metadata_fields:
-                # Only add the field if it matches the module name being imported
-                if metadata_field.module_name == self.module_name:
-                    col = (metadata_field.field_alias, metadata_field.field_type)
-                    if col not in self.columns:
-                        self.columns.append(col)
-                    # We also want to add this to the metadata fields list, used for building the record
-                    dataset_filter['metadata_fields'].append((metadata_field.field_name, metadata_field.field_alias))
-                    # Keep a not of all extra metadata fields that need to be arrays
-                    if self._column_is_array(metadata_field.field_type):
-                        dataset_filter['metadata_array_fields'].append(metadata_field.field_alias)
-
             self.dataset_filters.append(dataset_filter)
 
-    #     self.task_id = task_id_str(self.table, self.to_str_params(only_significant=True))
+        # Metadata fields will be the same for every row, so build a list of all metadata
+        # fields for a particular module
+        self.metadata_fields = self.get_metadata_fields()
+        # Create a list of all extra metadata fields that need to be arrays
+        self.metadata_array_fields = [m.field_alias for m in self.metadata_fields if self._column_is_array(m.field_type)]
+        # Add the extra metadata fields to the column array
+        for metadata_field in self.metadata_fields:
+            col = (metadata_field.field_alias, metadata_field.field_type)
+            if col not in self.columns:
+                self.columns.append(col)
+
+        # Set task ID so copy and insert tasks have the same ID
+        # And won't run again
+        self.task_id = task_id_str('KeemuImportTask', self.to_str_params(only_significant=True))
 
     def requires(self):
         return FileTask(module_name=self.table, date=self.date)
@@ -188,14 +182,14 @@ class KeemuMixin(object):
             'properties': self._record_map_fields(record, dataset_filter['fields']),
             'import_date': self.date
         }
-        # Get any extra metadata fields, and add it the record dict
-        metadata = self._record_map_fields(record, dataset_filter['metadata_fields'])
-        # If we have any metadata array fields, ensure they are indeed arrays
-        for metadata_array_field in dataset_filter['metadata_array_fields']:
-            if metadata.get(metadata_array_field, None) and type(metadata[metadata_array_field]) != list:
-                metadata[metadata_array_field] = [metadata[metadata_array_field]]
-
-        record_dict.update(metadata)
+        # Add in the extra fields
+        for metadata_field in self.metadata_fields:
+            record_dict[metadata_field.field_alias] = getattr(record, metadata_field.field_name, None)
+            # If this is a list type field, convert it to a list
+            if (record_dict[metadata_field.field_alias]
+                and metadata_field.field_alias in self.metadata_array_fields
+                    and type(record_dict[metadata_field.field_alias]) != list):
+                record_dict[metadata_field.field_alias] = [record_dict[metadata_field.field_alias]]
         return record_dict
 
     @staticmethod
@@ -217,6 +211,16 @@ class KeemuMixin(object):
         """
         regex = re.compile('(^[A-Z]+(\[\])?)')
         return [(column_name, regex.match(column_def).group(1)) for column_name, column_def in self.columns]
+
+    def get_metadata_fields(self):
+        # Dedupe by adding to list keyed by field alias,
+        # and then returning the values
+        metadata_fields = {}
+        for dataset_task in get_dataset_tasks():
+            for metadata_field in dataset_task.metadata_fields:
+                if metadata_field.module_name == self.module_name:
+                    metadata_fields[metadata_field.field_alias] = metadata_field
+        return metadata_fields.values()
 
     @staticmethod
     def _column_is_array(col_def):

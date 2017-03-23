@@ -6,7 +6,7 @@ Created by Ben Scott on '03/03/2017'.
 
 from psycopg2.extras import Json as PGJson
 from luigi.contrib.postgres import CopyToTable as LuigiCopyToTable
-from ke2sql.lib.db import db_table_exists
+from ke2sql.lib.db import db_table_exists, db_delete_record
 from ke2sql.lib.helpers import get_dataset_tasks
 
 class PostgresUpsertMixin(LuigiCopyToTable):
@@ -18,8 +18,6 @@ class PostgresUpsertMixin(LuigiCopyToTable):
         super(PostgresUpsertMixin, self).__init__(*args, **kwargs)
         self.connection = self.output().connect()
         self.cursor = self.connection.cursor()
-        # Quick look up list of integer fields
-        self._int_fields = [col_name for col_name, col_def in self.get_column_types() if 'INTEGER' in col_def]
 
     @property
     def sql(self):
@@ -28,7 +26,7 @@ class PostgresUpsertMixin(LuigiCopyToTable):
         Tries inserting, and on conflict performs update with modified date
         :return: SQL
         """
-        metadata_fields = self._get_metadata_fields()
+        metadata_fields = [f.field_alias for f in self.get_metadata_fields()]
         insert_fields = ['irn', 'properties'] + metadata_fields
         update_fields = ['properties'] + metadata_fields
         sql = """
@@ -42,7 +40,6 @@ class PostgresUpsertMixin(LuigiCopyToTable):
             update_fields=','.join(update_fields),
             update_fields_placeholders=','.join(map(lambda field: "%({0})s".format(field), update_fields)),
         )
-        print(sql)
         return sql
 
     def ensure_table(self):
@@ -53,6 +50,7 @@ class PostgresUpsertMixin(LuigiCopyToTable):
     def run(self):
         # Ensure table exists
         self.ensure_table()
+        integer_fields = [col_name for col_name, col_def in self.get_column_types() if 'INTEGER' in col_def]
         # Loop through all the records, executing SQL
         for record in self.records():
             # psycopg2 encode dicts to Json
@@ -61,10 +59,8 @@ class PostgresUpsertMixin(LuigiCopyToTable):
                     record[key] = PGJson(record[key])
                 # If this is a list of integer fields, we need to manually
                 # map the values to int as psycopg2 doesn't transform arrays
-                elif type(record[key]) is list and key in self._int_fields:
+                elif type(record[key]) is list and key in integer_fields:
                     record[key] = list(map(int, record[key]))
-
-            print(record)
             self.cursor.execute(self.sql, record)
         # mark as complete in same transaction
         self.output().touch(self.connection)
@@ -75,16 +71,4 @@ class PostgresUpsertMixin(LuigiCopyToTable):
         Mark a record as deleted
         :return: None
         """
-        sql = "UPDATE {table_name} SET (deleted) = (NOW()) WHERE {table_name}.irn = %(irn)s".format(
-            table_name=self.table,
-        )
-        self.connection.execute(sql, irn=record.irn)
-
-    def _get_metadata_fields(self):
-        metadata_fields = set()
-        for dataset_task in get_dataset_tasks():
-            for metadata_field in dataset_task.metadata_fields:
-                if metadata_field.module_name == self.module_name:
-                    metadata_fields.add(metadata_field.field_alias)
-        return list(metadata_fields)
-
+        db_delete_record(self.table, record.irn, self.connection)
