@@ -75,5 +75,7 @@ class IndexLotDatasetTask(DatasetTask):
         MetadataField('ecatalogue', 'EntIndIndexLotTaxonNameLocalRef', 'indexlot_taxonomy_irn', "INTEGER"),
     ]
 
+    dataset_join = 'LEFT JOIN etaxonomy ON etaxonomy.irn = {table_name}.indexlot_taxonomy_irn'
+
 if __name__ == "__main__":
     luigi.run(main_task_cls=IndexLotDatasetTask)

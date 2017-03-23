@@ -275,5 +275,22 @@ class SpecimenDatasetTask(DatasetTask):
         MetadataField('ecatalogue', 'CardParasiteRef', 'parasite_taxonomy_irn', "INTEGER"),
     ]
 
+    def dataset_record_types(self):
+        """
+        Override the dataset record types, as we don;t actually include the
+        And of the parent types:
+            Bird Group Parent
+            Mammal Group Parent
+        :return:
+        """
+        parent_types = [
+            'Bird Group Parent',
+            'Mammal Group Parent',
+        ]
+        record_types = super(SpecimenDatasetTask, self).dataset_record_types()
+        # Return a list with parent types removed
+        return [record_type for record_type in record_types if record_type not in parent_types]
+
+
 if __name__ == "__main__":
     luigi.run(main_task_cls=SpecimenDatasetTask)

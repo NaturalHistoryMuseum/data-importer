@@ -18,6 +18,7 @@ from ke2sql.lib.config import Config
 from ke2sql.lib.field import Field, MetadataField
 from ke2sql.lib.filter import Filter
 from ke2sql.lib.ckan import ckan_get_resource, ckan_get_package, ckan_create_package
+from ke2sql.lib.db import db_view_exists
 from ke2sql.tasks.keemu import KeemuCopyTask, KeemuUpsertTask
 
 
@@ -33,6 +34,10 @@ class DatasetTask(PostgresQuery):
     limit = luigi.IntParameter(default=None, significant=False)
     # Import method - copy or upsert
     bulk_copy = luigi.BoolParameter(default=False, significant=False)
+    # Specify dry run to just create materialized views, and skip
+    # Dataset creation - useful if just want to create view
+    # And copy into an existing dataset
+    dry_run = luigi.BoolParameter(default=False, significant=False)
 
     # Luigi Postgres database connections
     host = Config.get('database', 'host')
@@ -41,6 +46,8 @@ class DatasetTask(PostgresQuery):
     password = Config.get('database', 'password')
 
     resource_type = 'csv'
+    # Allow adding custom joins for datasets
+    dataset_join = ''
 
     # List of all fields, as tuples:
     #     (KE EMu field, Dataset field)
@@ -67,7 +74,7 @@ class DatasetTask(PostgresQuery):
         Filter('emultimedia', 'GenDigitalMediaId', [
             (is_not, None),
             (ne, 'Pending')
-        ])
+        ]),
     ]
 
     @abc.abstractproperty
@@ -118,38 +125,58 @@ class DatasetTask(PostgresQuery):
         Query for building materialised view
         :return:
         """
-
-        # FIXME: BUILD FROM PARTS - select, from, where
-
-
-        return 'SELECT 1'
-
         connection = self.output().connect()
-        if self.view_exists(self.dataset_id, connection):
-            logger.info('Refreshing materialized view %s', self.dataset_id)
-            query = "REFRESH MATERIALIZED VIEW {dataset_id}".format(
-                dataset_id=self.dataset_id
+
+        view_name = self.resource_id
+        # If this is a dry run, we'll append -view to the name so there's
+        # no conflicts with existing datasets
+        if self.dry_run:
+            view_name += '-view'
+
+        if db_view_exists(self.resource_id, connection):
+            logger.info('Refreshing materialized view %s', self.resource_id)
+            query = 'REFRESH MATERIALIZED VIEW "{resource_id}"'.format(
+                resource_id=self.resource_id
             )
         else:
-            logger.info('Creating materialized view %s', self.dataset_id)
+            logger.info('Creating materialized view %s', self.resource_id)
+            # Get record types
+            record_types = self.dataset_record_types()
+            if type(record_types) == list:
+                record_types_filter = "IN ('{record_types}')".format(
+                    record_types="','".join(record_types)
+                )
+            else:
+                record_types_filter = "= '{record_types}'".format(record_types=record_types)
+
+            # Get the properties to insert - excluding emultimedia as these won't be added
+            # to the properties - there are in their own jsonb collection
+            properties = [(f.module_name, f.field_alias) for f in self.fields if f.module_name != 'emultimedia']
+            # Dedupe properties
+            properties = list(set(properties))
+            # Replace table name if dataset join
+            dataset_join = self.dataset_join.format(table_name=self.table)
+
             query = """
-                CREATE MATERIALIZED VIEW {dataset_id} AS
-                (SELECT {table}.irn as _id,
-                (SELECT jsonb_agg(properties) from emultimedia where emultimedia.deleted is null AND emultimedia.irn = ANY({table}.multimedia_irns)) as multimedia,
-                {properties} from {table}
-                     LEFT JOIN etaxonomy ON etaxonomy.irn = {table}.indexlot_taxonomy_irn
-                WHERE record_type = '{record_type}' and (embargo_date is null or embargo_date < now()) and {table}.deleted is null)
+                CREATE MATERIALIZED VIEW "{resource_id}" AS
+                (SELECT {table_name}.irn as _id,
+                (SELECT jsonb_agg(properties) from emultimedia where emultimedia.deleted is null AND emultimedia.irn = ANY({table_name}.multimedia_irns)) as multimedia,
+                {properties} from {table_name} {dataset_join}
+                WHERE {table_name}.record_type {record_types_filter} and ({table_name}.embargo_date is null or {table_name}.embargo_date < now()) and {table_name}.deleted is null)
                 """.format(
-                record_type=self.record_type,
-                dataset_id=self.dataset_id,
-                properties=','.join(map(lambda p: '{0}.properties->\'{1}\' as "{1}"'.format(p[0], p[1]), self._dest_properties)),
-                table=self.table
+                resource_id=self.resource_id,
+                properties=','.join(map(lambda p: '{0}.properties->\'{1}\' as "{1}"'.format(p[0], p[1]), properties)),
+                table_name=self.table,
+                record_types_filter=record_types_filter,
+                dataset_join=dataset_join
             )
         return query
 
     def __init__(self, *args, **kwargs):
         super(DatasetTask, self).__init__(*args, **kwargs)
-        self.create_ckan_dataset()
+        # Try and create CKAN datasets if dry run isn't set
+        if not self.dry_run:
+            self.create_ckan_dataset()
 
     def create_ckan_dataset(self):
         """
@@ -193,12 +220,37 @@ class DatasetTask(PostgresQuery):
             ckan_create_package(pkg_dict)
 
     def requires(self):
+        # Select import class - upsert (default) or bulk copy
+        if self.bulk_copy:
+            # Only run bulk export if the data parameter matches the full export date
+            # Otherwise there is a risk of dropping all the data, and
+            # rebuilding from an update-only export
+            full_export_date = Config.get('keemu', 'full_export_date')
+            if full_export_date != self.date:
+                raise Exception('Bulk copy import requested, but data param {date} does not match date of last full export {full_export_date}'.format(
+                    date=self.date,
+                    full_export_date=full_export_date
+                ))
+            cls = KeemuUpsertTask
+        else:
+            cls = KeemuCopyTask
+
         # Set comprehension - build set of all modules used in this dataset
         modules = list({f.module_name for f in self.fields})
-        cls = KeemuCopyTask if self.bulk_copy else KeemuUpsertTask
         for module in modules:
             logger.info('Importing %s with %s method', module, cls)
             yield cls(module_name=module, date=self.date, limit=self.limit)
+
+    def dataset_record_types(self):
+        """
+        Loop through all the filters, finding the one related to record type
+        By default, all record types used in the import filter will be used to
+        Build the dataset view
+        :return:
+        """
+        for filter_ in self.filters:
+            if filter_.field_name == 'ColRecordType':
+                return filter_.filters[0][1]
 
 
 
