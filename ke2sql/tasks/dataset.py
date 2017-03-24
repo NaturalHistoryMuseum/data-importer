@@ -118,6 +118,11 @@ class DatasetTask(PostgresQuery):
         """
         return 'ecatalogue'
 
+    def pre_query(self, connection):
+        """
+        Override to perform custom queries.
+        """
+
     @property
     def query(self):
         """
@@ -125,6 +130,8 @@ class DatasetTask(PostgresQuery):
         :return:
         """
         connection = self.output().connect()
+        # Run any prepatory SQL
+        self.pre_query(connection)
 
         # If this is a dry run, we'll use package name +view to the name so there's
         # no conflicts with existing datasets, and easy to see which is which
@@ -141,7 +148,7 @@ class DatasetTask(PostgresQuery):
             compiled_query = compile(query)
             # print(compiled_query)
             # Use the compiled query in materialised view
-            return 'CREATE MATERIALIZED VIEW "{view_name}" AS ({query} LIMIT 1000)'.format(
+            return 'CREATE MATERIALIZED VIEW "{view_name}" AS ({query})'.format(
                 view_name=view_name,
                 query=compiled_query[0] % tuple(compiled_query[1])
             )
