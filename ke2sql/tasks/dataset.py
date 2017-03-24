@@ -13,6 +13,7 @@ import luigi
 from operator import is_not, ne
 from luigi.contrib.postgres import PostgresQuery
 from prompter import yesno
+from sqlbuilder.mini import P, Q, compile
 
 from ke2sql.lib.config import Config
 from ke2sql.lib.field import Field, MetadataField
@@ -46,8 +47,6 @@ class DatasetTask(PostgresQuery):
     password = Config.get('database', 'password')
 
     resource_type = 'csv'
-    # Allow adding custom joins for datasets
-    dataset_join = ''
 
     # List of all fields, as tuples:
     #     (KE EMu field, Dataset field)
@@ -127,49 +126,26 @@ class DatasetTask(PostgresQuery):
         """
         connection = self.output().connect()
 
-        view_name = self.resource_id
-        # If this is a dry run, we'll append -view to the name so there's
-        # no conflicts with existing datasets
-        if self.dry_run:
-            view_name += '-view'
+        # If this is a dry run, we'll use package name +view to the name so there's
+        # no conflicts with existing datasets, and easy to see which is which
+        view_name = self.package_name + '-view' if self.dry_run else self.resource_id
 
-        if db_view_exists(self.resource_id, connection):
+        if db_view_exists(view_name, connection):
             logger.info('Refreshing materialized view %s', self.resource_id)
-            query = 'REFRESH MATERIALIZED VIEW "{resource_id}"'.format(
-                resource_id=self.resource_id
+            query = 'REFRESH MATERIALIZED VIEW "{view_name}"'.format(
+                view_name=view_name
             )
         else:
-            logger.info('Creating materialized view %s', self.resource_id)
-            # Get record types
-            record_types = self.dataset_record_types()
-            if type(record_types) == list:
-                record_types_filter = "IN ('{record_types}')".format(
-                    record_types="','".join(record_types)
-                )
-            else:
-                record_types_filter = "= '{record_types}'".format(record_types=record_types)
-
-            # Get the properties to insert - excluding emultimedia as these won't be added
-            # to the properties - there are in their own jsonb collection
-            properties = [(f.module_name, f.field_alias) for f in self.fields if f.module_name != 'emultimedia']
-            # Dedupe properties
-            properties = list(set(properties))
-            # Replace table name if dataset join
-            dataset_join = self.dataset_join.format(table_name=self.table)
-
-            query = """
-                CREATE MATERIALIZED VIEW "{resource_id}" AS
-                (SELECT {table_name}.irn as _id,
-                (SELECT jsonb_agg(properties) from emultimedia where emultimedia.deleted is null AND emultimedia.irn = ANY({table_name}.multimedia_irns)) as multimedia,
-                {properties} from {table_name} {dataset_join}
-                WHERE {table_name}.record_type {record_types_filter} and ({table_name}.embargo_date is null or {table_name}.embargo_date < now()) and {table_name}.deleted is null)
-                """.format(
-                resource_id=self.resource_id,
-                properties=','.join(map(lambda p: '{0}.properties->\'{1}\' as "{1}"'.format(p[0], p[1]), properties)),
-                table_name=self.table,
-                record_types_filter=record_types_filter,
-                dataset_join=dataset_join
+            logger.info('Creating materialized view %s', view_name)
+            query = self.get_query()
+            compiled_query = compile(query)
+            # print(compiled_query)
+            # Use the compiled query in materialised view
+            return 'CREATE MATERIALIZED VIEW "{view_name}" AS ({query} LIMIT 1000)'.format(
+                view_name=view_name,
+                query=compiled_query[0] % tuple(compiled_query[1])
             )
+
         return query
 
     def __init__(self, *args, **kwargs):
@@ -240,6 +216,48 @@ class DatasetTask(PostgresQuery):
         for module in modules:
             logger.info('Importing %s with %s method', module, cls)
             yield cls(module_name=module, date=self.date, limit=self.limit)
+
+    def get_query(self):
+        """
+        Get query as a tuple, which can be over-ridden and altered by datasets
+        :return: dict query
+        """
+        record_types = self.dataset_record_types()
+        # Get the properties to insert - excluding emultimedia as these won't be added
+        # to the properties - there are in their own jsonb collection
+        properties = [(f.module_name, f.field_alias) for f in self.fields if f.module_name != 'emultimedia']
+        # Dedupe properties
+        properties = list(set(properties))
+
+        # Create properties select, build list of: ecatalogue.properties->\'scientificName\'  as "scientificName"
+        properties_select = list(map(lambda p: '{0}.properties->\'{1}\' as "{1}"'.format(p[0], p[1]), properties))
+        # Construct record type filter
+        # record_types can be list, in which case change to IN ('Type A', 'Type B')
+        if type(record_types) == list:
+            record_type_operator = 'IN'
+            record_types = "('{0}')".format("','".join(record_types))
+        else:
+            record_type_operator = "="
+            record_types = "'{0}'".format(record_types)
+
+        sql = [
+            'SELECT', [
+                self.table + '.irn as _id',
+                '(SELECT jsonb_agg(properties) from emultimedia where emultimedia.deleted is null AND emultimedia.irn = ANY(' + self.table + '.multimedia_irns)) as multimedia',
+            ] + properties_select,
+            'FROM', [
+                self.table
+            ],
+            'WHERE', [
+                self.table + '.record_type', record_type_operator, P(record_types), 'AND',
+                self.table + '.embargo_date', 'IS', None, 'OR',
+                self.table + '.embargo_date', '<', 'NOW()', 'AND',
+                self.table + '.deleted', 'IS', None,
+            ]
+        ]
+
+        # Use helper Q, to allow modifications through the API
+        return Q(sql)
 
     def dataset_record_types(self):
         """

@@ -291,6 +291,18 @@ class SpecimenDatasetTask(DatasetTask):
         # Return a list with parent types removed
         return [record_type for record_type in record_types if record_type not in parent_types]
 
+    def get_query(self):
+        """
+        Override get_query to add join to etaxonomy table
+        :return:
+        """
+        query = super(SpecimenDatasetTask, self).get_query()
+        # Add GIS fields
+        query.insert_after(
+            ['FROM', 'ecatalogue'],
+            ['LEFT JOIN', 'etaxonomy', 'ON', 'etaxonomy.irn = ' + self.table + '.indexlot_taxonomy_irn']
+        )
+        return query
 
 if __name__ == "__main__":
     luigi.run(main_task_cls=SpecimenDatasetTask)
