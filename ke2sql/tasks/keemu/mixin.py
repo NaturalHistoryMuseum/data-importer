@@ -17,11 +17,6 @@ from ke2sql.tasks.keemu.file import FileTask
 logger = logging.getLogger('luigi-interface')
 
 
-# FIXME: Query
-# FIXME: Create MAT VIEW
-# FIXME: Delete
-
-
 class KeemuMixin(object):
     """
     Mixin class for processing a KE EMu export file
