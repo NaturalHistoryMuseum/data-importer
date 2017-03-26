@@ -4,7 +4,3 @@
 Created by 'bens3' on 2013-06-21.
 Copyright (c) 2013 'bens3'. All rights reserved.
 """
-
-from sqlalchemy.ext.declarative import declarative_base
-
-Base = declarative_base()

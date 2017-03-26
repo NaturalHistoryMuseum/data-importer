@@ -1,3 +1,6 @@
--e git+https://github.com/NaturalHistoryMuseum/KEParser.git#egg=KEParser
-luigi==1.0.12
-SQLAlchemy==0.7.8
+ckanapi==4.0
+click==6.7
+prompter==0.3.10
+psycopg2==2.6.2
+SQLAlchemy==1.1.5
+sqlbuilder==0.7.10.6
