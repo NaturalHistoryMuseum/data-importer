@@ -12,6 +12,7 @@ from operator import eq, is_not
 from ke2sql.tasks.dataset import DatasetTask
 from ke2sql.lib.field import Field, MetadataField
 from ke2sql.lib.filter import Filter
+from ke2sql.lib.config import Config
 
 
 class IndexLotDatasetTask(DatasetTask):
@@ -21,7 +22,7 @@ class IndexLotDatasetTask(DatasetTask):
     package_title = "Index Lot collection"
 
     resource_title = 'Index Lots'
-    resource_id = 'bb909597-dedf-427d-8c04-4c02b3a24db3'
+    resource_id = Config.get('resource_ids', 'indexlot')
     resource_description = 'Species level record denoting the presence of a taxon in the Museum collection'
 
     fields = DatasetTask.fields + [
