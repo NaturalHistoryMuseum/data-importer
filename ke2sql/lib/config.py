@@ -6,6 +6,7 @@ Created by Ben Scott on '20/02/2017'.
 
 import os
 import six
+
 try:
     import configparser
 except ImportError:

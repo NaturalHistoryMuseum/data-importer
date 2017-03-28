@@ -4,3 +4,5 @@ prompter==0.3.10
 psycopg2==2.7.1
 SQLAlchemy==1.1.5
 sqlbuilder==0.7.10.6
+luigi==2.6.1
+six==1.10.0
