@@ -13,6 +13,7 @@ from ke2sql.tasks.dataset import DatasetTask
 from ke2sql.lib.operators import is_one_of, is_not_one_of
 from ke2sql.lib.field import Field, MetadataField
 from ke2sql.lib.filter import Filter
+from ke2sql.lib.config import Config
 
 
 class SpecimenDatasetTask(DatasetTask):
@@ -22,7 +23,7 @@ class SpecimenDatasetTask(DatasetTask):
     package_title = "Collection specimens"
 
     resource_title = 'Specimen records'
-    resource_id = '05ff2255-c38a-40c9-b657-4ccb55ab2feb'
+    resource_id = Config.get('resource_ids', 'specimen')
     resource_description = 'Specimen records'
     resource_type = 'dwc'  # Darwin Core
 

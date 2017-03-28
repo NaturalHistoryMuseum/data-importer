@@ -22,7 +22,7 @@ class Parser(object):
     def __iter__(self):
         return self
 
-    def __next__(self):
+    def next(self):
         for record in self._parse():
             return record
         raise StopIteration()
@@ -42,3 +42,6 @@ class Parser(object):
                 # Replace field name indexes
                 field_name = self.re_field_name_index.sub('', field_name)
                 setattr(record, field_name, value)
+
+    # Python 3.X Compatibility
+    __next__ = next

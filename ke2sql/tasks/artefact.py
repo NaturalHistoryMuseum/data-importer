@@ -14,6 +14,7 @@ from operator import eq, is_not
 from ke2sql.tasks.dataset import DatasetTask
 from ke2sql.lib.field import Field
 from ke2sql.lib.filter import Filter
+from ke2sql.lib.config import Config
 
 
 class ArtefactDatasetTask(DatasetTask):
@@ -23,7 +24,7 @@ class ArtefactDatasetTask(DatasetTask):
     package_title = "Artefacts"
 
     resource_title = 'Artefacts'
-    resource_id = 'ec61d82a-748d-4b53-8e99-3e708e76bc4d'
+    resource_id = Config.get('resource_ids', 'artefact')
     resource_description = 'Museum Artefacts'
 
     fields = DatasetTask.fields + [
