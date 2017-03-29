@@ -32,7 +32,7 @@ class KeemuMixin(object):
 
     # Luigi Postgres database connections
     host = Config.get('database', 'host')
-    database = Config.get('database', 'database')
+    database = Config.get('database', 'datastore_dbname')
     user = Config.get('database', 'username')
     password = Config.get('database', 'password')
 

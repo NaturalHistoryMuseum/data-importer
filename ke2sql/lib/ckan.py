@@ -5,10 +5,11 @@ Created by Ben Scott on '21/03/2017'.
 """
 
 import ckanapi
+import psycopg2
 from ke2sql.lib.config import Config
 
 
-remote_ckan = ckanapi.RemoteCKAN(Config.get('ckan', 'site_url'), apikey=Config.get('ckan', 'api_key'))
+
 
 
 def ckan_get_package(package_name):
@@ -39,3 +40,24 @@ def ckan_get_resource(resource_id):
 
 def ckan_create_package(pkg_dict):
     remote_ckan.action.package_create(**pkg_dict)
+
+
+def ckan_get_api_key():
+    connection = psycopg2.connect(
+        host=Config.get('database', 'host'),
+        port=Config.get('database', 'port'),
+        database=Config.get('database', 'ckan_dbname'),
+        user=Config.get('database', 'username'),
+        password=Config.get('database', 'password')
+    )
+    cursor = connection.cursor()
+    sql = """ SELECT apikey
+              FROM public.user
+              WHERE name = %s;
+                  """
+    cursor.execute(sql, (Config.get('ckan', 'api_user'),))
+    result = cursor.fetchone()
+    return result[0]
+
+
+remote_ckan = ckanapi.RemoteCKAN(Config.get('ckan', 'site_url'), apikey=ckan_get_api_key())
