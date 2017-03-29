@@ -54,7 +54,7 @@ def ckan_get_api_key():
     sql = """ SELECT apikey
               FROM public.user
               WHERE name = %s;
-                  """
+          """
     cursor.execute(sql, (Config.get('ckan', 'api_user'),))
     result = cursor.fetchone()
     return result[0]
