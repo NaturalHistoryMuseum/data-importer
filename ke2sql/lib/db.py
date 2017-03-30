@@ -45,15 +45,15 @@ def db_drop_table(table_name, connection):
     connection.commit()
 
 
-def db_delete_record(table_name, irn, connection):
+def db_delete_record(table_name, irn, cursor):
     """
     Mark a record as deleted
     :param table_name
     :param irn: record irn
-    :param connection:
+    :param cursor:
     :return:
     """
-    sql = "UPDATE {table_name} SET (deleted) = (NOW()) WHERE {table_name}.irn = %(irn)s".format(
+    sql = "UPDATE {table_name} SET (deleted) = (NOW()) WHERE {table_name}.irn = %s".format(
         table_name=table_name,
     )
-    connection.execute(sql, irn=irn)
+    cursor.execute(sql, (irn,))

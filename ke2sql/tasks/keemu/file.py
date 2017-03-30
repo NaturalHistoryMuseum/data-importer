@@ -16,12 +16,12 @@ class FileTask(luigi.ExternalTask):
     Luigi requires LocalTarget tasks to be  external tasks
     """
     date = luigi.IntParameter()
-    module_name = luigi.Parameter()
+    file_name = luigi.Parameter()
 
     @property
     def file_path(self):
-        file_name = '{model_name}.export.{date}.gz'.format(
-            model_name=self.module_name,
+        file_name = '{file_name}.{date}.gz'.format(
+            file_name=self.file_name,
             date=self.date
         )
         return os.path.join(Config.get('keemu', 'export_dir'), file_name)

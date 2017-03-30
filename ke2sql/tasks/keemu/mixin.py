@@ -110,7 +110,10 @@ class KeemuMixin(object):
         self.task_id = task_id_str('KeemuImportTask', self.to_str_params(only_significant=True))
 
     def requires(self):
-        return FileTask(module_name=self.table, date=self.date)
+        return FileTask(
+            file_name='{table}.export'.format(table=self.table),
+            date=self.date
+        )
 
     def records(self):
         start_time = time.time()
