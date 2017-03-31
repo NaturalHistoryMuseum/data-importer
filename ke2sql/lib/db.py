@@ -57,3 +57,17 @@ def db_delete_record(table_name, irn, cursor):
         table_name=table_name,
     )
     cursor.execute(sql, (irn,))
+
+
+def db_get_table_update_markers(connection):
+    """
+    Get update markers from the table updates table
+    :param connection:
+    :return:
+    """
+    cursor = connection.cursor()
+    sql = """ SELECT update_id
+              FROM table_updates
+          """
+    cursor.execute(sql)
+    return cursor.fetchall()
