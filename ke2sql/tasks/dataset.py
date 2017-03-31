@@ -33,12 +33,13 @@ class DatasetTask(PostgresQuery):
     date = luigi.IntParameter()
     # Limit - only used when testing
     limit = luigi.IntParameter(default=None, significant=False)
-    # Import method - copy or upsert
-    bulk_copy = luigi.BoolParameter(default=False, significant=False)
-    # Specify dry run to just create materialized views, and skip
+
+    # Specify view only to just create materialized views, and skip
     # Dataset creation - useful if just want to create view
     # And copy into an existing dataset
-    dry_run = luigi.BoolParameter(default=False, significant=False)
+    view_only = luigi.BoolParameter(default=False, significant=False)
+    # Do we want to refresh view on completion of import
+    refresh_view = luigi.BoolParameter(default=False, significant=False)
 
     # Luigi Postgres database connections
     host = Config.get('database', 'host')
@@ -101,17 +102,6 @@ class DatasetTask(PostgresQuery):
         return None
 
     @property
-    def update_id(self):
-        """
-        Ensure update ID is always a unique identifier
-        So tasks always runs, and there's no insert conflicts on touch()
-        """
-        return '{0}__{1}'.format(
-            self.task_id,
-            time.time()
-        )
-
-    @property
     def table(self):
         """
         Base table is always ecatalogue
@@ -130,12 +120,12 @@ class DatasetTask(PostgresQuery):
         :return:
         """
         connection = self.output().connect()
-        # Run any prepatory SQL
+        # Run any preparatory SQL
         self.pre_query(connection)
 
         # If this is a dry run, we'll use package name +view to the name so there's
         # no conflicts with existing datasets, and easy to see which is which
-        view_name = self.package_name + '-view' if self.dry_run else self.resource_id
+        view_name = self.package_name + '-view' if self.view_only else self.resource_id
 
         if db_view_exists(view_name, connection):
             logger.info('Refreshing materialized view %s', self.resource_id)
@@ -157,8 +147,8 @@ class DatasetTask(PostgresQuery):
 
     def __init__(self, *args, **kwargs):
         super(DatasetTask, self).__init__(*args, **kwargs)
-        # Try and create CKAN datasets if dry run isn't set
-        if not self.dry_run:
+        # Try and create CKAN datasets if view_only isn't set
+        if not self.view_only:
             self.create_ckan_dataset()
 
     def create_ckan_dataset(self):
@@ -203,26 +193,15 @@ class DatasetTask(PostgresQuery):
             ckan_create_package(pkg_dict)
 
     def requires(self):
-        # Select import class - upsert (default) or bulk copy
-        if self.bulk_copy:
-            # Only run bulk export if the data parameter matches the full export date
-            # Otherwise there is a risk of dropping all the data, and
-            # rebuilding from an update-only export
-            full_export_date = Config.get('keemu', 'full_export_date')
-            if full_export_date != self.date:
-                raise Exception('Bulk copy import requested, but data param {date} does not match date of last full export {full_export_date}'.format(
-                    date=self.date,
-                    full_export_date=full_export_date
-                ))
-            cls = KeemuUpsertTask
-        else:
-            cls = KeemuCopyTask
-
+        full_export_date = Config.getint('keemu', 'full_export_date')
+        # If this is the full export date, then use the bulk copy class
+        cls = KeemuCopyTask if full_export_date == self.date else KeemuUpsertTask
         # Set comprehension - build set of all modules used in this dataset
         modules = list({f.module_name for f in self.fields})
         for module in modules:
             logger.info('Importing %s with %s method', module, cls)
             yield cls(module_name=module, date=self.date, limit=self.limit)
+        return []
 
     def get_query(self):
         """
@@ -276,8 +255,3 @@ class DatasetTask(PostgresQuery):
         for filter_ in self.filters:
             if filter_.field_name == 'ColRecordType':
                 return filter_.filters[0][1]
-
-
-
-
-

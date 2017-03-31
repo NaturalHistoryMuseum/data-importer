@@ -292,27 +292,27 @@ class SpecimenDatasetTask(DatasetTask):
         # Return a list with parent types removed
         return [record_type for record_type in record_types if record_type not in parent_types]
 
-    # def pre_query(self, connection):
-    #     """
-    #     Queries to tidy up the data before building the dataset view
-    #     """
-    #     cursor = connection.cursor()
-    #
-    #     max_lat_lon = [
-    #         ('decimalLatitude', 90),
-    #         ('decimalLongitude', 180)
-    #     ]
-    #     # Generate SQL statements for removing all properties
-    #     for property_name, max_value in max_lat_lon:
-    #         sql = """
-    #             UPDATE ecatalogue SET properties = properties - '{property_name}'
-    #             WHERE cast(ecatalogue.properties->>'{property_name}' as FLOAT8) < -{max_value}
-    #             OR cast(ecatalogue.properties->>'{property_name}' as FLOAT8) > {max_value}
-    #         """.format(
-    #             property_name=property_name,
-    #             max_value=max_value
-    #         )
-    #         cursor.execute(sql)
+    def pre_query(self, connection):
+        """
+        Queries to tidy up the data before building the dataset view
+        """
+        cursor = connection.cursor()
+
+        max_lat_lon = [
+            ('decimalLatitude', 90),
+            ('decimalLongitude', 180)
+        ]
+        # Generate SQL statements for removing all properties
+        for property_name, max_value in max_lat_lon:
+            sql = """
+                UPDATE ecatalogue SET properties = properties - '{property_name}'
+                WHERE cast(ecatalogue.properties->>'{property_name}' as FLOAT8) < -{max_value}
+                OR cast(ecatalogue.properties->>'{property_name}' as FLOAT8) > {max_value}
+            """.format(
+                property_name=property_name,
+                max_value=max_value
+            )
+            cursor.execute(sql)
 
     def get_query(self):
         """

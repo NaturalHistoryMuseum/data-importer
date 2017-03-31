@@ -30,6 +30,9 @@ class DeleteTask(PostgresQuery):
     table = 'eaudit'
     query = None
 
+    # Run delete before all dataset tasks
+    priority = 100
+
     def requires(self):
         return FileTask(
             file_name='eaudit.deleted-export',
@@ -54,7 +57,7 @@ class DeleteTask(PostgresQuery):
             db_delete_record(module_name, irn, cursor)
 
         # mark as complete in same transaction
-        # self.output().touch(self.connection)
+        self.output().touch(connection)
 
         # commit and close connection
         connection.commit()
