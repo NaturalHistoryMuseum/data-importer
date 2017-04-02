@@ -27,7 +27,7 @@ class TestEmbargo(BaseTestCase):
         self.assertRecordExists('ecatalogue', irn)
         self.assertDatasetRecordDoesNotExist('specimen', irn)
 
-    def test_past_embargoed_specimen_is_released_in_dataset(self):
+    def test_expired_embargoed_specimen_is_released_in_dataset(self):
         irn = 15
         self.assertRecordExists('ecatalogue', irn)
         self.assertDatasetRecordExists('specimen', irn)
