@@ -136,7 +136,7 @@ class DatasetTask(PostgresQuery):
             logger.info('Creating materialized view %s', view_name)
             query = self.get_query()
             compiled_query = compile(query)
-            # print(compiled_query)
+
             # Use the compiled query in materialised view
             return 'CREATE MATERIALIZED VIEW "{view_name}" AS ({query})'.format(
                 view_name=view_name,

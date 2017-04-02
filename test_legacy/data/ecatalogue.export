@@ -2,8 +2,11 @@ rownum=1
 irn:1=1
 AdmDateInserted:1=1999-01-31
 AdmDateModified:1=1999-01-31
-ColRecordType:1=Specimen
+ColRecordType:1=Artefact
 ColDepartment:1=CD1
 MulMultiMediaRef:1=100
 EntRelOtherObjectRef:1=100
+SecRecordStatus:1=Active
+AdmGUIDPreferredValue:1=GUID
+AdmPublishWebNoPasswordFlag:1=Y
 ###

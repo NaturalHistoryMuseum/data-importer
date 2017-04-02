@@ -18,3 +18,7 @@ class Record(object):
                     self.__dict__[key] = [self.__dict__[key], value]
             else:
                 self.__dict__[key] = value
+
+        # if key in ['NhmSecEmbargoDate', 'NhmSecEmbargoExtensionDate']:
+        #     print(key)
+        #     print(value)

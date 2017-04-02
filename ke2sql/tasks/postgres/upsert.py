@@ -4,10 +4,15 @@
 Created by Ben Scott on '03/03/2017'.
 """
 
+import logging
 from psycopg2.extras import Json as PGJson
 from luigi.contrib.postgres import CopyToTable as LuigiCopyToTable
 from ke2sql.lib.db import db_table_exists, db_delete_record
 from ke2sql.lib.helpers import get_dataset_tasks
+
+
+logger = logging.getLogger('luigi-interface')
+
 
 class PostgresUpsertMixin(LuigiCopyToTable):
     """
@@ -26,7 +31,7 @@ class PostgresUpsertMixin(LuigiCopyToTable):
         Tries inserting, and on conflict performs update with modified date
         :return: SQL
         """
-        metadata_fields = [f.field_alias for f in self.get_metadata_fields()]
+        metadata_fields = [f for f, _ in self.get_metadata_columns()]
         insert_fields = ['irn', 'properties'] + metadata_fields
         update_fields = ['properties'] + metadata_fields
         sql = """
