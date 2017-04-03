@@ -20,6 +20,7 @@ from ke2sql.tasks.artefact import ArtefactDatasetTask
 from ke2sql.lib.config import Config
 from ke2sql.lib.helpers import get_dataset_tasks
 
+
 class MainTask(luigi.Task):
     """
     Convenience function for running all dataset and delete tasks

@@ -56,5 +56,9 @@ class TestFilters(BaseTestCase):
         irn = 2
         self.assertRecordDoesNotExist('emultimedia', irn)
 
+    def test_non_web_publishable_taxonomy_record_is_not_imported(self):
+        irn = 2
+        self.assertRecordDoesNotExist('etaxonomy', irn)
+
 if __name__ == '__main__':
     unittest.main()

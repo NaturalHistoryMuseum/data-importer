@@ -5,27 +5,16 @@ Created by Ben Scott on '31/03/2017'.
 """
 
 import unittest
+from ke2sql.tests import BaseTestCase
 
 
-class TestEmbargo(unittest.TestCase):
+class TestUnpublish(BaseTestCase):
 
-    def setUp(self):
-        pass
+    def test_unpublished_specimen_previously_published_is_marked_deleted(self):
+        self.assertRecordIsDeleted('ecatalogue', 19)
 
-    def test_embargoed_specimen_is_not_released(self):
-        pass
-
-    def test_embargoed_indexlot_is_not_released(self):
-        pass
-
-    def test_embargoed_multimedia_is_not_released(self):
-        pass
-
-    def test_specimen_embargoed_after_release_is_removed(self):
-        pass
-
-    def test_indexlot_embargoed_after_release_is_removed(self):
-        pass
+    def test_unpublished_specimen_previously_published_is_not_released(self):
+        self.assertDatasetRecordDoesNotExist('specimen', 19)
 
 if __name__ == '__main__':
     unittest.main()

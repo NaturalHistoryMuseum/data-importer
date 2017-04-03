@@ -85,7 +85,7 @@ class IndexLotDatasetTask(DatasetTask):
         # Add the join to the etaxonomy module
         query.insert_after(
             ['FROM', 'ecatalogue'],
-            ['LEFT JOIN', 'etaxonomy', 'ON', 'etaxonomy.irn = ' + self.table + '.indexlot_taxonomy_irn']
+            ['LEFT JOIN', 'etaxonomy', 'ON', 'etaxonomy.irn = ' + self.table + '.indexlot_taxonomy_irn', 'AND', 'etaxonomy.deleted IS NULL']
         )
         return query
 

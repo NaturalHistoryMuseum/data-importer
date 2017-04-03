@@ -62,14 +62,6 @@ class KeemuMixin(object):
         """
         return self.module_name
 
-    @abc.abstractmethod
-    def delete_record(self, record):
-        """
-        Method for deleting records - Over-ridden in mixins
-        :param record:
-        :return: None
-        """
-
     def __init__(self, *args, **kwargs):
         super(KeemuMixin, self).__init__(*args, **kwargs)
         # Get all fields and filters for this module

@@ -4,8 +4,6 @@
 Created by Ben Scott on '31/03/2017'.
 """
 
-import os
-import luigi
 import unittest
 
 
@@ -31,6 +29,14 @@ class TestEmbargo(BaseTestCase):
         irn = 15
         self.assertRecordExists('ecatalogue', irn)
         self.assertDatasetRecordExists('specimen', irn)
+
+    def test_embargoed_multimedia_record_has_embargoed_date(self):
+        record = self._get_record('emultimedia', irn=3)
+        self.assertIsNotNone(record['embargo_date'])
+
+    def test_specimen_record_does_not_used_embargoed_multimedia(self):
+        record = self._get_dataset_record('specimen', irn=20)
+        self.assertIsNone(record['multimedia'])
 
 if __name__ == '__main__':
     unittest.main()

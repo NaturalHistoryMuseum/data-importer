@@ -11,29 +11,29 @@ import psycopg2
 from psycopg2.extras import DictCursor
 
 from ke2sql.lib.config import Config
-from ke2sql.lib.helpers import get_dataset_tasks, list_all_modules
+from ke2sql.lib.helpers import get_dataset_tasks, list_all_modules, get_file_export_dates
+from ke2sql.tasks.delete import DeleteTask
+from ke2sql.tests.test_task import TestTask
 
 
 class BaseTestCase(unittest.TestCase):
 
-    test_export_date = '20170101'
+    connection = None
+    cursor = None
 
-    def setUp(self):
-        self.connection = psycopg2.connect(
+    @classmethod
+    def setUpClass(cls):
+        cls.connection = psycopg2.connect(
             host=Config.get('database', 'host'),
             port=Config.get('database', 'port'),
             database=Config.get('database', 'datastore_dbname'),
             user=Config.get('database', 'username'),
             password=Config.get('database', 'password')
         )
-        self.cursor = self.connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        params = {
-            'date': self.test_export_date,
-        }
-        self.tasks = []
-        for task in get_dataset_tasks():
-            self.tasks.append(task(**params))
-        luigi.build(self.tasks, local_scheduler=True)
+        cls.cursor = cls.connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        # Run test tasks for all the export dates
+        for export_date in get_file_export_dates():
+            luigi.build([TestTask(date=int(export_date))], local_scheduler=True)
 
     def _get_record(self, table_name, **kwargs):
 
@@ -66,13 +66,18 @@ class BaseTestCase(unittest.TestCase):
         record = self._get_dataset_record(dataset_name, irn)
         self.assertIsNone(record)
 
-    def tearDown(self):
+    def assertRecordIsDeleted(self, table_name, irn):
+        record = self._get_record(table_name, irn=irn)
+        self.assertIsNotNone(record['deleted'])
+
+    @classmethod
+    def tearDownClass(cls):
         # Delete all table updates
-        self.cursor.execute('DELETE FROM table_updates')
+        cls.cursor.execute('DELETE FROM table_updates')
         # Delete all info in the module tables
         # for module_name in list_all_modules():
         #     self.cursor.execute('DELETE FROM "{module_name}"'.format(
         #         module_name=module_name
         #     ))
-        self.connection.commit()
-        self.connection.close()
+        cls.connection.commit()
+        cls.connection.close()

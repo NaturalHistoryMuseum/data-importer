@@ -76,4 +76,4 @@ class PostgresUpsertMixin(LuigiCopyToTable):
         Mark a record as deleted
         :return: None
         """
-        db_delete_record(self.table, record.irn, self.connection)
+        db_delete_record(self.table, record.irn, self.cursor)

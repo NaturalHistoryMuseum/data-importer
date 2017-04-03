@@ -11,6 +11,7 @@ from luigi.contrib.postgres import CopyToTable as LuigiCopyToTable
 from prompter import prompt, yesno
 
 from ke2sql.lib.db import db_create_index, db_table_exists, db_drop_table
+from ke2sql.lib.config import Config
 
 
 class PostgresCopyMixin(LuigiCopyToTable):
@@ -59,7 +60,9 @@ class PostgresCopyMixin(LuigiCopyToTable):
     def run(self):
         connection = self.output().connect()
         if db_table_exists(self.table, connection):
-            if yesno('Your are performing a full import - all existing {table} data will be deleted. Are you sure you want to continue?'.format(
+            # If force_drop_table is set to True (which it it is in test.cfg) drop table
+            # Otherwise request user confirmation before dropping
+            if Config.getboolean('database', 'force_drop_table') or yesno('Your are performing a full import - all existing {table} data will be deleted. Are you sure you want to continue?'.format(
                     table=self.table
             )):
                 db_drop_table(self.table, connection)

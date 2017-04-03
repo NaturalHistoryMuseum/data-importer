@@ -66,6 +66,8 @@ class DatasetTask(PostgresQuery):
         # Will use NhmSecEmbargoExtensionDate if set; otherwise NhmSecEmbargoDate
         MetadataField('ecatalogue', 'NhmSecEmbargoDate', 'embargo_date', "DATE"),
         MetadataField('ecatalogue', 'NhmSecEmbargoExtensionDate', 'embargo_date', "DATE"),
+        MetadataField('emultimedia', 'NhmSecEmbargoDate', 'embargo_date', "DATE"),
+        MetadataField('emultimedia', 'NhmSecEmbargoExtensionDate', 'embargo_date', "DATE"),
     ]
 
     # List of filters to apply to build this dataset
@@ -136,13 +138,11 @@ class DatasetTask(PostgresQuery):
             logger.info('Creating materialized view %s', view_name)
             query = self.get_query()
             compiled_query = compile(query)
-
             # Use the compiled query in materialised view
             return 'CREATE MATERIALIZED VIEW "{view_name}" AS ({query})'.format(
                 view_name=view_name,
                 query=compiled_query[0] % tuple(compiled_query[1])
             )
-
         return query
 
     def __init__(self, *args, **kwargs):
@@ -229,15 +229,17 @@ class DatasetTask(PostgresQuery):
         sql = [
             'SELECT', [
                 self.table + '.irn as _id',
-                '(SELECT jsonb_agg(properties) from emultimedia where emultimedia.deleted is null AND emultimedia.irn = ANY(' + self.table + '.multimedia_irns)) as multimedia',
+                '(SELECT jsonb_agg(properties) from emultimedia where emultimedia.deleted is null AND (emultimedia.embargo_date IS NULL OR emultimedia.embargo_date < NOW()) AND emultimedia.irn = ANY(' + self.table + '.multimedia_irns)) as multimedia',
             ] + properties_select,
             'FROM', [
                 self.table
             ],
             'WHERE', [
                 self.table + '.record_type', record_type_operator, P(record_types), 'AND',
-                self.table + '.embargo_date', 'IS', None, 'OR',
-                self.table + '.embargo_date', '<', 'NOW()', 'AND',
+                [
+                    '(' + self.table + '.embargo_date', 'IS', None, 'OR',
+                    self.table + '.embargo_date', '<', 'NOW())'
+                ], 'AND',
                 self.table + '.deleted', 'IS', None,
             ]
         ]

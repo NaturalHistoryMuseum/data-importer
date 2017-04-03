@@ -38,6 +38,14 @@ class TestImport(BaseTestCase):
         multimedia = record['multimedia'][0]
         self.assertEqual(multimedia['assetID'], '1234')
 
+    def test_etaxonomy_record_exists(self):
+        self.assertRecordExists('etaxonomy', 1)
+
+    def test_indexlot_record_has_etaxonomy(self):
+        record = self._get_dataset_record('indexlot', 17)
+        # Check indexlot scientific name is Tree Creeper
+        # (Derived from the taxonomy record)
+        self.assertEqual(record['scientificName'], 'Certhia americana')
 
 if __name__ == '__main__':
     unittest.main()
