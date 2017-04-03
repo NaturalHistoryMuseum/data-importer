@@ -229,7 +229,7 @@ class DatasetTask(PostgresQuery):
         sql = [
             'SELECT', [
                 self.table + '.irn as _id',
-                '(SELECT jsonb_agg(properties) from emultimedia where emultimedia.deleted is null AND (emultimedia.embargo_date IS NULL OR emultimedia.embargo_date < NOW()) AND emultimedia.irn = ANY(' + self.table + '.multimedia_irns)) as multimedia',
+                '(SELECT jsonb_agg(properties) FROM emultimedia WHERE emultimedia.deleted IS NULL AND (emultimedia.embargo_date IS NULL OR emultimedia.embargo_date < NOW()) AND emultimedia.irn = ANY(' + self.table + '.multimedia_irns)) as multimedia',
             ] + properties_select,
             'FROM', [
                 self.table

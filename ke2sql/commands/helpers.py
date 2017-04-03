@@ -30,10 +30,13 @@ def get_file_import_marker_dates():
     sql = """ SELECT update_id
               FROM table_updates
           """
-    cursor.execute(sql)
-    # Parse the marker dates from each of the rows
-    # FIXME: Check all tasks have run?
-    return {int(re_date.search(r[0]).group(1)) for r in cursor.fetchall()}
+    try:
+        cursor.execute(sql)
+    except psycopg2.ProgrammingError:
+        return ()
+    else:
+        # Parse the marker dates from each of the rows
+        return {int(re_date.search(r[0]).group(1)) for r in cursor.fetchall()}
 
 
 def get_unprocessed_export_dates():
