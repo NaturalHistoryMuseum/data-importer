@@ -27,11 +27,12 @@ def run_one(local_scheduler, limit, date):
     # If we haven't specified a
     if not date:
         date = get_oldest_unprocessed_export_date()
-
     params = [
         '--date', str(date),
-        '--limit', str(limit)
     ]
+    if limit:
+        params += ['--limit', str(limit)]
+
     luigi.run(params, main_task_cls=MainTask, local_scheduler=local_scheduler)
 
 if __name__ == "__main__":
