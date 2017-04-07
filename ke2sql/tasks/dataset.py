@@ -11,22 +11,22 @@ import logging
 import abc
 import luigi
 from operator import is_not, ne
-from luigi.contrib.postgres import PostgresQuery
 from prompter import yesno
-from sqlbuilder.mini import P, Q, compile
+
 
 from ke2sql.lib.config import Config
 from ke2sql.lib.field import Field, MetadataField
 from ke2sql.lib.filter import Filter
-from ke2sql.lib.ckan import ckan_get_resource, ckan_get_package, ckan_create_package
+from ke2sql.lib.ckan import CKAN
 from ke2sql.lib.db import db_view_exists
 from ke2sql.tasks.keemu import KeemuCopyTask, KeemuUpsertTask
+from ke2sql.tasks.postgres.view import MaterialisedViewTask
 
 
 logger = logging.getLogger('luigi-interface')
 
 
-class DatasetTask(PostgresQuery):
+class DatasetTask(MaterialisedViewTask):
     """
     Base Dataset Task
     """
@@ -38,15 +38,13 @@ class DatasetTask(PostgresQuery):
     # Dataset creation - useful if just want to create view
     # And copy into an existing dataset
     view_only = luigi.BoolParameter(default=False, significant=False)
-    # Do we want to refresh view on completion of import
-    refresh_view = luigi.BoolParameter(default=False, significant=False)
 
     # Luigi Postgres database connections
     host = Config.get('database', 'host')
     database = Config.get('database', 'datastore_dbname')
     user = Config.get('database', 'username')
     password = Config.get('database', 'password')
-
+    table = 'ecatalogue'
     resource_type = 'csv'
 
     # List of all fields, as tuples:
@@ -79,6 +77,20 @@ class DatasetTask(PostgresQuery):
         ]),
     ]
 
+    # Query for building multimedia json
+    multimedia_sub_query = """
+      SELECT
+        jsonb_agg(jsonb_build_object(
+          'identifier', format('http://www.nhm.ac.uk/services/media-store/asset/%s/contents/preview', properties->>'assetID'),
+          'type', 'StillImage',
+          'license',  'http://creativecommons.org/licenses/by/4.0/',
+          'rightsHolder',  'The Trustees of the Natural History Museum, London'
+          )
+        || emultimedia.properties) as "associatedMedia"
+      FROM emultimedia
+      WHERE emultimedia.deleted IS NULL AND (emultimedia.embargo_date IS NULL OR emultimedia.embargo_date < NOW()) AND emultimedia.irn = ANY(cat.multimedia_irns)
+    """
+
     @abc.abstractproperty
     def package_name(self):
         """
@@ -103,47 +115,25 @@ class DatasetTask(PostgresQuery):
         """
         return None
 
-    @property
-    def table(self):
+    @abc.abstractproperty
+    def sql(self):
         """
-        Base table is always ecatalogue
+        SQL to build the dataset
+        Just a raw string, does duplicate some logic (where statements etc.,)
+        But is so much more readable and easier to see what's happening
+        :return: String
         """
-        return 'ecatalogue'
-
-    def pre_query(self, connection):
-        """
-        Override to perform custom queries.
-        """
+        return None
 
     @property
-    def query(self):
+    def views(self):
         """
-        Query for building materialised view
+        MaterialisedViewTask.views - return (name, sql) tuple to define materialised view
         :return:
         """
-        connection = self.output().connect()
-        # Run any preparatory SQL
-        self.pre_query(connection)
-
-        # If this is a dry run, we'll use package name +view to the name so there's
-        # no conflicts with existing datasets, and easy to see which is which
-        view_name = self.package_name + '-view' if self.view_only else self.resource_id
-
-        if db_view_exists(view_name, connection):
-            logger.info('Refreshing materialized view %s', self.resource_id)
-            query = 'REFRESH MATERIALIZED VIEW "{view_name}"'.format(
-                view_name=view_name
-            )
-        else:
-            logger.info('Creating materialized view %s', view_name)
-            query = self.get_query()
-            compiled_query = compile(query)
-            # Use the compiled query in materialised view
-            return 'CREATE MATERIALIZED VIEW "{view_name}" AS ({query})'.format(
-                view_name=view_name,
-                query=compiled_query[0] % tuple(compiled_query[1])
-            )
-        return query
+        return [
+            (self.resource_id, self.sql)
+        ]
 
     def __init__(self, *args, **kwargs):
         super(DatasetTask, self).__init__(*args, **kwargs)
@@ -156,6 +146,9 @@ class DatasetTask(PostgresQuery):
         Create a dataset on CKAN
         :return:
         """
+
+        ckan = CKAN()
+
         pkg_dict = {
             'name': self.package_name,
             'notes': self.package_description,
@@ -176,7 +169,7 @@ class DatasetTask(PostgresQuery):
             'owner_org': Config.get('ckan', 'owner_org')
         }
 
-        package = ckan_get_package(self.package_name)
+        package = ckan.get_package(self.package_name)
         # If we don't have a package, create it now
         if not package:
             if not yesno('Package {package_name} does not exist.  Do you want to create it?'.format(
@@ -185,14 +178,20 @@ class DatasetTask(PostgresQuery):
                 sys.exit("Import cancelled")
 
             # Check the resource doesn't exist
-            resource = ckan_get_resource(self.resource_id)
+            resource = ckan.get_resource(self.resource_id)
             if resource:
                 raise Exception('Resource {resource_title} ({resource_id}) already exists - package cannot be created')
 
             # Create the package
-            ckan_create_package(pkg_dict)
+            ckan.create_package(pkg_dict)
 
     def requires(self):
+        """
+        Luigi requires
+        Dynamically build task dependencies, for reading in KE EMu files
+        And writing to the database
+        :return:
+        """
         full_export_date = Config.getint('keemu', 'full_export_date')
         # If this is the full export date, then use the bulk copy class
         cls = KeemuCopyTask if full_export_date == self.date else KeemuUpsertTask
@@ -202,58 +201,3 @@ class DatasetTask(PostgresQuery):
             logger.info('Importing %s with %s method', module, cls)
             yield cls(module_name=module, date=self.date, limit=self.limit)
         return []
-
-    def get_query(self):
-        """
-        Get query as a tuple, which can be over-ridden and altered by datasets
-        :return: dict query
-        """
-        record_types = self.dataset_record_types()
-        # Get the properties to insert - excluding emultimedia as these won't be added
-        # to the properties - there are in their own jsonb collection
-        properties = [(f.module_name, f.field_alias) for f in self.fields if f.module_name != 'emultimedia']
-        # Dedupe properties
-        properties = list(set(properties))
-
-        # Create properties select, build list of: ecatalogue.properties->\'scientificName\'  as "scientificName"
-        properties_select = list(map(lambda p: '{0}.properties->\'{1}\' as "{1}"'.format(p[0], p[1]), properties))
-        # Construct record type filter
-        # record_types can be list, in which case change to IN ('Type A', 'Type B')
-        if type(record_types) == list:
-            record_type_operator = 'IN'
-            record_types = "('{0}')".format("','".join(record_types))
-        else:
-            record_type_operator = "="
-            record_types = "'{0}'".format(record_types)
-
-        sql = [
-            'SELECT', [
-                self.table + '.irn as _id',
-                '(SELECT jsonb_agg(properties) FROM emultimedia WHERE emultimedia.deleted IS NULL AND (emultimedia.embargo_date IS NULL OR emultimedia.embargo_date < NOW()) AND emultimedia.irn = ANY(' + self.table + '.multimedia_irns)) as multimedia',
-            ] + properties_select,
-            'FROM', [
-                self.table
-            ],
-            'WHERE', [
-                self.table + '.record_type', record_type_operator, P(record_types), 'AND',
-                [
-                    '(' + self.table + '.embargo_date', 'IS', None, 'OR',
-                    self.table + '.embargo_date', '<', 'NOW())'
-                ], 'AND',
-                self.table + '.deleted', 'IS', None,
-            ]
-        ]
-
-        # Use helper Q, to allow modifications through the API
-        return Q(sql)
-
-    def dataset_record_types(self):
-        """
-        Loop through all the filters, finding the one related to record type
-        By default, all record types used in the import filter will be used to
-        Build the dataset view
-        :return:
-        """
-        for filter_ in self.filters:
-            if filter_.field_name == 'ColRecordType':
-                return filter_.filters[0][1]

@@ -76,19 +76,19 @@ class IndexLotDatasetTask(DatasetTask):
         MetadataField('ecatalogue', 'EntIndIndexLotTaxonNameLocalRef', 'indexlot_taxonomy_irn', "INTEGER"),
     ]
 
-    def get_query(self):
-        """
-        Override get_query to add join to etaxonomy table
-        :return:
-        """
-        query = super(IndexLotDatasetTask, self).get_query()
-        # Add the join to the etaxonomy module
-        query.insert_after(
-            ['FROM', 'ecatalogue'],
-            ['LEFT JOIN', 'etaxonomy', 'ON', 'etaxonomy.irn = ' + self.table + '.indexlot_taxonomy_irn', 'AND', 'etaxonomy.deleted IS NULL']
-        )
-        return query
-
+    sql = """
+        SELECT cat.irn as _id,
+        cat.properties || tax.properties as properties,
+         ({multimedia_sub_query}) AS "multimedia",
+        FROM ecatalogue cat
+          LEFT JOIN etaxonomy tax ON cat.indexlot_taxonomy_irn = tax.irn AND tax.deleted IS NULL
+        WHERE
+          cat.record_type = 'Index Lot'
+          AND (cat.embargo_date IS NULL OR cat.embargo_date < NOW())
+          AND cat.deleted IS NULL
+    """.format(
+        multimedia_sub_query=DatasetTask.multimedia_sub_query
+    )
 
 if __name__ == "__main__":
     luigi.run(main_task_cls=IndexLotDatasetTask)

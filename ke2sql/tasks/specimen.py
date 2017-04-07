@@ -216,7 +216,6 @@ class SpecimenDatasetTask(DatasetTask):
         ]),
         # Does this record have an excluded status - Stub etc.,
         Filter('ecatalogue', 'SecRecordStatus', [
-            (is_not, None),
             (is_not_one_of, [
                 "DELETE",
                 "DELETE-MERGED",
@@ -276,62 +275,50 @@ class SpecimenDatasetTask(DatasetTask):
         MetadataField('ecatalogue', 'CardParasiteRef', 'parasite_taxonomy_irn', "INTEGER"),
     ]
 
-    def dataset_record_types(self):
-        """
-        Override the dataset record types, as we don;t actually include the
-        And of the parent types:
-            Bird Group Parent
-            Mammal Group Parent
-        :return:
-        """
-        parent_types = [
-            'Bird Group Parent',
-            'Mammal Group Parent',
-        ]
-        record_types = super(SpecimenDatasetTask, self).dataset_record_types()
-        # Return a list with parent types removed
-        return [record_type for record_type in record_types if record_type not in parent_types]
+    sql = """
+        SELECT cat.irn as _id,
+        CASE
+            WHEN parent_cat.irn IS NOT NULL THEN parent_cat.properties || cat.properties
+            WHEN tax.irn IS NOT NULL THEN tax.properties || cat.properties
+            ELSE cat.properties
+        END || jsonb_build_object(
+          'basisOfRecord', 'Specimen',
+          'institutionCode', 'NHMUK',
+          'otherCatalogNumbers', format('NHMUK:ecatalogue:%s', cat.irn),
+          'collectionCode', CASE WHEN cat.properties->>'collectionCode' = 'Entomology' THEN 'BMNH(E)' ELSE UPPER(SUBSTR(cat.properties->>'collectionCode', 1, 3)) END
+        ) as properties,
+        ({multimedia_sub_query}) AS "associatedMedia",
+        geo._geom,
+        geo._the_geom_webmercator,
+        cat.created,
+        cat.modified,
+        cat.record_type
+        FROM ecatalogue cat
+          LEFT JOIN ecatalogue parent_cat ON cat.parent_irn = parent_cat.irn
+          LEFT JOIN etaxonomy tax ON cat.parasite_taxonomy_irn = tax.irn
+          LEFT JOIN _geospatial_projection geo ON cat.irn = geo._id
+        WHERE
+          cat.record_type NOT IN ('Mammal Group Parent', 'Index Lot', 'Artefact')
+          AND (cat.embargo_date IS NULL OR cat.embargo_date < NOW())
+          AND cat.deleted IS NULL
+     """.format(
+        multimedia_sub_query=DatasetTask.multimedia_sub_query
+    )
 
-    def pre_query(self, connection):
-        """
-        Queries to tidy up the data before building the dataset view
-        """
-        cursor = connection.cursor()
-
-        max_lat_lon = [
-            ('decimalLatitude', 90),
-            ('decimalLongitude', 180)
-        ]
-        # Generate SQL statements for removing all properties
-        for property_name, max_value in max_lat_lon:
-            sql = """
-                UPDATE ecatalogue SET properties = properties - '{property_name}'
-                WHERE cast(ecatalogue.properties->>'{property_name}' as FLOAT8) < -{max_value}
-                OR cast(ecatalogue.properties->>'{property_name}' as FLOAT8) > {max_value}
-            """.format(
-                property_name=property_name,
-                max_value=max_value
-            )
-            cursor.execute(sql)
-
-    def get_query(self):
-        """
-        Override get_query to add join to etaxonomy table
-        :return:
-        """
-        query = super(SpecimenDatasetTask, self).get_query()
-        # Add geom field
-        query[query.index('SELECT') + 1].append(
-            """st_setsrid(
-                st_makepoint(
+    @property
+    def views(self):
+        views = super(SpecimenDatasetTask, self).views
+        # Add extra view for building geospatial projection mat view
+        views.insert(0, (
+            '_geospatial_projection',
+            """
+              SELECT
+                ecatalogue.irn as _id,
+                st_setsrid(st_makepoint(
                     cast(ecatalogue.properties->>'decimalLongitude' as FLOAT8),
                     cast(ecatalogue.properties->>'decimalLatitude' as FLOAT8)
-                ), 4326) as _geom
-            """
-        )
-        # Add webmercator projection geom field
-        query[query.index('SELECT') + 1].append(
-            """st_transform(
+                ), 4326) as _geom,
+                st_transform(
                     st_setsrid(
                         st_makepoint(
                         cast(ecatalogue.properties->>'decimalLongitude' as FLOAT8),
@@ -339,9 +326,19 @@ class SpecimenDatasetTask(DatasetTask):
                         ),
                     4326),
                 3857) as _the_geom_webmercator
+              FROM ecatalogue
+              WHERE ecatalogue.properties->>'decimalLatitude' IS NOT NULL
+              AND ecatalogue.properties->>'decimalLatitude' NOT LIKE '%,%'
+              AND cast(ecatalogue.properties->>'decimalLatitude' as FLOAT8) >= -90
+              AND cast(ecatalogue.properties->>'decimalLatitude' as FLOAT8) <= 90
+              AND ecatalogue.properties->>'decimalLongitude' IS NOT NULL
+              AND ecatalogue.properties->>'decimalLongitude' NOT LIKE '%,%'
+              AND cast(ecatalogue.properties->>'decimalLongitude' as FLOAT8) >= -180
+              AND cast(ecatalogue.properties->>'decimalLongitude' as FLOAT8) <= 180
             """
-        )
-        return query
+        ))
+        return views
+
 
 if __name__ == "__main__":
     luigi.run(main_task_cls=SpecimenDatasetTask)
