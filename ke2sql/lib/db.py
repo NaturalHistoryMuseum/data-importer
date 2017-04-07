@@ -11,6 +11,18 @@ def db_view_exists(view_name, connection):
     return cursor.fetchone()[0]
 
 
+def db_drop_view(view_name, connection):
+    """
+    Drop the table
+    :param view_name
+    :param connection:
+    :return:
+    """
+    query = 'DROP MATERIALIZED VIEW IF EXISTS "{view_name}" CASCADE'.format(view_name=view_name)
+    connection.cursor().execute(query)
+    connection.commit()
+
+
 def db_create_index(table_name, field_name, index_type, connection):
     cursor = connection.cursor()
     query = "CREATE INDEX ON {table} USING {index_type} ({field_name})".format(
