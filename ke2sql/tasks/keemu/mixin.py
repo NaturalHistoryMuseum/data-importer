@@ -145,7 +145,7 @@ class KeemuMixin(object):
         :param record:
         :return: boolean - false if not importable
         """
-        return record.AdmPublishWebNoPasswordFlag.lower() == 'y'
+        return record.AdmPublishWebNoPasswordFlag.lower() != 'n'
 
     @staticmethod
     def _apply_filters(dataset_filters, record):
