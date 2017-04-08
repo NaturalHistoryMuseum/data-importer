@@ -36,15 +36,6 @@ class KeemuMixin(object):
     # Count of records inserted / written to CSV
     insert_count = 0
 
-    columns = [
-        ("irn", "INTEGER PRIMARY KEY"),
-        ("created", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
-        ("modified", "TIMESTAMP"),
-        ("deleted", "TIMESTAMP"),
-        ("properties", "JSONB"),
-        ("import_date", "INTEGER"),  # Date of import
-    ]
-
     @abc.abstractproperty
     def fields(self):
         """
@@ -95,6 +86,16 @@ class KeemuMixin(object):
 
         # Create a list of all extra metadata columns that need to be arrays
         self.metadata_array_columns = [col for col, col_type in self.metadata_columns if self._column_is_array(col_type)]
+
+        self.columns = [
+            ("irn", "INTEGER PRIMARY KEY"),
+            ("created", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+            ("modified", "TIMESTAMP"),
+            ("deleted", "TIMESTAMP"),
+            ("properties", "JSONB"),
+            ("import_date", "INTEGER"),  # Date of import
+        ]
+
         # Add the extra metadata fields to the column array
         for metadata_column in self.metadata_columns:
             if metadata_column not in self.columns:

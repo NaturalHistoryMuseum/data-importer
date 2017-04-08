@@ -24,7 +24,7 @@ class TestDelete(BaseTestCase):
         irn = 16
         record = self._get_dataset_record('specimen', irn)
         # Check the specimen does not have multimedia record
-        self.assertIsNone(record['multimedia'])
+        self.assertIsNone(record['associatedMedia'])
 
     def test_deleted_taxonomy_is_removed(self):
         irn = 100
@@ -35,7 +35,7 @@ class TestDelete(BaseTestCase):
         record = self._get_dataset_record('indexlot', irn)
         # Check the specimen does not have a scientific name
         # As the corresponding taxonomy record has been deleted
-        self.assertIsNone(record['scientificName'])
+        self.assertIsNone(record['properties'].get('scientificName', None))
 
 
 if __name__ == '__main__':

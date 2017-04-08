@@ -79,4 +79,7 @@ def get_oldest_unprocessed_export_date():
     Just
     :return:
     """
-    return get_unprocessed_export_dates()[0]
+    try:
+        return get_unprocessed_export_dates()[0]
+    except IndexError:
+        return None

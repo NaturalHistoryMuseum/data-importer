@@ -78,17 +78,15 @@ class IndexLotDatasetTask(DatasetTask):
 
     sql = """
         SELECT cat.irn as _id,
-        cat.properties || tax.properties as properties,
-         ({multimedia_sub_query}) AS "multimedia",
+        cat.properties || COALESCE(tax.properties, '{}') as properties,
+         (%s) AS "multimedia"
         FROM ecatalogue cat
           LEFT JOIN etaxonomy tax ON cat.indexlot_taxonomy_irn = tax.irn AND tax.deleted IS NULL
         WHERE
           cat.record_type = 'Index Lot'
           AND (cat.embargo_date IS NULL OR cat.embargo_date < NOW())
           AND cat.deleted IS NULL
-    """.format(
-        multimedia_sub_query=DatasetTask.multimedia_sub_query
-    )
+    """ % DatasetTask.multimedia_sub_query
 
 if __name__ == "__main__":
     luigi.run(main_task_cls=IndexLotDatasetTask)

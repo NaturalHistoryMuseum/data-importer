@@ -18,7 +18,7 @@ from ke2sql.lib.config import Config
 from ke2sql.lib.field import Field, MetadataField
 from ke2sql.lib.filter import Filter
 from ke2sql.lib.ckan import CKAN
-from ke2sql.lib.db import db_view_exists
+from ke2sql.lib.helpers import list_all_modules
 from ke2sql.tasks.keemu import KeemuCopyTask, KeemuUpsertTask
 from ke2sql.tasks.postgres.view import MaterialisedViewTask
 
@@ -196,8 +196,7 @@ class DatasetTask(MaterialisedViewTask):
         # If this is the full export date, then use the bulk copy class
         cls = KeemuCopyTask if full_export_date == self.date else KeemuUpsertTask
         # Set comprehension - build set of all modules used in this dataset
-        modules = list({f.module_name for f in self.fields})
-        for module in modules:
+        for module in list_all_modules():
             logger.info('Importing %s with %s method', module, cls)
             yield cls(module_name=module, date=self.date, limit=self.limit)
         return []

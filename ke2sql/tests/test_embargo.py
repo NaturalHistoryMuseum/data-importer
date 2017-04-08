@@ -34,9 +34,9 @@ class TestEmbargo(BaseTestCase):
         record = self._get_record('emultimedia', irn=3)
         self.assertIsNotNone(record['embargo_date'])
 
-    def test_specimen_record_does_not_used_embargoed_multimedia(self):
+    def test_specimen_record_does_not_use_embargoed_multimedia(self):
         record = self._get_dataset_record('specimen', irn=20)
-        self.assertIsNone(record['multimedia'])
+        self.assertIsNone(record['associatedMedia'])
 
 if __name__ == '__main__':
     unittest.main()

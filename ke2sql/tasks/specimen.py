@@ -285,7 +285,9 @@ class SpecimenDatasetTask(DatasetTask):
           'basisOfRecord', 'Specimen',
           'institutionCode', 'NHMUK',
           'otherCatalogNumbers', format('NHMUK:ecatalogue:%s', cat.irn),
-          'collectionCode', CASE WHEN cat.properties->>'collectionCode' = 'Entomology' THEN 'BMNH(E)' ELSE UPPER(SUBSTR(cat.properties->>'collectionCode', 1, 3)) END
+          'collectionCode', CASE WHEN cat.properties->>'collectionCode' = 'Entomology' THEN 'BMNH(E)' ELSE UPPER(SUBSTR(cat.properties->>'collectionCode', 1, 3)) END,
+          'decimalLongitude', geo."decimalLongitude",
+          'decimalLatitude', geo."decimalLatitude"
         ) as properties,
         ({multimedia_sub_query}) AS "associatedMedia",
         geo._geom,
@@ -314,6 +316,8 @@ class SpecimenDatasetTask(DatasetTask):
             """
               SELECT
                 ecatalogue.irn as _id,
+                cast(ecatalogue.properties->>'decimalLatitude' as FLOAT8) as "decimalLatitude",
+                cast(ecatalogue.properties->>'decimalLongitude' as FLOAT8) as "decimalLongitude",
                 st_setsrid(st_makepoint(
                     cast(ecatalogue.properties->>'decimalLongitude' as FLOAT8),
                     cast(ecatalogue.properties->>'decimalLatitude' as FLOAT8)

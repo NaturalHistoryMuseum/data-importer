@@ -13,8 +13,7 @@ from ke2sql.tasks.__main__ import MainTask
 @click.command()
 @click.option('--local-scheduler',  default=False, help='Whether to use the luigi local scheduler.', is_flag=True)
 @click.option('--limit', default=None, help='Number of records to process.', type=click.INT)
-@click.option('--date', default=None, help='Export date to process.', type=click.INT)
-def run_one(local_scheduler, limit, date):
+def run_one(local_scheduler, limit):
     """
     Run tasks for a single date
     Can either be a data passed in as a param, or it no param
@@ -24,9 +23,12 @@ def run_one(local_scheduler, limit, date):
     :param date:
     :return: None
     """
-    # If we haven't specified a
+
+    date = get_oldest_unprocessed_export_date()
     if not date:
-        date = get_oldest_unprocessed_export_date()
+        print('No more files to process')
+        return
+
     params = [
         '--date', str(date),
     ]

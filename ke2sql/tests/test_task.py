@@ -21,7 +21,6 @@ class TestTask(luigi.Task):
             'date': int(self.date)
         }
         yield DeleteTask(**params)
+        params['view_only'] = True
         for task in get_dataset_tasks():
             yield task(**params)
-
-

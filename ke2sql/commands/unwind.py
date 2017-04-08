@@ -58,6 +58,8 @@ def unwind():
         properties.remove(('ecatalogue', 'collectionCode'))
         properties.remove(('ecatalogue', 'dateModified'))
         properties.remove(('ecatalogue', 'dateCreated'))
+        properties.remove(('ecatalogue', 'decimalLongitude'))
+        properties.remove(('ecatalogue', 'decimalLatitude'))
 
         properties.extend([
             ('ecatalogue', 'basisOfRecord'),
@@ -74,6 +76,8 @@ def unwind():
                 "{resource_id}"."associatedMedia",
                 "{resource_id}".properties->>'dateCreated' as created,
                 "{resource_id}".properties->>'dateModified' as modified,
+                cast("{resource_id}".properties->>'decimalLongitude' AS FLOAT8) as "decimalLongitude",
+                cast("{resource_id}".properties->>'decimalLatitude' AS FLOAT8) as "decimalLatitude",
                 "{resource_id}"._geom,
                 "{resource_id}"._the_geom_webmercator,
                 "{resource_id}".record_type as "recordType",
@@ -84,7 +88,7 @@ def unwind():
                 NULL::TEXT as "relatedResourceID",
                 FALSE as centroid,
                   ''::tsvector as _full_text
-                FROM "{resource_id}") limit 10000
+                FROM "{resource_id}")
         """.format(
             table_name=table_name,
             resource_id=task.resource_id,

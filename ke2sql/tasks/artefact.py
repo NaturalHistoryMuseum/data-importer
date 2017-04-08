@@ -53,16 +53,15 @@ class ArtefactDatasetTask(DatasetTask):
     sql = """
         SELECT cat.irn as _id,
         cat.properties,
-        (SELECT jsonb_agg(properties)
-          FROM emultimedia
-          WHERE emultimedia.deleted IS NULL AND (emultimedia.embargo_date IS NULL OR emultimedia.embargo_date < NOW()) AND emultimedia.irn = ANY(cat.multimedia_irns))
-        AS multimedia
+        ({multimedia_sub_query}) AS "multimedia"
         FROM ecatalogue cat
         WHERE
           cat.record_type = 'Artefact'
           AND (cat.embargo_date IS NULL OR cat.embargo_date < NOW())
           AND cat.deleted IS NULL
-    """
+    """.format(
+        multimedia_sub_query=DatasetTask.multimedia_sub_query
+    )
 
 if __name__ == "__main__":
     luigi.run(main_task_cls=ArtefactDatasetTask)
