@@ -48,6 +48,9 @@ class MainTask(luigi.Task):
             params_dict[param_name] = getattr(self, param_name)
         return params_dict
 
+    def complete(self):
+        return False
+
 
 if __name__ == "__main__":
     luigi.run(main_task_cls=MainTask)
