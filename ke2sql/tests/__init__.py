@@ -75,9 +75,9 @@ class BaseTestCase(unittest.TestCase):
         # Delete all table updates
         cls.cursor.execute('DELETE FROM table_updates')
         # Delete all info in the module tables
-        # for module_name in list_all_modules():
-        #     cls.cursor.execute('DELETE FROM "{module_name}"'.format(
-        #         module_name=module_name
-        #     ))
+        for module_name in list_all_modules():
+            cls.cursor.execute('DELETE FROM "{module_name}"'.format(
+                module_name=module_name
+            ))
         cls.connection.commit()
         cls.connection.close()
