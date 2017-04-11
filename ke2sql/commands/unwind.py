@@ -68,6 +68,8 @@ def unwind():
             ('ecatalogue', 'collectionCode')
         ])
 
+        indexed_fields = ['collectionCode', 'catalogNumber', 'created', 'project']
+
         properties_select = list(map(lambda p: 'CAST("{0}".properties->>\'{1}\' AS CITEXT) as "{1}"'.format(task.resource_id, p[1]), properties))
 
         sql = """CREATE TABLE "{table_name}" AS (
@@ -96,6 +98,19 @@ def unwind():
         )
 
         cursor.execute(sql)
+        indexes = [
+            'ALTER TABLE "{table_name}" ADD PRIMARY KEY (_id)'.format(
+                table_name=table_name
+            )
+        ]
+        for indexed_field in indexed_fields:
+            indexes.append('CREATE INDEX ON "{table_name}"("{field_name}")'.format(
+                table_name=table_name,
+                field_name=indexed_field
+            ))
+
+        # Execute indexes SQL
+        cursor.execute(';'.join(indexes))
 
     connection.commit()
 
