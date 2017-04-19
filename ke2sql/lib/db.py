@@ -57,6 +57,24 @@ def db_drop_table(table_name, connection):
     connection.commit()
 
 
+def db_table_has_records(table_name, connection):
+    """
+    Drop the table
+    :param table_name
+    :param connection:
+    :return:
+    """
+    if db_table_exists(table_name, connection):
+        cursor = connection.cursor()
+        cursor.execute("""
+          SELECT SIGN(COUNT(*))
+          FROM {table} LIMIT 1
+          """.format(table=table_name)
+        )
+        return bool(cursor.fetchone()[0])
+    return False
+
+
 def db_delete_record(table_name, irn, cursor):
     """
     Mark a record as deleted
