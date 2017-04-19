@@ -5,7 +5,7 @@ Created by Ben Scott on '20/02/2017'.
 """
 
 import os
-import six
+import sys
 
 try:
     import configparser
@@ -16,7 +16,7 @@ Config = configparser.ConfigParser()
 config_files = ['default.cfg']
 
 # Add test config if test flag is set
-if os.environ.get('TEST', False):
+if 'unittest' in sys.argv[0]:
     config_files.append('test.cfg')
 
 # Build config, looping through all the file options
