@@ -8,7 +8,6 @@ import os
 import luigi
 import unittest
 import psycopg2
-from psycopg2.extras import DictCursor
 
 from ke2sql.lib.config import Config
 from ke2sql.lib.helpers import get_dataset_tasks, list_all_modules, get_file_export_dates
@@ -36,12 +35,15 @@ class BaseTestCase(unittest.TestCase):
             luigi.build([TestTask(date=int(export_date))], local_scheduler=True)
 
     def _get_record(self, table_name, **kwargs):
-
-        # FIXME: Change this
-        field_name = list(kwargs.keys())[0]
-        sql = 'SELECT * FROM "{table_name}" WHERE {field_name} = %s'.format(
-            field_name=field_name,
-            table_name=table_name,
+        """
+        Retrieve a record, building where clause from kwargs
+        :param table_name:
+        :param kwargs:
+        :return:
+        """
+        sql = 'SELECT * FROM "{}" WHERE {}'.format(
+            table_name,
+            ' AND '.join(['{} = %s'.format(k) for k in kwargs.keys()])
         )
         self.cursor.execute(sql, list(kwargs.values()))
         return self.cursor.fetchone()
