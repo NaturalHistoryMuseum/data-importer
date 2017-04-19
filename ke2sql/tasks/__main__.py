@@ -27,6 +27,8 @@ class MainTask(luigi.Task):
     """
     date = luigi.IntParameter()
     limit = luigi.IntParameter(default=None, significant=False)
+    # Whether to refresh the materialised view
+    refresh = luigi.BoolParameter(default=True, significant=False)
 
     def requires(self):
         # Do not run the delete task, if this is the full export date
