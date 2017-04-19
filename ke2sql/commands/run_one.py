@@ -5,9 +5,8 @@ Created by Ben Scott on '31/03/2017'.
 """
 
 import click
-import luigi
 from ke2sql.commands.helpers import get_oldest_unprocessed_export_date
-from ke2sql.tasks.__main__ import MainTask
+from ke2sql.commands.helpers import run_tasks
 
 
 @click.command()
@@ -16,11 +15,8 @@ from ke2sql.tasks.__main__ import MainTask
 def run_one(local_scheduler, limit):
     """
     Run tasks for a single date
-    Can either be a data passed in as a param, or it no param
-    The oldest export file will be used
     :param local_scheduler:
     :param limit:
-    :param date:
     :return: None
     """
 
@@ -29,13 +25,7 @@ def run_one(local_scheduler, limit):
         print('No more files to process')
         return
 
-    params = [
-        '--date', str(date),
-    ]
-    if limit:
-        params += ['--limit', str(limit)]
-
-    luigi.run(params, main_task_cls=MainTask, local_scheduler=local_scheduler)
+    run_tasks([date], local_scheduler, limit)
 
 if __name__ == "__main__":
     run_one()

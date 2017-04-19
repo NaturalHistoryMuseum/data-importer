@@ -60,6 +60,7 @@ def unwind():
         properties.remove(('ecatalogue', 'dateCreated'))
         properties.remove(('ecatalogue', 'decimalLongitude'))
         properties.remove(('ecatalogue', 'decimalLatitude'))
+        properties.remove(('ecatalogue', 'occurrenceID'))
 
         properties.extend([
             ('ecatalogue', 'basisOfRecord'),
@@ -75,7 +76,8 @@ def unwind():
         sql = """CREATE TABLE "{table_name}" AS (
             SELECT
                 "{resource_id}"._id,
-                "{resource_id}"."associatedMedia",
+                cast("{resource_id}".properties->>'occurrenceID' AS UUID) as "occurrenceID",
+                "{resource_id}"."associatedMedia"::text,
                 "{resource_id}".properties->>'dateCreated' as created,
                 "{resource_id}".properties->>'dateModified' as modified,
                 cast("{resource_id}".properties->>'decimalLongitude' AS FLOAT8) as "decimalLongitude",
@@ -90,13 +92,13 @@ def unwind():
                 NULL::TEXT as "relatedResourceID",
                 FALSE as centroid,
                   ''::tsvector as _full_text
-                FROM "{resource_id}")
+                FROM "{resource_id}"
+                WHERE "{resource_id}".properties->>'occurrenceID' != ')')
         """.format(
             table_name=table_name,
             resource_id=task.resource_id,
             properties_select=','.join(properties_select)
         )
-
         cursor.execute(sql)
         indexes = [
             'ALTER TABLE "{table_name}" ADD PRIMARY KEY (_id)'.format(

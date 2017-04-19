@@ -6,11 +6,19 @@ Created by Ben Scott on '31/03/2017'.
 
 import os
 import re
+import sys
 import glob
 import psycopg2
+import luigi
+import logging
 
 from ke2sql.lib.config import Config
 from ke2sql.lib.helpers import get_file_export_dates, get_dataset_tasks
+from ke2sql.tasks.__main__ import MainTask
+
+
+logger = logging.getLogger('luigi-interface')
+
 
 def get_file_import_markers():
     """
@@ -83,3 +91,28 @@ def get_oldest_unprocessed_export_date():
         return get_unprocessed_export_dates()[0]
     except IndexError:
         return None
+
+
+def run_tasks(export_dates, local_scheduler, limit=None):
+    """
+    Run task for list of dates
+    :param export_dates: list of dates
+    :param local_scheduler:
+    :param limit:
+    :return:
+    """
+    for index, export_date in enumerate(export_dates):
+        params = {
+            'date': export_date,
+            # Only refresh the view if this is the last export date being processed
+            'refresh': (index + 1) == len(export_dates)
+        }
+        if limit:
+            params['limit'] = limit
+        success = luigi.build([MainTask(**params)], local_scheduler=local_scheduler)
+        if not success:
+            logger.critical('Task failed %s', export_date)
+            sys.exit()
+
+
+
