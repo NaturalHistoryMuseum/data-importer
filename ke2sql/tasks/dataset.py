@@ -55,6 +55,7 @@ class DatasetTask(MaterialisedViewTask):
         Field('emultimedia', 'MulTitle', 'title'),
         Field('emultimedia', 'MulMimeFormat', 'mime'),
         Field('emultimedia', 'MulCreator', 'creator'),
+        Field('emultimedia', 'DetResourceType', 'category'),
     ]
 
     metadata_fields = [

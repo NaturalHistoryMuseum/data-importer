@@ -25,7 +25,7 @@ def db_drop_view(view_name, connection):
 
 def db_create_index(table_name, field_name, index_type, connection):
     cursor = connection.cursor()
-    query = "CREATE INDEX ON {table} USING {index_type} ({field_name})".format(
+    query = "CREATE INDEX IF NOT EXISTS {table}_{field_name}_idx ON {table} USING {index_type} ({field_name})".format(
         table=table_name,
         index_type=index_type,
         field_name=field_name

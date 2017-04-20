@@ -55,7 +55,9 @@ class SpecimenDatasetTask(DatasetTask):
         Field('ecatalogue', 'DarCountry', 'country'),
         Field('ecatalogue', 'DarWaterBody', 'waterBody'),
         Field('ecatalogue', 'EntLocExpeditionNameLocal', 'expedition'),
-        Field('ecatalogue', 'sumParticipantFullName', 'recordedBy'),
+        Field('ecatalogue', 'CollEventVesselName', 'vessel'),
+        Field('ecatalogue', 'DarCollector', 'recordedBy'),
+        Field('ecatalogue', 'CollEventNameSummaryData', 'recordedBy'),
         Field('ecatalogue', 'ColDepartment', 'collectionCode'),
         # Taxonomy
         Field('ecatalogue', 'DarScientificName', 'scientificName'),
