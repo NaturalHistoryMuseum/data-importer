@@ -49,7 +49,7 @@ def rebuild(local_scheduler):
     connection.commit()
     connection.close()
     export_dates = get_unprocessed_export_dates()
-    run_tasks(export_dates, local_scheduler, limit=1000)
+    run_tasks(export_dates, local_scheduler)
 
 if __name__ == "__main__":
     rebuild()
