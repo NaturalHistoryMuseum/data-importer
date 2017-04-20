@@ -9,14 +9,13 @@ import psycopg2
 
 from ke2sql.lib.config import Config
 from ke2sql.lib.helpers import get_dataset_tasks
-from ke2sql.lib.db import db_view_exists, db_table_exists
+from ke2sql.lib.db import db_view_exists
 
 
 @click.command()
 def unwind():
     """
     Convert the new style dataset with jsonp properties into the old wide & sparse dataset
-    :param resource_id:
     :return:
     """
 

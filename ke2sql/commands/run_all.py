@@ -15,7 +15,10 @@ from ke2sql.commands.helpers import run_tasks
 @click.option('--limit', default=None, help='Number of records to process.', type=click.INT)
 def run_all(local_scheduler, limit):
     export_dates = get_unprocessed_export_dates()
-    run_tasks(export_dates, local_scheduler, limit)
+    if export_dates:
+        run_tasks(export_dates, local_scheduler, limit)
+    else:
+        print('No more files to process')
 
 if __name__ == "__main__":
     run_all()
