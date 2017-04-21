@@ -55,10 +55,13 @@ class SpecimenDatasetTask(DatasetTask):
         Field('ecatalogue', 'DarCountry', 'country'),
         Field('ecatalogue', 'DarWaterBody', 'waterBody'),
         Field('ecatalogue', 'EntLocExpeditionNameLocal', 'expedition'),
+        Field('ecatalogue', 'CollEventExpeditionName', 'expedition'),
         Field('ecatalogue', 'CollEventVesselName', 'vessel'),
         Field('ecatalogue', 'DarCollector', 'recordedBy'),
         Field('ecatalogue', 'CollEventNameSummaryData', 'recordedBy'),
         Field('ecatalogue', 'ColDepartment', 'collectionCode'),
+        Field('ecatalogue', 'CollEventCollectionMethod', 'samplingProtocol'),
+        Field('ecatalogue', 'DarFieldNumber', 'fieldNumber'),
         # Taxonomy
         Field('ecatalogue', 'DarScientificName', 'scientificName'),
         Field('ecatalogue', 'DarKingdom', 'kingdom'),
@@ -166,7 +169,6 @@ class SpecimenDatasetTask(DatasetTask):
         Field('ecatalogue', 'ColExsiccatiNumber', 'exsiccatiNumber'),
         Field('ecatalogue', 'ColSiteDescription', 'labelLocality'),
         Field('ecatalogue', 'ColPlantDescription', 'plantDescription'),
-        Field('ecatalogue', 'FeaCultivated', 'cultivated'),
         # Paleo
         Field('ecatalogue', 'PalDesDescription', 'catalogueDescription'),
         Field('ecatalogue', 'PalStrChronostratLocal', 'chronostratigraphy'),
@@ -291,12 +293,23 @@ class SpecimenDatasetTask(DatasetTask):
           'decimalLongitude', geo."decimalLongitude",
           'decimalLatitude', geo."decimalLatitude"
         ) as properties,
-        ({multimedia_sub_query}) AS "associatedMedia",
+        (SELECT
+            jsonb_agg(jsonb_build_object(
+            'identifier', format('http://www.nhm.ac.uk/services/media-store/asset/%s/contents/preview', properties->>'assetID'),
+            'type', 'StillImage',
+            'license',  'http://creativecommons.org/licenses/by/4.0/',
+            'rightsHolder',  'The Trustees of the Natural History Museum, London'
+            )
+            || emultimedia.properties) as "associatedMedia"
+            FROM emultimedia
+            WHERE emultimedia.deleted IS NULL
+              AND (emultimedia.embargo_date IS NULL OR emultimedia.embargo_date < NOW())
+              AND emultimedia.irn = ANY(COALESCE(cat.multimedia_irns, parent_cat.multimedia_irns))
+        ) AS "associatedMedia",
         geo._geom,
         geo._the_geom_webmercator,
         cat.created,
-        cat.modified,
-        cat.record_type
+        cat.modified
         FROM ecatalogue cat
           LEFT JOIN ecatalogue parent_cat ON cat.parent_irn = parent_cat.irn
           LEFT JOIN etaxonomy tax ON cat.parasite_taxonomy_irn = tax.irn
