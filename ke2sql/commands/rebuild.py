@@ -38,7 +38,8 @@ def rebuild(local_scheduler):
     cursor = connection.cursor()
 
     # Delete file markers
-    cursor.execute('DELETE FROM table_updates')
+    if db_table_exists('table_updates', connection):
+        cursor.execute('DELETE FROM table_updates')
     # Delete all info in the module tables
     for module_name in list_all_modules():
         if db_table_exists(module_name, connection):

@@ -21,7 +21,7 @@ logger = logging.getLogger('luigi-interface')
 
 
 @click.command()
-def drop():
+def drop_tables():
     """
     Drop all tables
     :return: None
@@ -44,4 +44,4 @@ def drop():
         connection.close()
 
 if __name__ == "__main__":
-    drop()
+    drop_tables()
