@@ -83,7 +83,7 @@ def unwind():
                 cast("{resource_id}".properties->>'decimalLatitude' AS FLOAT8) as "decimalLatitude",
                 "{resource_id}"._geom,
                 "{resource_id}"._the_geom_webmercator,
-                "{resource_id}".record_type as "recordType",
+                'Specimen' as "recordType",
                 {properties_select},
                 NULL::TEXT as "maxError",
                 NULL::nested as "determinations",
