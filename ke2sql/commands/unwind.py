@@ -89,6 +89,8 @@ def get_unwind_sql(task, table_name, view_name):
     # Dedupe properties
     properties = list(set(properties))
 
+    sql = None
+
     if task.resource_id == '05ff2255-c38a-40c9-b657-4ccb55ab2feb':
         # Collection code is truncated
         properties.remove(('ecatalogue', 'collectionCode'))
@@ -133,8 +135,24 @@ def get_unwind_sql(task, table_name, view_name):
             view_name=view_name,
             properties_select=','.join(properties_select)
         )
+    else:
+        properties_select = list(map(lambda p: 'CAST("{0}".properties->>\'{1}\' AS CITEXT) as "{1}"'.format(view_name, p[1]), properties))
+        sql = """CREATE TABLE "{table_name}" AS (
+            SELECT
+                "{view_name}"._id,
+                "{view_name}"."multimedia"::text,
+                "{view_name}".properties->>'dateCreated' as created,
+                "{view_name}".properties->>'dateModified' as modified,
+                {properties_select},
+                  ''::tsvector as _full_text
+                FROM "{view_name}")
+        """.format(
+            table_name=table_name,
+            view_name=view_name,
+            properties_select=','.join(properties_select)
+        )
 
-        return sql
+    return sql
 
 
 def get_indexed_fields(task):
