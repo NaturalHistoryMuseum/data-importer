@@ -200,4 +200,3 @@ class DatasetTask(MaterialisedViewTask):
         for module in list_all_modules():
             logger.info('Importing %s with %s method', module, cls)
             yield cls(module_name=module, date=self.date, limit=self.limit)
-        return []
