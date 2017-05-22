@@ -19,7 +19,7 @@ from ke2sql.lib.config import Config
 
 class ArtefactDatasetTask(DatasetTask):
 
-    package_name = 'collection-artefacts7'
+    package_name = 'collection-artefacts'
     package_description = "Cultural and historical artefacts from The Natural History Museum"
     package_title = "Artefacts"
 
