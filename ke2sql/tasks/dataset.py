@@ -127,13 +127,21 @@ class DatasetTask(MaterialisedViewTask):
         return None
 
     @property
+    def materialized_view_name(self):
+        """
+        Materialized view name - by default just the resource id
+        :return:
+        """
+        return self.resource_id + "-view"
+
+    @property
     def views(self):
         """
         MaterialisedViewTask.views - return (name, sql) tuple to define materialised view
         :return:
         """
         return [
-            (self.resource_id, self.sql)
+            (self.materialized_view_name, self.sql)
         ]
 
     def __init__(self, *args, **kwargs):
