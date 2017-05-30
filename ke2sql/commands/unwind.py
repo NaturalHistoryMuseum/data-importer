@@ -107,7 +107,7 @@ def get_unwind_sql(task, table_name, view_name):
             ('ecatalogue', 'collectionCode')
         ])
 
-        properties_select = list(map(lambda p: 'CAST("{0}".properties->>\'{1}\' AS CITEXT) as "{1}"'.format(view_name, p[1]), properties))
+        properties_select = list(map(lambda p: 'CAST("{0}".properties->>\'{1}\' AS TEXT) as "{1}"'.format(view_name, p[1]), properties))
 
         sql = """CREATE TABLE "{table_name}" AS (
             SELECT
