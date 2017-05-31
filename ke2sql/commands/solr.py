@@ -29,7 +29,10 @@ def data_import(full_import):
         # requesting for the next index - ensures there's always a stable index available for requests
         for solr_host in solr_hosts:
             solr_index = SolrIndex(solr_host)
-            logger.info("Starting delta import of index: %s" % solr_host)
+            logger.info("Starting {import_type} import of index: {solr_host}".format(
+                import_type='full' if full_import else 'delta',
+                solr_host=solr_host
+            ))
             if full_import:
                 solr_index.full_import()
             else:
