@@ -27,4 +27,9 @@ class FileTask(luigi.ExternalTask):
         return os.path.join(Config.get('keemu', 'export_dir'), file_name)
 
     def output(self):
+        # Check file size if greater than zero
+        # Will also raise an error if the file doesn't exist
+        file_size = os.path.getsize(self.file_path)
+        if file_size == 0:
+            raise IOError('KE EMu export file %s has zero byte length' % self.file_path)
         return luigi.LocalTarget(self.file_path)
