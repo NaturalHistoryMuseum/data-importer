@@ -64,9 +64,17 @@ def get_unprocessed_export_dates():
     dataset_task_names = [cls.__name__ for cls in get_dataset_tasks()]
     markers = get_file_import_markers()
 
+    # List of corrupted export file dates that need to be skipped
+    corrupted_dates = [
+        20170413  # Compressed file ended before EOF
+    ]
+
     unprocessed_dates = []
     # Loop through all the file export dates
     for export_date in get_file_export_dates():
+        # Skip corrupted file dates
+        if export_date in corrupted_dates:
+            continue
         try:
             # Do we have markers for this date?
             markers_for_date = markers[export_date]
