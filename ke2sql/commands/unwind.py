@@ -4,6 +4,7 @@
 Created by Ben Scott on '04/04/2017'.
 """
 
+import re
 import click
 import psycopg2
 
@@ -92,6 +93,7 @@ def get_unwind_sql(task, table_name, view_name):
     sql = None
 
     if task.resource_id == '05ff2255-c38a-40c9-b657-4ccb55ab2feb':
+        return
         # Collection code is truncated
         properties.remove(('ecatalogue', 'collectionCode'))
         properties.remove(('ecatalogue', 'dateModified'))
@@ -136,8 +138,68 @@ def get_unwind_sql(task, table_name, view_name):
             view_name=view_name,
             properties_select=','.join(properties_select)
         )
-    else:
-        properties_select = list(map(lambda p: 'CAST("{0}".properties->>\'{1}\' AS CITEXT) as "{1}"'.format(view_name, p[1]), properties))
+    elif task.resource_id == 'bb909597-dedf-427d-8c04-4c02b3a24db3':
+
+        original_fields = [
+            'Currently accepted name',
+            'Original name',
+            'Kingdom',
+            'Phylum',
+            'Class',
+            'Order',
+            'Suborder',
+            'Superfamily',
+            'Family',
+            'Subfamily',
+            'Genus',
+            'Subgenus',
+            'Species',
+            'Subspecies',
+            'Taxonomic rank',
+            'GUID',
+            'IRN',
+            'Material',
+            'Type',
+            'Media',
+            'British',
+            'Kind of material',
+            'Kind of media',
+            'Material count',
+            'Material sex',
+            'Material stage',
+            'Material types',
+            'Material primary type no',
+            # 'Department',
+            # 'Modified',
+            # 'Created'
+        ]
+
+        property_mappings = {p[1]: camel_case_to_sentence(p[1]) for p in properties}
+        # Manual override
+        property_mappings['currentScientificName'] = 'Currently accepted name'
+        property_mappings['scientificName'] = 'Original name'
+        property_mappings['specificEpithet'] = 'Species'
+        property_mappings['infraspecificEpithet'] = 'Subspecies'
+        property_mappings['taxonRank'] = 'Taxonomic rank'
+        property_mappings['GUID'] = 'GUID'
+        property_mappings['_id'] = 'IRN'
+        property_mappings['materialPrimaryTypeNumber'] = 'Material primary type no'
+
+        new_fields = list(property_mappings.values())
+
+        # Ensure all the fields exist
+        for original_field in original_fields:
+            try:
+                new_fields.remove(original_field)
+            except ValueError:
+                print(original_field)
+                raise
+
+        if new_fields:
+            raise Exception('Extra fields')
+
+        properties_select = ['CAST("{0}".properties->>\'{1}\' AS CITEXT) as "{2}"'.format(view_name, x, y) for x,y in property_mappings.items()]
+
         sql = """CREATE TABLE "{table_name}" AS (
             SELECT
                 "{view_name}"._id,
@@ -154,6 +216,15 @@ def get_unwind_sql(task, table_name, view_name):
         )
 
     return sql
+
+
+def camel_case_to_sentence(camel_case_str):
+    """
+    Convert camel case string to sentence
+    @param camel_case_str:
+    @return:
+    """
+    return re.sub(r'(?<=[a-zA-Z])(?=[A-Z])', ' ', camel_case_str).capitalize()
 
 
 def get_indexed_fields(task):
