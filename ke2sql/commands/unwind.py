@@ -120,7 +120,7 @@ def get_unwind_sql(task, table_name, view_name):
                 cast("{view_name}".properties->>'decimalLatitude' AS FLOAT8) as "decimalLatitude",
                 "{view_name}"._geom,
                 "{view_name}"._the_geom_webmercator,
-                'Specimen' as "recordType",
+                'Specimen'::TEXT as "recordType",
                 {properties_select},
                 NULL::TEXT as "maxError",
                 NULL::nested as "determinations",
