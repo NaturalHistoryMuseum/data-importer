@@ -123,6 +123,7 @@ def get_unwind_sql(task, table_name, view_name):
                 'Specimen'::TEXT as "recordType",
                 {properties_select},
                 NULL::TEXT as "maxError",
+                NULL::TEXT as "cultivated",
                 NULL::nested as "determinations",
                 NULL::TEXT as "relationshipOfResource",
                 NULL::TEXT as "relatedResourceID",
