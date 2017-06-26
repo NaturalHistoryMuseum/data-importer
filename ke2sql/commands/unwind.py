@@ -93,7 +93,6 @@ def get_unwind_sql(task, table_name, view_name):
     sql = None
 
     if task.resource_id == '05ff2255-c38a-40c9-b657-4ccb55ab2feb':
-        return
         # Collection code is truncated
         properties.remove(('ecatalogue', 'collectionCode'))
         properties.remove(('ecatalogue', 'dateModified'))
