@@ -70,6 +70,7 @@ class PostgresUpsertMixin(LuigiCopyToTable):
         # mark as complete in same transaction
         self.output().touch(self.connection)
         self.connection.commit()
+        self.connection.close()
 
     def delete_record(self, record):
         """
