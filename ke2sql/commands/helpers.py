@@ -51,7 +51,7 @@ def get_file_import_markers():
             task_name = m.group(1)
             marker_date = int(m.group(2))
             markers.setdefault(marker_date, []).append(task_name)
-
+    connection.close()
     return markers
 
 
