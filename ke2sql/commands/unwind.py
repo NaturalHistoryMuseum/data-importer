@@ -78,6 +78,7 @@ def unwind():
         cursor.execute(';'.join(indexes))
 
     connection.commit()
+    connection.close()
 
 
 def get_unwind_sql(task, table_name, view_name):
