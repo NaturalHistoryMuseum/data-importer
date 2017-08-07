@@ -111,6 +111,8 @@ def get_unwind_sql(task, table_name, view_name):
 
         properties_select = list(map(lambda p: 'CAST("{0}".properties->>\'{1}\' AS TEXT) as "{1}"'.format(view_name, p[1]), properties))
 
+        ts_index = list(map(lambda p: 'to_tsvector(\'english\', coalesce("{0}".properties->>\'{1}\', \'\'))'.format(view_name, p[1]), properties))
+
         sql = """CREATE TABLE "{table_name}" AS (
             SELECT
                 "{view_name}"._id,
@@ -130,13 +132,14 @@ def get_unwind_sql(task, table_name, view_name):
                 NULL::TEXT as "relationshipOfResource",
                 NULL::TEXT as "relatedResourceID",
                 FALSE as centroid,
-                  ''::tsvector as _full_text
+                {ts_index} as _full_text
                 FROM "{view_name}"
                 WHERE "{view_name}".properties->>'occurrenceID' != ')')
         """.format(
             table_name=table_name,
             view_name=view_name,
-            properties_select=','.join(properties_select)
+            properties_select=','.join(properties_select),
+            ts_index=' || '.join(ts_index)
         )
     elif task.resource_id == 'bb909597-dedf-427d-8c04-4c02b3a24db3':
 
