@@ -26,7 +26,6 @@ class IndexLotDatasetTask(DatasetTask):
     resource_description = 'Species level record denoting the presence of a taxon in the Museum collection'
 
     fields = DatasetTask.fields + [
-        Field('ecatalogue', 'AdmGUIDPreferredValue', 'GUID'),
         Field('ecatalogue', 'EntIndMaterial', 'material'),
         Field('ecatalogue', 'EntIndType', 'type'),
         Field('ecatalogue', 'EntIndMedia', 'media'),
@@ -58,10 +57,6 @@ class IndexLotDatasetTask(DatasetTask):
     ]
 
     filters = DatasetTask.filters + [
-        # Records must have a GUID
-        Filter('ecatalogue', 'AdmGUIDPreferredValue', [
-            (is_not, None)
-        ]),
         # Does this record have an excluded status - Stub etc.,
         Filter('ecatalogue', 'SecRecordStatus', [
             (eq, 'Active'),

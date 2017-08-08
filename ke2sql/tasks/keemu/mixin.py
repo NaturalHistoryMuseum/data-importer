@@ -159,8 +159,11 @@ class KeemuMixin(object):
         """
         for field, filters in dataset_filters.items():
             value = getattr(record, field, None)
-            for filter_operator, filter_value in filters:
-                if not filter_operator(value, filter_value):
+            for f in filters:
+                # Can be a tuple, in format (func, value)
+                # Or just a function
+                ret = f[0](value, f[1]) if isinstance(f, tuple) else f(value)
+                if not ret:
                     return False
         return True
 
@@ -180,7 +183,7 @@ class KeemuMixin(object):
         metadata_values = self._record_map_fields(record, self.metadata_field_mappings)
 
         # Add in the extra fields
-        for col, _ in self.metadata_columns:
+        for col, col_type in self.metadata_columns:
             record_dict[col] = metadata_values.get(col, None)
             # Make sure that any list fields are forced to be lists
             if record_dict[col] and col in self.metadata_array_columns and type(record_dict[col]) != list:

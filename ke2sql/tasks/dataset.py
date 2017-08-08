@@ -19,6 +19,7 @@ from ke2sql.lib.field import Field, MetadataField
 from ke2sql.lib.filter import Filter
 from ke2sql.lib.ckan import CKAN
 from ke2sql.lib.helpers import list_all_modules
+from ke2sql.lib.operators import is_uuid
 from ke2sql.tasks.keemu import KeemuCopyTask, KeemuUpsertTask
 from ke2sql.tasks.postgres.view import MaterialisedViewTask
 
@@ -61,7 +62,7 @@ class DatasetTask(MaterialisedViewTask):
     metadata_fields = [
         # All datasets will populate record type
         MetadataField("ecatalogue", "ColRecordType", "record_type", "TEXT"),
-        MetadataField("ecatalogue", "AdmGUIDPreferredValue", "guid", "GUID"),
+        MetadataField("ecatalogue", "AdmGUIDPreferredValue", "guid", "UUID"),
         # Populate embargo date
         # Will use NhmSecEmbargoExtensionDate if set; otherwise NhmSecEmbargoDate
         MetadataField('ecatalogue', 'NhmSecEmbargoDate', 'embargo_date', "DATE"),
@@ -76,6 +77,11 @@ class DatasetTask(MaterialisedViewTask):
         Filter('emultimedia', 'GenDigitalMediaId', [
             (is_not, None),
             (ne, 'Pending')
+        ]),
+        # Records must have a GUID
+        Filter('ecatalogue', 'AdmGUIDPreferredValue', [
+            (is_not, None),
+            is_uuid
         ]),
     ]
 
@@ -133,7 +139,7 @@ class DatasetTask(MaterialisedViewTask):
         Materialized view name - by default just the resource id
         :return:
         """
-        return self.resource_id + "-view"
+        return self.resource_id
 
     @property
     def views(self):

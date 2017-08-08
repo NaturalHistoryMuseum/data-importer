@@ -10,7 +10,7 @@ Created by Ben Scott on '14/03/2017'.
 import luigi
 from operator import is_not
 from ke2sql.tasks.dataset import DatasetTask
-from ke2sql.lib.operators import is_one_of, is_not_one_of
+from ke2sql.lib.operators import is_one_of, is_not_one_of, is_uuid
 from ke2sql.lib.field import Field, MetadataField
 from ke2sql.lib.filter import Filter
 from ke2sql.lib.config import Config
@@ -213,10 +213,6 @@ class SpecimenDatasetTask(DatasetTask):
 
     # Combine filters with default dataset task filters
     filters = DatasetTask.filters + [
-        # Records must have a GUID
-        Filter('ecatalogue', 'AdmGUIDPreferredValue', [
-            (is_not, None)
-        ]),
         # Does this record have an excluded status - Stub etc.,
         Filter('ecatalogue', 'SecRecordStatus', [
             (is_not_one_of, [

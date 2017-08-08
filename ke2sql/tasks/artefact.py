@@ -28,7 +28,6 @@ class ArtefactDatasetTask(DatasetTask):
     resource_description = 'Museum Artefacts'
 
     fields = DatasetTask.fields + [
-        Field('ecatalogue', 'AdmGUIDPreferredValue', 'GUID'),
         Field('ecatalogue', 'PalArtObjectName', 'artefactName'),
         Field('ecatalogue', 'PalArtType', 'artefactType'),
         Field('ecatalogue', 'PalArtDescription', 'artefactDescription'),
@@ -36,10 +35,6 @@ class ArtefactDatasetTask(DatasetTask):
     ]
 
     filters = DatasetTask.filters + [
-        # Records must have a GUID
-        Filter('ecatalogue', 'AdmGUIDPreferredValue', [
-            (is_not, None)
-        ]),
         # Does this record have an excluded status - Stub etc.,
         Filter('ecatalogue', 'SecRecordStatus', [
             (eq, 'Active'),
