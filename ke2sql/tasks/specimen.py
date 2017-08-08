@@ -31,7 +31,6 @@ class SpecimenDatasetTask(DatasetTask):
         # Update fields
         Field('ecatalogue', 'AdmDateModified', 'dateModified'),
         Field('ecatalogue', 'AdmDateInserted', 'dateCreated'),
-        Field('ecatalogue', 'AdmGUIDPreferredValue', 'occurrenceID'),
         # Record numbers
         Field('ecatalogue', 'DarCatalogNumber', 'catalogNumber'),
         # Used if DarCatalogueNumber is empty

@@ -61,6 +61,7 @@ class DatasetTask(MaterialisedViewTask):
     metadata_fields = [
         # All datasets will populate record type
         MetadataField("ecatalogue", "ColRecordType", "record_type", "TEXT"),
+        MetadataField("ecatalogue", "AdmGUIDPreferredValue", "guid", "GUID"),
         # Populate embargo date
         # Will use NhmSecEmbargoExtensionDate if set; otherwise NhmSecEmbargoDate
         MetadataField('ecatalogue', 'NhmSecEmbargoDate', 'embargo_date', "DATE"),
