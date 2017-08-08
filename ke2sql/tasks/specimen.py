@@ -87,6 +87,7 @@ class SpecimenDatasetTask(DatasetTask):
         Field('ecatalogue', 'sumPreferredCentroidLatitude', 'verbatimLatitude'),
         Field('ecatalogue', 'DarGeodeticDatum', 'geodeticDatum'),
         Field('ecatalogue', 'DarGeorefMethod', 'georeferenceProtocol'),
+        Field('ecatalogue', 'sumPreferredCentroidLatitude', 'centroid'),
         # Occurrence
         Field('ecatalogue', 'DarMinimumElevationInMeters', 'minimumElevationInMeters'),
         Field('ecatalogue', 'DarMaximumElevationInMeters', 'maximumElevationInMeters'),
@@ -209,6 +210,7 @@ class SpecimenDatasetTask(DatasetTask):
         Field('ecatalogue', 'EntIdeFiledAs', 'determinationFiledAs'),
         # Project
         Field('ecatalogue', 'NhmSecProjectName', 'project'),
+
     ]
 
     # Combine filters with default dataset task filters
@@ -275,7 +277,9 @@ class SpecimenDatasetTask(DatasetTask):
     ]
 
     sql = """
-        SELECT cat.irn as _id,
+        SELECT
+        cat.irn as _id,
+        cat.guid as "occurrenceID",
         CASE
             WHEN parent_cat.irn IS NOT NULL THEN parent_cat.properties || cat.properties
             WHEN tax.irn IS NOT NULL THEN tax.properties || cat.properties

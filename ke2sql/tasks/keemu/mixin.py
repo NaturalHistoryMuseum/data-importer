@@ -180,6 +180,12 @@ class KeemuMixin(object):
             'import_date': self.date
         }
 
+        # TODO: Not pretty. Maybe add in cast functions to the field list?
+        # Set centroid to true if the centroid field (sumPreferredCentroidLatitude) exists
+        # It will be indexed with a default value False for filtering
+        if 'centroid' in record_dict['properties']:
+            record_dict['properties']['centroid'] = True
+
         metadata_values = self._record_map_fields(record, self.metadata_field_mappings)
 
         # Add in the extra fields
