@@ -11,7 +11,7 @@ import luigi
 from operator import is_not
 from ke2sql.tasks.dataset import DatasetTask
 from ke2sql.lib.operators import is_one_of, is_not_one_of
-from ke2sql.lib.field import Field, MetadataField
+from ke2sql.lib.field import Field, MetadataField, ForeignKeyField
 from ke2sql.lib.filter import Filter
 from ke2sql.lib.config import Config
 
@@ -279,84 +279,89 @@ class SpecimenDatasetTask(DatasetTask):
         MetadataField('ecatalogue', 'CardParasiteRef', 'parasite_taxonomy_irn', "INTEGER"),
     ]
 
-    sql = """
-        SELECT cat.irn as _id,
-        CASE
-            WHEN parent_cat.irn IS NOT NULL THEN parent_cat.properties || cat.properties
-            WHEN tax.irn IS NOT NULL THEN tax.properties || cat.properties
-            ELSE cat.properties
-        END || jsonb_build_object(
-          'basisOfRecord', 'Specimen',
-          'institutionCode', 'NHMUK',
-          'otherCatalogNumbers', format('NHMUK:ecatalogue:%s', cat.irn),
-          'collectionCode', CASE WHEN cat.properties->>'collectionCode' = 'Entomology' THEN 'BMNH(E)' ELSE UPPER(SUBSTR(cat.properties->>'collectionCode', 1, 3)) END,
-          'decimalLongitude', geo."decimalLongitude",
-          'decimalLatitude', geo."decimalLatitude"
-        ) as properties,
-        (SELECT
-            jsonb_agg(jsonb_build_object(
-            'identifier', format('http://www.nhm.ac.uk/services/media-store/asset/%s/contents/preview', properties->>'assetID'),
-            'type', 'StillImage',
-            'license',  'http://creativecommons.org/licenses/by/4.0/',
-            'rightsHolder',  'The Trustees of the Natural History Museum, London'
-            )
-            || emultimedia.properties) as "associatedMedia"
-            FROM emultimedia
-            WHERE emultimedia.deleted IS NULL
-              AND (emultimedia.embargo_date IS NULL OR emultimedia.embargo_date < NOW())
-              AND emultimedia.irn = ANY(COALESCE(cat.multimedia_irns, parent_cat.multimedia_irns))
-        ) AS "associatedMedia",
-        geo._geom,
-        geo._the_geom_webmercator,
-        cat.created,
-        cat.modified
-        FROM ecatalogue cat
-          LEFT JOIN ecatalogue parent_cat ON cat.parent_irn = parent_cat.irn
-          LEFT JOIN etaxonomy tax ON cat.parasite_taxonomy_irn = tax.irn
-          LEFT JOIN _geospatial_projection geo ON cat.irn = geo._id
-        WHERE
-          cat.record_type NOT IN ('Mammal Group Parent', 'Index Lot', 'Artefact')
-          AND (cat.embargo_date IS NULL OR cat.embargo_date < NOW())
-          AND cat.deleted IS NULL
-     """.format(
-        multimedia_sub_query=DatasetTask.multimedia_sub_query
-    )
+    foreign_key_fields = [
+        ForeignKeyField('emultimedia', 'MulMultiMediaRef', 'multimedia_irns'),
+        ForeignKeyField('emultimedia', 'MulMultiMediaRef', 'multimedia_irns')
+    ]
 
-    @property
-    def views(self):
-        views = super(SpecimenDatasetTask, self).views
-        # Add extra view for building geospatial projection mat view
-        views.insert(0, (
-            '_geospatial_projection',
-            """
-              SELECT
-                ecatalogue.irn as _id,
-                cast(ecatalogue.properties->>'decimalLatitude' as FLOAT8) as "decimalLatitude",
-                cast(ecatalogue.properties->>'decimalLongitude' as FLOAT8) as "decimalLongitude",
-                st_setsrid(st_makepoint(
-                    cast(ecatalogue.properties->>'decimalLongitude' as FLOAT8),
-                    cast(ecatalogue.properties->>'decimalLatitude' as FLOAT8)
-                ), 4326) as _geom,
-                st_transform(
-                    st_setsrid(
-                        st_makepoint(
-                        cast(ecatalogue.properties->>'decimalLongitude' as FLOAT8),
-                        cast(ecatalogue.properties->>'decimalLatitude' as FLOAT8)
-                        ),
-                    4326),
-                3857) as _the_geom_webmercator
-              FROM ecatalogue
-              WHERE ecatalogue.properties->>'decimalLatitude' IS NOT NULL
-              AND ecatalogue.properties->>'decimalLatitude' NOT LIKE '%,%'
-              AND cast(ecatalogue.properties->>'decimalLatitude' as FLOAT8) >= -90
-              AND cast(ecatalogue.properties->>'decimalLatitude' as FLOAT8) <= 90
-              AND ecatalogue.properties->>'decimalLongitude' IS NOT NULL
-              AND ecatalogue.properties->>'decimalLongitude' NOT LIKE '%,%'
-              AND cast(ecatalogue.properties->>'decimalLongitude' as FLOAT8) >= -180
-              AND cast(ecatalogue.properties->>'decimalLongitude' as FLOAT8) <= 180
-            """
-        ))
-        return views
+    # sql = """
+    #     SELECT cat.irn as _id,
+    #     CASE
+    #         WHEN parent_cat.irn IS NOT NULL THEN parent_cat.properties || cat.properties
+    #         WHEN tax.irn IS NOT NULL THEN tax.properties || cat.properties
+    #         ELSE cat.properties
+    #     END || jsonb_build_object(
+    #       'basisOfRecord', 'Specimen',
+    #       'institutionCode', 'NHMUK',
+    #       'otherCatalogNumbers', format('NHMUK:ecatalogue:%s', cat.irn),
+    #       'collectionCode', CASE WHEN cat.properties->>'collectionCode' = 'Entomology' THEN 'BMNH(E)' ELSE UPPER(SUBSTR(cat.properties->>'collectionCode', 1, 3)) END,
+    #       'decimalLongitude', geo."decimalLongitude",
+    #       'decimalLatitude', geo."decimalLatitude"
+    #     ) as properties,
+    #     (SELECT
+    #         jsonb_agg(jsonb_build_object(
+    #         'identifier', format('http://www.nhm.ac.uk/services/media-store/asset/%s/contents/preview', properties->>'assetID'),
+    #         'type', 'StillImage',
+    #         'license',  'http://creativecommons.org/licenses/by/4.0/',
+    #         'rightsHolder',  'The Trustees of the Natural History Museum, London'
+    #         )
+    #         || emultimedia.properties) as "associatedMedia"
+    #         FROM emultimedia
+    #         WHERE emultimedia.deleted IS NULL
+    #           AND (emultimedia.embargo_date IS NULL OR emultimedia.embargo_date < NOW())
+    #           AND emultimedia.irn = ANY(COALESCE(cat.multimedia_irns, parent_cat.multimedia_irns))
+    #     ) AS "associatedMedia",
+    #     geo._geom,
+    #     geo._the_geom_webmercator,
+    #     cat.created,
+    #     cat.modified
+    #     FROM ecatalogue cat
+    #       LEFT JOIN ecatalogue parent_cat ON cat.parent_irn = parent_cat.irn
+    #       LEFT JOIN etaxonomy tax ON cat.parasite_taxonomy_irn = tax.irn
+    #       LEFT JOIN _geospatial_projection geo ON cat.irn = geo._id
+    #     WHERE
+    #       cat.record_type NOT IN ('Mammal Group Parent', 'Index Lot', 'Artefact')
+    #       AND (cat.embargo_date IS NULL OR cat.embargo_date < NOW())
+    #       AND cat.deleted IS NULL
+    #  """.format(
+    #     multimedia_sub_query=DatasetTask.multimedia_sub_query
+    # )
+
+    # @property
+    # def views(self):
+    #     views = super(SpecimenDatasetTask, self).views
+    #     # Add extra view for building geospatial projection mat view
+    #     views.insert(0, (
+    #         '_geospatial_projection',
+    #         """
+    #           SELECT
+    #             ecatalogue.irn as _id,
+    #             cast(ecatalogue.properties->>'decimalLatitude' as FLOAT8) as "decimalLatitude",
+    #             cast(ecatalogue.properties->>'decimalLongitude' as FLOAT8) as "decimalLongitude",
+    #             st_setsrid(st_makepoint(
+    #                 cast(ecatalogue.properties->>'decimalLongitude' as FLOAT8),
+    #                 cast(ecatalogue.properties->>'decimalLatitude' as FLOAT8)
+    #             ), 4326) as _geom,
+    #             st_transform(
+    #                 st_setsrid(
+    #                     st_makepoint(
+    #                     cast(ecatalogue.properties->>'decimalLongitude' as FLOAT8),
+    #                     cast(ecatalogue.properties->>'decimalLatitude' as FLOAT8)
+    #                     ),
+    #                 4326),
+    #             3857) as _the_geom_webmercator
+    #           FROM ecatalogue
+    #           WHERE ecatalogue.properties->>'decimalLatitude' IS NOT NULL
+    #           AND ecatalogue.properties->>'decimalLatitude' NOT LIKE '%,%'
+    #           AND cast(ecatalogue.properties->>'decimalLatitude' as FLOAT8) >= -90
+    #           AND cast(ecatalogue.properties->>'decimalLatitude' as FLOAT8) <= 90
+    #           AND ecatalogue.properties->>'decimalLongitude' IS NOT NULL
+    #           AND ecatalogue.properties->>'decimalLongitude' NOT LIKE '%,%'
+    #           AND cast(ecatalogue.properties->>'decimalLongitude' as FLOAT8) >= -180
+    #           AND cast(ecatalogue.properties->>'decimalLongitude' as FLOAT8) <= 180
+    #         """
+    #     ))
+    #     return views
 
 
 if __name__ == "__main__":

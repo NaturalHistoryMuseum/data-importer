@@ -71,6 +71,10 @@ class IndexLotDatasetTask(DatasetTask):
         ])
     ]
 
+    foreign_keys = [
+
+    ]
+
     # Index Lot records do not have their taxonomy populated, provide mechanism to join
     metadata_fields = DatasetTask.metadata_fields + [
         MetadataField('ecatalogue', 'EntIndIndexLotTaxonNameLocalRef', 'indexlot_taxonomy_irn', "INTEGER"),

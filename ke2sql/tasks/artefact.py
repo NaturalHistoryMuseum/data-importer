@@ -50,18 +50,31 @@ class ArtefactDatasetTask(DatasetTask):
         ]),
     ]
 
-    sql = """
-        SELECT cat.irn as _id,
-        cat.properties,
-        ({multimedia_sub_query}) AS "multimedia"
-        FROM ecatalogue cat
-        WHERE
-          cat.record_type = 'Artefact'
-          AND (cat.embargo_date IS NULL OR cat.embargo_date < NOW())
-          AND cat.deleted IS NULL
-    """.format(
-        multimedia_sub_query=DatasetTask.multimedia_sub_query
-    )
+    def solr_schema(self):
+
+
+
+        pass
+
+    def solr_query(self):
+
+
+
+
+        pass
+
+    # sql = """
+    #     SELECT cat.irn as _id,
+    #     cat.properties,
+    #     ({multimedia_sub_query}) AS "multimedia"
+    #     FROM ecatalogue cat
+    #     WHERE
+    #       cat.record_type = 'Artefact'
+    #       AND (cat.embargo_date IS NULL OR cat.embargo_date < NOW())
+    #       AND cat.deleted IS NULL
+    # """.format(
+    #     multimedia_sub_query=DatasetTask.multimedia_sub_query
+    # )
 
 if __name__ == "__main__":
     luigi.run(main_task_cls=ArtefactDatasetTask)

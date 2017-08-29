@@ -19,7 +19,9 @@ def get_dataset_tasks():
     from ke2sql.tasks.specimen import SpecimenDatasetTask
     from ke2sql.tasks.indexlot import IndexLotDatasetTask
     from ke2sql.tasks.artefact import ArtefactDatasetTask
+    return [IndexLotDatasetTask]
     return [SpecimenDatasetTask, IndexLotDatasetTask, ArtefactDatasetTask]
+
 
 
 def list_all_modules():

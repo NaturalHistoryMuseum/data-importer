@@ -50,6 +50,9 @@ class DatasetTask(MaterialisedViewTask):
     # List of all fields, as tuples:
     #     (KE EMu field, Dataset field)
     fields = [
+        # All datasets include create and update
+        Field('ecatalogue', 'dateCreated', 'created'),
+        Field('ecatalogue', 'dateModified', 'modified'),
         # All datasets include multimedia fields
         Field('emultimedia', 'GenDigitalMediaId', 'assetID'),
         Field('emultimedia', 'MulTitle', 'title'),
@@ -78,19 +81,19 @@ class DatasetTask(MaterialisedViewTask):
         ]),
     ]
 
-    # Query for building multimedia json
-    multimedia_sub_query = """
-      SELECT
-        jsonb_agg(jsonb_build_object(
-          'identifier', format('http://www.nhm.ac.uk/services/media-store/asset/%s/contents/preview', properties->>'assetID'),
-          'type', 'StillImage',
-          'license',  'http://creativecommons.org/licenses/by/4.0/',
-          'rightsHolder',  'The Trustees of the Natural History Museum, London'
-          )
-        || emultimedia.properties) as "associatedMedia"
-      FROM emultimedia
-      WHERE emultimedia.deleted IS NULL AND (emultimedia.embargo_date IS NULL OR emultimedia.embargo_date < NOW()) AND emultimedia.irn = ANY(cat.multimedia_irns)
-    """
+    # # Query for building multimedia json
+    # multimedia_sub_query = """
+    #   SELECT
+    #     jsonb_agg(jsonb_build_object(
+    #       'identifier', format('http://www.nhm.ac.uk/services/media-store/asset/%s/contents/preview', properties->>'assetID'),
+    #       'type', 'StillImage',
+    #       'license',  'http://creativecommons.org/licenses/by/4.0/',
+    #       'rightsHolder',  'The Trustees of the Natural History Museum, London'
+    #       )
+    #     || emultimedia.properties) as "associatedMedia"
+    #   FROM emultimedia
+    #   WHERE emultimedia.deleted IS NULL AND (emultimedia.embargo_date IS NULL OR emultimedia.embargo_date < NOW()) AND emultimedia.irn = ANY(cat.multimedia_irns)
+    # """
 
     @abc.abstractproperty
     def package_name(self):
