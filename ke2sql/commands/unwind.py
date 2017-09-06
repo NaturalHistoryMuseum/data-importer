@@ -93,130 +93,134 @@ def get_unwind_sql(task, table_name, view_name):
 
     sql = None
 
-    # if task.resource_id == '05ff2255-c38a-40c9-b657-4ccb55ab2feb':
-    #     # Collection code is truncated
-    #     properties.remove(('ecatalogue', 'collectionCode'))
-    #     properties.remove(('ecatalogue', 'dateModified'))
-    #     properties.remove(('ecatalogue', 'dateCreated'))
-    #     properties.remove(('ecatalogue', 'decimalLongitude'))
-    #     properties.remove(('ecatalogue', 'decimalLatitude'))
-    #     properties.remove(('ecatalogue', 'occurrenceID'))
-    #
-    #     properties.extend([
-    #         ('ecatalogue', 'basisOfRecord'),
-    #         ('ecatalogue', 'institutionCode'),
-    #         ('ecatalogue', 'otherCatalogNumbers'),
-    #         ('ecatalogue', 'collectionCode')
-    #     ])
-    #
-    #     properties_select = list(map(lambda p: 'CAST("{0}".properties->>\'{1}\' AS TEXT) as "{1}"'.format(view_name, p[1]), properties))
-    #
-    #     ts_index = list(map(lambda p: 'to_tsvector(\'english\', coalesce("{0}".properties->>\'{1}\', \'\'))'.format(view_name, p[1]), properties))
-    #
-    #     sql = """CREATE TABLE "{table_name}" AS (
-    #         SELECT
-    #             "{view_name}"._id,
-    #             cast("{view_name}".properties->>'occurrenceID' AS UUID) as "occurrenceID",
-    #             "{view_name}"."associatedMedia"::text,
-    #             "{view_name}".properties->>'dateCreated' as created,
-    #             "{view_name}".properties->>'dateModified' as modified,
-    #             cast("{view_name}".properties->>'decimalLongitude' AS FLOAT8) as "decimalLongitude",
-    #             cast("{view_name}".properties->>'decimalLatitude' AS FLOAT8) as "decimalLatitude",
-    #             "{view_name}"._geom,
-    #             "{view_name}"._the_geom_webmercator,
-    #             'Specimen'::TEXT as "recordType",
-    #             {properties_select},
-    #             NULL::TEXT as "maxError",
-    #             NULL::TEXT as "cultivated",
-    #             NULL::nested as "determinations",
-    #             NULL::TEXT as "relationshipOfResource",
-    #             NULL::TEXT as "relatedResourceID",
-    #             FALSE as centroid,
-    #             {ts_index} as _full_text
-    #             FROM "{view_name}"
-    #             WHERE "{view_name}".properties->>'occurrenceID' != ')')
-    #     """.format(
-    #         table_name=table_name,
-    #         view_name=view_name,
-    #         properties_select=','.join(properties_select),
-    #         ts_index=' || '.join(ts_index)
-    #     )
-    # elif task.resource_id == 'bb909597-dedf-427d-8c04-4c02b3a24db3':
-    #
-    #     original_fields = [
-    #         'Currently accepted name',
-    #         'Original name',
-    #         'Kingdom',
-    #         'Phylum',
-    #         'Class',
-    #         'Order',
-    #         'Suborder',
-    #         'Superfamily',
-    #         'Family',
-    #         'Subfamily',
-    #         'Genus',
-    #         'Subgenus',
-    #         'Species',
-    #         'Subspecies',
-    #         'Taxonomic rank',
-    #         'GUID',
-    #         'IRN',
-    #         'Material',
-    #         'Type',
-    #         'Media',
-    #         'British',
-    #         'Kind of material',
-    #         'Kind of media',
-    #         'Material count',
-    #         'Material sex',
-    #         'Material stage',
-    #         'Material types',
-    #         'Material primary type no',
-    #         # 'Department',
-    #         # 'Modified',
-    #         # 'Created'
-    #     ]
-    #
-    #     property_mappings = {p[1]: camel_case_to_sentence(p[1]) for p in properties}
-    #     # Manual override
-    #     property_mappings['currentScientificName'] = 'Currently accepted name'
-    #     property_mappings['scientificName'] = 'Original name'
-    #     property_mappings['specificEpithet'] = 'Species'
-    #     property_mappings['infraspecificEpithet'] = 'Subspecies'
-    #     property_mappings['taxonRank'] = 'Taxonomic rank'
-    #     property_mappings['GUID'] = 'GUID'
-    #     property_mappings['_id'] = 'IRN'
-    #     property_mappings['materialPrimaryTypeNumber'] = 'Material primary type no'
-    #
-    #     new_fields = list(property_mappings.values())
-    #
-    #     # Ensure all the fields exist
-    #     for original_field in original_fields:
-    #         try:
-    #             new_fields.remove(original_field)
-    #         except ValueError:
-    #             print(original_field)
-    #             raise
-    #
-    #     if new_fields:
-    #         raise Exception('Extra fields')
-    #
-    #     properties_select = ['CAST("{0}".properties->>\'{1}\' AS CITEXT) as "{2}"'.format(view_name, x, y) for x,y in property_mappings.items()]
-    #
-    #     sql = """CREATE TABLE "{table_name}" AS (
-    #         SELECT
-    #             "{view_name}"._id,
-    #             "{view_name}"."multimedia"::text,
-    #             "{view_name}".properties->>'dateCreated' as created,
-    #             "{view_name}".properties->>'dateModified' as modified,
-    #             {properties_select},
-    #               ''::tsvector as _full_text
-    #             FROM "{view_name}")
-    #     """.format(
-    #         table_name=table_name,
-    #         view_name=view_name,
-    #         properties_select=','.join(properties_select)
-    #     )
+    if task.resource_id == '05ff2255-c38a-40c9-b657-4ccb55ab2feb':
+        # Collection code is truncated
+        properties.remove(('ecatalogue', 'collectionCode'))
+        properties.remove(('ecatalogue', 'dateModified'))
+        properties.remove(('ecatalogue', 'dateCreated'))
+        properties.remove(('ecatalogue', 'decimalLongitude'))
+        properties.remove(('ecatalogue', 'decimalLatitude'))
+        properties.remove(('ecatalogue', 'occurrenceID'))
+        properties.remove(('ecatalogue', 'recordedBy'))
+        properties.remove(('ecatalogue', 'identifiedBy'))        
+    
+        properties.extend([
+            ('ecatalogue', 'basisOfRecord'),
+            ('ecatalogue', 'institutionCode'),
+            ('ecatalogue', 'otherCatalogNumbers'),
+            ('ecatalogue', 'collectionCode')
+        ])
+    
+        properties_select = list(map(lambda p: 'CAST("{0}".properties->>\'{1}\' AS TEXT) as "{1}"'.format(view_name, p[1]), properties))
+    
+        ts_index = list(map(lambda p: 'to_tsvector(\'english\', coalesce("{0}".properties->>\'{1}\', \'\'))'.format(view_name, p[1]), properties))
+    
+        sql = """CREATE TABLE "{table_name}" AS (
+            SELECT
+                "{view_name}"._id,
+                cast("{view_name}".properties->>'occurrenceID' AS UUID) as "occurrenceID",
+                "{view_name}"."associatedMedia"::text,
+                "{view_name}".properties->>'dateCreated' as created,
+                "{view_name}".properties->>'dateModified' as modified,
+                cast("{view_name}".properties->>'decimalLongitude' AS FLOAT8) as "decimalLongitude",
+                cast("{view_name}".properties->>'decimalLatitude' AS FLOAT8) as "decimalLatitude",
+                "{view_name}"._geom,
+                "{view_name}"._the_geom_webmercator,
+                'Specimen'::TEXT as "recordType",
+                {properties_select},
+                NULL::TEXT as "maxError",
+                NULL::TEXT as "identifiedBy",
+                NULL::TEXT as "recordedBy",
+                NULL::TEXT as "cultivated",
+                NULL::nested as "determinations",
+                NULL::TEXT as "relationshipOfResource",
+                NULL::TEXT as "relatedResourceID",
+                FALSE as centroid,
+                {ts_index} as _full_text
+                FROM "{view_name}"
+                WHERE "{view_name}".properties->>'occurrenceID' != ')')
+        """.format(
+            table_name=table_name,
+            view_name=view_name,
+            properties_select=','.join(properties_select),
+            ts_index=' || '.join(ts_index)
+        )
+    elif task.resource_id == 'bb909597-dedf-427d-8c04-4c02b3a24db3':
+    
+        original_fields = [
+            'Currently accepted name',
+            'Original name',
+            'Kingdom',
+            'Phylum',
+            'Class',
+            'Order',
+            'Suborder',
+            'Superfamily',
+            'Family',
+            'Subfamily',
+            'Genus',
+            'Subgenus',
+            'Species',
+            'Subspecies',
+            'Taxonomic rank',
+            'GUID',
+            'IRN',
+            'Material',
+            'Type',
+            'Media',
+            'British',
+            'Kind of material',
+            'Kind of media',
+            'Material count',
+            'Material sex',
+            'Material stage',
+            'Material types',
+            'Material primary type no',
+            # 'Department',
+            # 'Modified',
+            # 'Created'
+        ]
+    
+        property_mappings = {p[1]: camel_case_to_sentence(p[1]) for p in properties}
+        # Manual override
+        property_mappings['currentScientificName'] = 'Currently accepted name'
+        property_mappings['scientificName'] = 'Original name'
+        property_mappings['specificEpithet'] = 'Species'
+        property_mappings['infraspecificEpithet'] = 'Subspecies'
+        property_mappings['taxonRank'] = 'Taxonomic rank'
+        property_mappings['GUID'] = 'GUID'
+        property_mappings['_id'] = 'IRN'
+        property_mappings['materialPrimaryTypeNumber'] = 'Material primary type no'
+    
+        new_fields = list(property_mappings.values())
+    
+        # Ensure all the fields exist
+        for original_field in original_fields:
+            try:
+                new_fields.remove(original_field)
+            except ValueError:
+                print(original_field)
+                raise
+    
+        if new_fields:
+            raise Exception('Extra fields')
+    
+        properties_select = ['CAST("{0}".properties->>\'{1}\' AS CITEXT) as "{2}"'.format(view_name, x, y) for x,y in property_mappings.items()]
+    
+        sql = """CREATE TABLE "{table_name}" AS (
+            SELECT
+                "{view_name}"._id,
+                "{view_name}"."multimedia"::text,
+                "{view_name}".properties->>'dateCreated' as created,
+                "{view_name}".properties->>'dateModified' as modified,
+                {properties_select},
+                  ''::tsvector as _full_text
+                FROM "{view_name}")
+        """.format(
+            table_name=table_name,
+            view_name=view_name,
+            properties_select=','.join(properties_select)
+        )
 
     if task.resource_id == 'ec61d82a-748d-4b53-8e99-3e708e76bc4d':
         properties_select = list(map(lambda p: 'CAST("{0}".properties->>\'{1}\' AS TEXT) as "{1}"'.format(view_name, p[1]), properties))
