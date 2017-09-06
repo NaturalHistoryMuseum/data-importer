@@ -204,6 +204,7 @@ class DatasetTask(MaterialisedViewTask):
         full_export_date = Config.getint('keemu', 'full_export_date')
         # If this is the full export date, then use the bulk copy class
         cls = KeemuCopyTask if full_export_date == self.date else KeemuUpsertTask
+        cls = KeemuUpsertTask
         # Set comprehension - build set of all modules used in this dataset
         for module in list_all_modules():
             logger.info('Importing %s with %s method', module, cls)
