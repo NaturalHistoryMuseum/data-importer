@@ -1,28 +1,20 @@
 #!/usr/bin/env python
 # encoding: utf-8
 """
-Created by Ben Scott on '31/05/2017'.
+Created by Ben Scott on '04/09/2017'.
 """
 
-import click
-import logging
-import time
-import json
-from ke2sql.lib.solr import SolrIndex
-from ke2sql.lib.config import Config
+import luigi
+
+from ke2sql.lib.solr_index import SolrIndex
+from ke2sql.lib.solr import solr_get_schema, solr_get_query
 
 
-logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
-logger = logging.getLogger('luigi-interface')
+class SolrIndexTask(luigi.Task):
+    def run(self):
 
-
-# Time to wait before checking the import has worked - by default 1 minute
-SLEEP_INTERVAL = 2
-
-
-@click.command()
-@click.option('--full-import',  default=False, help='Perform a full index - if not set will perform delta import.', is_flag=True)
-def data_import(full_import):
+        # Time to wait before checking the import has worked - by default 1 minute
+        SLEEP_INTERVAL = 2
 
         solr_hosts = json.loads(Config.get('solr', 'hosts'))
         # Loop through the cores, request a full import and wait until it completes before
@@ -50,5 +42,21 @@ def data_import(full_import):
                     break
 
 
-if __name__ == "__main__":
-    data_import()
+        solr_index = SolrIndex('http://10.11.20.11:8080', 'specimen-collection')
+        # print(solr_index.status())
+
+        # Check index
+        # Get existing index
+
+        # Build current index
+        # schema = self.get_solr_schema()
+
+        print("SOLR")
+
+    def get_solr_schema(self):
+        schema = solr_get_schema(self.__class__)
+
+    def old(self):
+        CORE_NAME = 'specimen_collection'
+
+

@@ -11,10 +11,12 @@ import logging
 from prompter import yesno
 
 from ke2sql.lib.config import Config
-from ke2sql.lib.helpers import list_all_modules
-from ke2sql.commands.helpers import get_unprocessed_export_dates
-from ke2sql.commands.helpers import run_tasks
+from ke2sql.lib.dataset import dataset_get_tasks
+from ke2sql.tasks.keemu.ecatalogue import EcatalogueTask
+from ke2sql.tasks.keemu.emultimedia import EMultimediaTask
+from ke2sql.tasks.keemu.etaxonomy import ETaxonomyTask
 from ke2sql.lib.db import db_drop_table
+from ke2sql.lib.dataset import dataset_get_foreign_keys
 
 
 logger = logging.getLogger('luigi-interface')
@@ -38,8 +40,12 @@ def drop_tables():
     if yesno('Your are dropping all tables - all data will be deleted. Are you sure you want to continue?'):
         db_drop_table('table_updates', connection)
         # Delete all info in the module tables
-        for module_name in list_all_modules():
-            db_drop_table(module_name, connection)
+        for task in [EcatalogueTask, ETaxonomyTask, EMultimediaTask]:
+            db_drop_table(task.module_name, connection)
+
+        for foreign_key in dataset_get_foreign_keys():
+            db_drop_table(foreign_key.table, connection)
+
         connection.commit()
         connection.close()
 

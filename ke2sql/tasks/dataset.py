@@ -13,43 +13,35 @@ import luigi
 from operator import is_not, ne
 from prompter import yesno
 
-
 from ke2sql.lib.config import Config
-from ke2sql.lib.field import Field, MetadataField
+from ke2sql.lib.field import Field, ForeignKeyField
 from ke2sql.lib.filter import Filter
 from ke2sql.lib.ckan import CKAN
-from ke2sql.lib.helpers import list_all_modules
-from ke2sql.tasks.keemu import KeemuCopyTask, KeemuUpsertTask
-from ke2sql.tasks.postgres.view import MaterialisedViewTask
-
+from ke2sql.tasks.solr.index import SolrIndexTask
+from ke2sql.tasks.keemu.ecatalogue import EcatalogueTask
 
 logger = logging.getLogger('luigi-interface')
 
 
-class DatasetTask(MaterialisedViewTask):
+class DatasetTask(SolrIndexTask):
     """
     Base Dataset Task
     """
+    # KE EMu export date to process
     date = luigi.IntParameter()
     # Limit - only used when testing
     limit = luigi.IntParameter(default=None, significant=False)
 
-    # Specify view only to just create materialized views, and skip
-    # Dataset creation - useful if just want to create view
-    # And copy into an existing dataset
-    view_only = luigi.BoolParameter(default=False, significant=False)
-
-    # Luigi Postgres database connections
-    host = Config.get('database', 'host')
-    database = Config.get('database', 'datastore_dbname')
-    user = Config.get('database', 'username')
-    password = Config.get('database', 'password')
-    table = 'ecatalogue'
     resource_type = 'csv'
 
-    # List of all fields, as tuples:
-    #     (KE EMu field, Dataset field)
+    # Multimedia field name
+    multimedia_field = 'multimedia'
+
+    # List of all fields
     fields = [
+        # All datasets include create and update
+        Field('ecatalogue', 'AdmDateModified', 'created'),
+        Field('ecatalogue', 'AdmDateInserted', 'modified'),
         # All datasets include multimedia fields
         Field('emultimedia', 'GenDigitalMediaId', 'assetID'),
         Field('emultimedia', 'MulTitle', 'title'),
@@ -58,39 +50,18 @@ class DatasetTask(MaterialisedViewTask):
         Field('emultimedia', 'DetResourceType', 'category'),
     ]
 
-    metadata_fields = [
-        # All datasets will populate record type
-        MetadataField("ecatalogue", "ColRecordType", "record_type", "TEXT"),
-        # Populate embargo date
-        # Will use NhmSecEmbargoExtensionDate if set; otherwise NhmSecEmbargoDate
-        MetadataField('ecatalogue', 'NhmSecEmbargoDate', 'embargo_date', "DATE"),
-        MetadataField('ecatalogue', 'NhmSecEmbargoExtensionDate', 'embargo_date', "DATE"),
-        MetadataField('emultimedia', 'NhmSecEmbargoDate', 'embargo_date', "DATE"),
-        MetadataField('emultimedia', 'NhmSecEmbargoExtensionDate', 'embargo_date', "DATE"),
+    # All datasets have a foreign key join with emultimedia
+    foreign_keys = [
+        ForeignKeyField('ecatalogue', 'emultimedia', 'MulMultiMediaRef'),
     ]
 
-    # List of filters to apply to build this dataset
-    filters = [
-        # All datasets include multimedia records, which are filtered on having a MAM Asset ID
-        Filter('emultimedia', 'GenDigitalMediaId', [
-            (is_not, None),
-            (ne, 'Pending')
-        ]),
-    ]
-
-    # Query for building multimedia json
-    multimedia_sub_query = """
-      SELECT
-        jsonb_agg(jsonb_build_object(
-          'identifier', format('http://www.nhm.ac.uk/services/media-store/asset/%s/contents/preview', properties->>'assetID'),
-          'type', 'StillImage',
-          'license',  'http://creativecommons.org/licenses/by/4.0/',
-          'rightsHolder',  'The Trustees of the Natural History Museum, London'
-          )
-        || emultimedia.properties) as "associatedMedia"
-      FROM emultimedia
-      WHERE emultimedia.deleted IS NULL AND (emultimedia.embargo_date IS NULL OR emultimedia.embargo_date < NOW()) AND emultimedia.irn = ANY(cat.multimedia_irns)
-    """
+    @abc.abstractproperty
+    def record_types(self):
+        """
+        Record type(s) to use to build this dataset
+        :return: String or List
+        """
+        return []
 
     @abc.abstractproperty
     def package_name(self):
@@ -116,39 +87,8 @@ class DatasetTask(MaterialisedViewTask):
         """
         return None
 
-    @abc.abstractproperty
-    def sql(self):
-        """
-        SQL to build the dataset
-        Just a raw string, does duplicate some logic (where statements etc.,)
-        But is so much more readable and easier to see what's happening
-        :return: String
-        """
-        return None
-
-    @property
-    def materialized_view_name(self):
-        """
-        Materialized view name - by default just the resource id
-        :return:
-        """
-        return self.resource_id + "-view"
-
-    @property
-    def views(self):
-        """
-        MaterialisedViewTask.views - return (name, sql) tuple to define materialised view
-        :return:
-        """
-        return [
-            (self.materialized_view_name, self.sql)
-        ]
-
-    def __init__(self, *args, **kwargs):
-        super(DatasetTask, self).__init__(*args, **kwargs)
-        # Try and create CKAN datasets if view_only isn't set
-        if not self.view_only:
-            self.create_ckan_dataset()
+    def on_success(self):
+        self.create_ckan_dataset()
 
     def create_ckan_dataset(self):
         """
@@ -197,14 +137,10 @@ class DatasetTask(MaterialisedViewTask):
     def requires(self):
         """
         Luigi requires
-        Dynamically build task dependencies, for reading in KE EMu files
-        And writing to the database
+        Just requires the keemu ecatalogue import - which is dependent
+        On etaxonomy and emultimedia
         :return:
         """
-        full_export_date = Config.getint('keemu', 'full_export_date')
-        # If this is the full export date, then use the bulk copy class
-        cls = KeemuCopyTask if full_export_date == self.date else KeemuUpsertTask
-        # Set comprehension - build set of all modules used in this dataset
-        for module in list_all_modules():
-            logger.info('Importing %s with %s method', module, cls)
-            yield cls(module_name=module, date=self.date, limit=self.limit)
+        yield (
+            EcatalogueTask(date=self.date, limit=self.limit),
+        )

@@ -27,6 +27,8 @@ class ArtefactDatasetTask(DatasetTask):
     resource_id = Config.get('resource_ids', 'artefact')
     resource_description = 'Museum Artefacts'
 
+    record_types = ['Artefact']
+
     fields = DatasetTask.fields + [
         Field('ecatalogue', 'AdmGUIDPreferredValue', 'GUID'),
         Field('ecatalogue', 'PalArtObjectName', 'artefactName'),
@@ -34,34 +36,6 @@ class ArtefactDatasetTask(DatasetTask):
         Field('ecatalogue', 'PalArtDescription', 'artefactDescription'),
         Field('ecatalogue', 'IdeCurrentScientificName', 'scientificName')
     ]
-
-    filters = DatasetTask.filters + [
-        # Records must have a GUID
-        Filter('ecatalogue', 'AdmGUIDPreferredValue', [
-            (is_not, None)
-        ]),
-        # Does this record have an excluded status - Stub etc.,
-        Filter('ecatalogue', 'SecRecordStatus', [
-            (eq, 'Active'),
-        ]),
-        # Col record type must be artefact
-        Filter('ecatalogue', 'ColRecordType', [
-            (eq, 'Artefact'),
-        ]),
-    ]
-
-    sql = """
-        SELECT cat.irn as _id,
-        cat.properties,
-        ({multimedia_sub_query}) AS "multimedia"
-        FROM ecatalogue cat
-        WHERE
-          cat.record_type = 'Artefact'
-          AND (cat.embargo_date IS NULL OR cat.embargo_date < NOW())
-          AND cat.deleted IS NULL
-    """.format(
-        multimedia_sub_query=DatasetTask.multimedia_sub_query
-    )
 
 if __name__ == "__main__":
     luigi.run(main_task_cls=ArtefactDatasetTask)
