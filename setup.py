@@ -13,20 +13,16 @@ except:
 __version__ = '1.0'
 
 setup(
-    name='ke2sql',
+    name='data-importer',
     version=__version__,
-    description='Import KE Data into postgres',
+    description='Data Portal import pipeline',
     author='Ben Scott',
     author_email='ben@benscott.co.uk',
-    url='https://github.com/NaturalHistoryMuseum/ke2sql',
+    url='https://github.com/NaturalHistoryMuseum/data-importer',
     license='Apache License 2.0',
     packages=[
-        'ke2sql',
+        'data_importer',
     ],
-    entry_points='''
-        [console_scripts]
-        init-ke2sql=ke2sql.cli:init
-    ''',
 )
 
 
