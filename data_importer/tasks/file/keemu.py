@@ -10,7 +10,7 @@ import luigi
 from data_importer.lib.config import Config
 
 
-class FileTask(luigi.ExternalTask):
+class KeemuFileTask(luigi.ExternalTask):
     """
     Wrapper around a KE EMu export file
     Luigi requires LocalTarget tasks to be  external tasks

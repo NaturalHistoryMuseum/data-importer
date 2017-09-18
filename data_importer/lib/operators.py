@@ -24,3 +24,13 @@ def is_not_one_of(a, b):
     """
     return a not in b
 
+
+def is_uuid(a):
+    """
+    Helper operator a is not in list b
+    :param a: str
+    :param b: list
+    :return: boolean
+    """
+    # FIXME: Better UUID checking
+    return len(a) == 36

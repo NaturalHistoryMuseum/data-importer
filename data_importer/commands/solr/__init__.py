@@ -11,7 +11,16 @@ from collections import OrderedDict
 
 class SolrCommand(object):
     def __init__(self, dataset_name):
+        self.dataset_name = dataset_name
         self.dataset = self._get_dataset(dataset_name)
+
+        # Extra field names
+        if self.dataset_name == 'collection-specimens':
+            self.multimedia_field = 'associatedMedia'
+            self.guid_field = 'occurrenceID'
+        else:
+            self.multimedia_field = 'multimedia'
+            self.guid_field = 'GUID'
 
     @staticmethod
     def _get_dataset(dataset_name):
@@ -29,62 +38,90 @@ class SolrCommand(object):
 
     @property
     def dataset_fields(self):
+        fields = set()
         for field in self.dataset.fields:
+            # Multimedia and created/modified are handled separately - created/modified
+            # because they're dates; multimedia because it's jsonb
             if field.module_name is 'emultimedia' or field.field_alias in ['created', 'modified']:
                 continue
-            yield field
+            fields.add(field)
+        return fields
 
     # Commands
     def get_sql(self):
         primary_table = 'ecatalogue'
+        multimedia_view = '_multimedia_view'
+
+        # We don't want to include mammal group parent in the output - these
+        # records
+        try:
+            self.dataset.record_types.remove('Mammal Group Parent')
+        except ValueError:
+            pass
 
         sql = OrderedDict([
             ('SELECT', [
                 '{}.irn as _id'.format(primary_table),
+                '{0}.guid::text as {1}'.format(primary_table, self.guid_field),
+                # Format created and modified so they're acceptable dates for SOLR
                 '{}.properties->>\'created\' || \'T00:00:00Z\' as created'.format(primary_table),
                 '{}.properties->>\'modified\' || \'T00:00:00Z\' as modified'.format(primary_table),
-                """COALESCE(jsonb_agg(jsonb_build_object(
-                    'identifier', format('http://www.nhm.ac.uk/services/media-store/asset/%s/contents/preview', emultimedia.properties->>'assetID'),
-                    'type', 'StillImage',
-                    'license',  'http://creativecommons.org/licenses/by/4.0/',
-                    'rightsHolder',  'The Trustees of the Natural History Museum, London'
-                    ) || emultimedia.properties) FILTER (WHERE emultimedia.irn IS NOT NULL), NULL)::TEXT as {multimedia_field}
-                """.format(multimedia_field=self.dataset.multimedia_field),
-                'string_agg(DISTINCT emultimedia.properties->>\'category\', \';\') as imageCategory',
-                # We don't index the multimedia data, so we need a flag to denote whether
-                # this record has images
-                'count(emultimedia.irn)>1 as _has_multimedia'
+                '{0}.multimedia as {1}'.format(multimedia_view, self.multimedia_field),
+                '{}.category as imageCategory'.format(multimedia_view),
+                'CASE WHEN {}.irn IS NULL THEN false ELSE true END AS _has_multimedia'.format(multimedia_view),
             ]),
             ('FROM', [primary_table]),
             ('WHERE', [
-                'record_type=\'Index Lot\'',
+                '{0}.record_type IN (\'{1}\')'.format(
+                    primary_table,
+                    '\',\''.join(self.dataset.record_types)
+                ),
                 '({0}.embargo_date IS NULL OR {0}.embargo_date < NOW())'.format(primary_table),
-                '{}.deleted IS NULL'.format(primary_table)
+                '{0}.deleted IS NULL'.format(primary_table)
             ]),
-            ('GROUP BY', ['ecatalogue.irn', 'etaxonomy.irn'])
         ])
-
-        # Allow quick look up of which module fields have been included
-        module_names = set()
 
         for field in self.dataset_fields:
             sql['SELECT'].append('{0}.properties->>\'{1}\' as "{1}"'.format(
                 field.module_name,
                 field.field_alias
             ))
-            module_names.add(field.module_name)
 
         for fk in self.dataset.foreign_keys:
-            # Skip emultimedia
-            sql['FROM'].append('LEFT JOIN {fk_table} ON {fk_table}.irn={primary_table}.irn'.format(
-                fk_table=fk.table,
+
+            # Special handling for multimedia
+            if fk.join_module == 'emultimedia':
+                sql['FROM'].append('LEFT JOIN _multimedia_view ON _multimedia_view.irn={primary_table}.irn'.format(
+                    primary_table=primary_table,
+                ))
+            else:
+                sql['FROM'].append('LEFT JOIN {fk_table} ON {fk_table}.irn={primary_table}.irn'.format(
+                    fk_table=fk.table,
+                    primary_table=primary_table
+                ))
+
+                sql['FROM'].append('LEFT JOIN {join_module} {join_alias} ON {join_on}.irn={fk_table}.rel_irn'.format(
+                    fk_table=fk.table,
+                    join_alias=fk.join_alias,
+                    join_module=fk.join_module,
+                    join_on=fk.join_alias if fk.join_alias else fk.join_module
+                ))
+
+        # https: // stackoverflow.com / questions / 34111913 / indexes - on - join - tables
+        # https://www.datadoghq.com/blog/100x-faster-postgres-performance-by-changing-1-line/
+
+        # Special adjustments for the collection specimens dataset
+        if self.dataset_name == 'collection-specimens':
+            # Add GBIF issues
+            sql['FROM'].append('LEFT JOIN gbif ON {primary_table}.guid=gbif.occurrenceid'.format(
                 primary_table=primary_table
             ))
+            sql['SELECT'].append('gbif.issue as "gbifIssue"')
+            sql['SELECT'].append('gbif.id as "gbifID"')
 
-            sql['FROM'].append('LEFT JOIN {join_module} ON {join_module}.irn={fk_table}.rel_irn'.format(
-                fk_table=fk.table,
-                join_module=fk.join_module
-            ))
+            # Add a few static fields
+            sql['SELECT'].append('\'Specimen\' as "basisOfRecord"')
+            sql['SELECT'].append('\'NHMUK\' as "institutionCode"')
 
         return self._sql_to_string(sql)
 
@@ -92,16 +129,30 @@ class SolrCommand(object):
         # Create basic schema fields with _id and multimedia
         schema_fields = [
             OrderedDict(name="_id", type="int", indexed="true", stored="true", required="true"),
-            OrderedDict(name=self.dataset.multimedia_field, type="string", indexed="false", stored="true", required="false"),
+            OrderedDict(name=self.multimedia_field, type="string", indexed="false", stored="true", required="false"),
+            OrderedDict(name=self.guid_field, type="string", indexed="false", stored="true", required="false"),
             OrderedDict(name="imageCategory", type="semiColonDelimited", indexed="true", stored="true", required="false", multiValued="true"),
             OrderedDict(name="created", type="date", indexed="true", stored="true", required="true"),
             OrderedDict(name="modified", type="date", indexed="true", stored="true", required="false"),
             OrderedDict(name="_has_multimedia", type="boolean", indexed="true", stored="false", required="false", default="false"),
+            OrderedDict(name="centroid", type="boolean", indexed="true", stored="false", required="false", default="false"),
         ]
+
+        # Create a list of schema fields already added
+        manual_schema_fields = [f['name'] for f in schema_fields]
 
         # Add in all dataset defined fields
         for field in self.dataset_fields:
-            schema_fields.append(OrderedDict(name=field.field_alias, type="field_text", indexed="true", stored="true", required="false"))
+            # Do not add field if we've already added it manually
+            if field.field_alias not in manual_schema_fields:
+                schema_fields.append(OrderedDict(name=field.field_alias, type="field_text", indexed="true", stored="true", required="false"))
+
+        # Add additional collection specimen fields - GBIF issues and static fields
+        if self.dataset_name == 'collection-specimens':
+            schema_fields.append(OrderedDict(name="gbifIssue", type="semiColonDelimited", indexed="true", stored="true", required="false", multiValued="true"))
+            schema_fields.append(OrderedDict(name="gbifID", type="field_text", indexed="false", stored="true", required="false"))
+            schema_fields.append(OrderedDict(name="basisOfRecord", type="field_text", indexed="false", stored="true", required="false"))
+            schema_fields.append(OrderedDict(name="institutionCode", type="field_text", indexed="false", stored="true", required="false"))
 
         return self._dict2xml(schema_fields, 'field')
 

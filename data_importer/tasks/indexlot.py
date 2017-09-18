@@ -9,7 +9,8 @@ Created by Ben Scott on '14/03/2017'.
 
 import luigi
 from data_importer.tasks.dataset import DatasetTask
-from data_importer.lib.field import Field, ForeignKeyField
+from data_importer.lib.field import Field
+from data_importer.lib.foreign_key import ForeignKeyField
 from data_importer.lib.config import Config
 
 
@@ -26,7 +27,6 @@ class IndexLotDatasetTask(DatasetTask):
     record_types = ['Index Lot']
 
     fields = DatasetTask.fields + [
-        Field('ecatalogue', 'AdmGUIDPreferredValue', 'GUID'),
         Field('ecatalogue', 'EntIndMaterial', 'material'),
         Field('ecatalogue', 'EntIndType', 'type'),
         Field('ecatalogue', 'EntIndMedia', 'media'),

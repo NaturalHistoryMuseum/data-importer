@@ -17,9 +17,17 @@ class Filter(object):
 
     def apply(self, record):
         value = getattr(record, self.field_name, None)
-        for filter_operator, filter_value in self.filters:
-            if not filter_operator(value, filter_value):
+        for f in self.filters:
+            # Some filters have a value for comparison; others are just a function
+            try:
+                filter_operator, filter_value = f
+                ret = filter_operator(value, filter_value)
+            except TypeError:
+                ret = f(value)
+
+            if not ret:
                 return False
+
         return True
 
     def __str__(self):

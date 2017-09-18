@@ -38,6 +38,3 @@ def dataset_get_foreign_keys(module_name=None):
             elif foreign_key.module_name == module_name:
                 foreign_keys.add(foreign_key)
     return foreign_keys
-
-
-

@@ -9,16 +9,20 @@ import logging
 from psycopg2.extras import Json as PGJson
 import luigi
 import time
+from operator import is_not
 from luigi.contrib.postgres import CopyToTable as LuigiCopyToTable
 from data_importer.lib.db import db_table_exists, db_delete_record, db_create_index
-from data_importer.lib.operators import is_one_of, is_not_one_of
-from data_importer.tasks.keemu.file import FileTask
+from data_importer.lib.operators import is_not_one_of, is_uuid
+from data_importer.tasks.file.keemu import KeemuFileTask
 from data_importer.lib.parser import Parser
 from data_importer.lib.config import Config
 from data_importer.lib.column import Column
 from data_importer.lib.filter import Filter
 
-from data_importer.lib.dataset import dataset_get_foreign_keys, dataset_get_properties
+from data_importer.lib.dataset import (
+    dataset_get_foreign_keys,
+    dataset_get_properties
+)
 
 logger = logging.getLogger('luigi-interface')
 
@@ -43,11 +47,12 @@ class KeemuBaseTask(LuigiCopyToTable):
     # These can be extended by individual module task classes
     columns = [
         Column("irn", "INTEGER PRIMARY KEY"),
+        Column("guid", "UUID", indexed=True),
         Column("created", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
         Column("modified", "TIMESTAMP"),
         Column("deleted", "TIMESTAMP", indexed=True),
         Column("properties", "JSONB", indexed=True),  # The field for storing the record data
-        Column("import_date", "INTEGER"),  # Date of import
+        Column("import_date", "INTEGER", indexed=True),  # Date of import
     ]
 
     # Filters to apply against each record.
@@ -55,6 +60,10 @@ class KeemuBaseTask(LuigiCopyToTable):
     record_filters = [
         Filter('AdmPublishWebNoPasswordFlag', [
             (is_not_one_of, ['n', 'N'])
+        ]),
+        Filter('AdmGUIDPreferredValue', [
+            (is_not, None),
+            is_uuid
         ]),
     ]
 
@@ -112,7 +121,7 @@ class KeemuBaseTask(LuigiCopyToTable):
         # Get any extra fields defined in the base module class
         # This uses a set comprehension converted into a list for deduping
         extra_fields = list({col.field_name for col in self.columns if col not in KeemuBaseTask.columns})
-        insert_fields = ['irn', 'properties', 'import_date'] + extra_fields
+        insert_fields = ['irn', 'guid', 'properties', 'import_date'] + extra_fields
         update_fields = ['properties', 'import_date'] + extra_fields
         sql = """
             INSERT INTO {table_name} ({insert_fields}, created) VALUES ({insert_fields_placeholders}, NOW())
@@ -125,11 +134,10 @@ class KeemuBaseTask(LuigiCopyToTable):
             update_fields=','.join(update_fields),
             update_fields_placeholders=','.join(map(lambda field: "%({0})s".format(field), update_fields)),
         )
-        # print(sql)
         return sql
 
     def requires(self):
-        return FileTask(
+        return KeemuFileTask(
             file_name='{module_name}.export'.format(module_name=self.module_name),
             date=self.date
         )
@@ -255,8 +263,10 @@ class KeemuBaseTask(LuigiCopyToTable):
         :param record:
         :return:
         """
+
         record_dict = {
             'irn': record.irn,
+            'guid': record.AdmGUIDPreferredValue,
             'properties': self._record_map_fields(record, self.record_properties),
             'import_date': int(self.date)
         }
@@ -289,4 +299,4 @@ class KeemuBaseTask(LuigiCopyToTable):
         :param fields:
         :return:
         """
-        return {f.field_alias: getattr(record, f.field_name, None) for f in fields if getattr(record, f.field_name, None)}
+        return {f.field_alias: f.get_value(record) for f in fields if f.has_value(record)}

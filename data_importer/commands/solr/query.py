@@ -14,11 +14,11 @@ logger = logging.getLogger('luigi-interface')
 
 @click.command()
 @click.option('--dataset-name', help='Output a SOLR schema.', required=True)
-@click.option('--escape', is_flag=True)
-def solr_query(dataset_name, escape=False):
+@click.option('--encode', is_flag=True)
+def solr_query(dataset_name, encode=False):
     solr_cmd = SolrCommand(dataset_name)
     sql = solr_cmd.get_sql()
-    if escape:
+    if encode:
         sql = _escape_quotes(sql)
     print(sql)
 

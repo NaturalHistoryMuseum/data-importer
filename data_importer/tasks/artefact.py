@@ -30,8 +30,8 @@ class ArtefactDatasetTask(DatasetTask):
     record_types = ['Artefact']
 
     fields = DatasetTask.fields + [
-        Field('ecatalogue', 'AdmGUIDPreferredValue', 'GUID'),
         Field('ecatalogue', 'PalArtObjectName', 'artefactName'),
+        # FIXME: Artefact type is missing??
         Field('ecatalogue', 'PalArtType', 'artefactType'),
         Field('ecatalogue', 'PalArtDescription', 'artefactDescription'),
         Field('ecatalogue', 'IdeCurrentScientificName', 'scientificName')

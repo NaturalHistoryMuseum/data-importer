@@ -5,16 +5,15 @@ Created by Ben Scott on '30/08/2017'.
 """
 
 import luigi
-from operator import is_not
 
 from data_importer.tasks.keemu.base import KeemuBaseTask
 from data_importer.tasks.keemu.etaxonomy import ETaxonomyTask
 from data_importer.tasks.keemu.emultimedia import EMultimediaTask
-from data_importer.tasks.keemu.file import FileTask
 from data_importer.lib.column import Column
 from data_importer.lib.operators import is_one_of, is_not_one_of
 from data_importer.lib.filter import Filter
 from data_importer.lib.dataset import dataset_get_tasks
+from data_importer.lib.db import db_view_exists
 
 
 class EcatalogueTask(KeemuBaseTask):
@@ -25,8 +24,8 @@ class EcatalogueTask(KeemuBaseTask):
 
     # Additional columns for this module
     columns = KeemuBaseTask.columns + [
-        Column("record_type", "TEXT", "ColRecordType", True),
-        Column('embargo_date', "DATE", ["NhmSecEmbargoDate", "NhmSecEmbargoExtensionDate"]),
+        Column("record_type", "TEXT", "ColRecordType", indexed=True),
+        Column('embargo_date', "DATE", ["NhmSecEmbargoDate", "NhmSecEmbargoExtensionDate"], indexed=True),
     ]
 
     @property
@@ -36,9 +35,6 @@ class EcatalogueTask(KeemuBaseTask):
         :return: string
         """
         return KeemuBaseTask.record_filters + [
-            Filter('AdmGUIDPreferredValue', [
-                (is_not, None)
-            ]),
             # Does this record have an excluded status - Stub etc.,
             Filter('SecRecordStatus', [
                 (is_not_one_of, [
@@ -54,7 +50,6 @@ class EcatalogueTask(KeemuBaseTask):
                     "Reserved",
                     "Retired",
                     "Retired (see Notes)",
-                    "Retired (see Notes)Retired (see Notes)",
                     "SCAN_cat",
                     "See Notes",
                     "Specimen missing - see notes",
@@ -99,6 +94,30 @@ class EcatalogueTask(KeemuBaseTask):
             ETaxonomyTask(date=self.date, limit=self.limit),
             EMultimediaTask(date=self.date, limit=self.limit)
         ]
+
+    def on_success(self):
+        if not db_view_exists('_multimedia_view', self.connection):
+            query = """
+                CREATE MATERIALIZED VIEW _multimedia_view AS (
+                    SELECT
+                        _ecatalogue__emultimedia.irn,
+                        COALESCE(jsonb_agg(
+                            jsonb_build_object('identifier', format('http://www.nhm.ac.uk/services/media-store/asset/%s/contents/preview', emultimedia.properties->>'assetID'),
+                            'type', 'StillImage',
+                            'license',  'http://creativecommons.org/licenses/by/4.0/',
+                            'rightsHolder',  'The Trustees of the Natural History Museum, London') || emultimedia.properties)
+                            FILTER (WHERE emultimedia.irn IS NOT NULL), NULL)::TEXT as multimedia,
+                        string_agg(DISTINCT emultimedia.properties->>'category', ';') as category FROM emultimedia
+                        INNER JOIN _ecatalogue__emultimedia ON _ecatalogue__emultimedia.rel_irn = emultimedia.irn WHERE (embargo_date IS NULL OR embargo_date < NOW()) AND deleted IS NULL
+                        GROUP BY _ecatalogue__emultimedia.irn); CREATE UNIQUE INDEX ON _multimedia_view (irn);
+                """
+        else:
+            query = """
+                REFRESH MATERIALIZED VIEW _multimedia_view
+                """
+
+        self.connection.cursor().execute(query)
+        self.connection.commit()
 
     @property
     def file_input(self):
