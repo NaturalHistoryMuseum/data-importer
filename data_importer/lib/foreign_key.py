@@ -62,8 +62,7 @@ class ForeignKeyField(object):
             query = """
               CREATE TABLE {table} (
                 irn int references {module_name}(irn),
-                rel_irn int references {join_module}(irn),
-                dataset_name text
+                rel_irn int references {join_module}(irn)
               )
             """.format(
                 table=self.table,
@@ -73,8 +72,7 @@ class ForeignKeyField(object):
             connection.cursor().execute(query)
             # Create indexes - postgres does not index reference fields
             query = """
-              CREATE UNIQUE INDEX ON {table} (irn, rel_irn);
-              CREATE INDEX ON {table} (dataset_name)
+              CREATE UNIQUE INDEX ON {table} (irn, rel_irn)
             """.format(
                 table=self.table,
             )
@@ -83,7 +81,7 @@ class ForeignKeyField(object):
     def delete(self, cursor, record):
         cursor.execute(self.delete_sql, {'irn': record.irn})
 
-    def insert(self, cursor, record, rel_irn, dataset_name):
+    def insert(self, cursor, record, rel_irn):
 
         # We can get a list of IRNs, so convert to list so we can easily loop
         # Also, ensure all are integers
@@ -91,6 +89,5 @@ class ForeignKeyField(object):
         for irn in irn_list:
             cursor.execute(self.insert_sql, {
                 'irn': record.irn,
-                'rel_irn': irn,
-                'dataset_name': dataset_name
+                'rel_irn': irn
             })
