@@ -13,6 +13,7 @@ from datetime import datetime
 from data_importer.lib.solr_index import SolrIndex
 from data_importer.lib.config import Config
 from data_importer.tasks.postgres import PostgresTask
+from data_importer.lib.db import db_table_exists
 
 logger = logging.getLogger('luigi-interface')
 
@@ -48,6 +49,9 @@ class SolrIndexTask(PostgresTask):
         @return:
         """
         connection = self.output().connect()
+        if not db_table_exists(self.table, connection):
+            return False
+
         cursor = connection.cursor()
         query = "SELECT 1 from {table} WHERE created>%s OR modified>%s LIMIT 1".format(
             table=self.table
