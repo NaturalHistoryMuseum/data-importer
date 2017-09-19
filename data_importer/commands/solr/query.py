@@ -6,6 +6,7 @@ Created by Ben Scott on '31/05/2017'.
 
 import click
 import logging
+from collections import OrderedDict
 from data_importer.commands.solr import SolrCommand
 
 logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
@@ -17,20 +18,8 @@ logger = logging.getLogger('luigi-interface')
 @click.option('--encode', is_flag=True)
 def solr_query(dataset_name, encode=False):
     solr_cmd = SolrCommand(dataset_name)
-    sql = solr_cmd.get_sql()
-    if encode:
-        sql = _escape_quotes(sql)
-    print(sql)
-
-
-def _escape_quotes(sql):
-    """
-    If this is to be used in a SOLR Xml schema, need to escape
-    Quotes - ' & "
-    @param sql:
-    @return: escaped str
-    """
-    return sql.replace('\'', '&#39;').replace('"', '&quot;').replace('<', '&lt;')
+    query = solr_cmd.get_query(encode)
+    print(query)
 
 
 if __name__ == "__main__":

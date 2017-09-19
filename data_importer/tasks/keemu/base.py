@@ -203,7 +203,6 @@ class KeemuBaseTask(LuigiCopyToTable):
         self.ensure_indexes()
         # And commit everything
         self.connection.commit()
-        # self.connection.close()
         logger.info('Inserted %d %s records in %d seconds', self.insert_count, self.table, time.time() - start_time)
 
     @property

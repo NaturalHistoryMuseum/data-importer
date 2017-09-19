@@ -5,6 +5,7 @@ Created by Ben Scott on '30/08/2017'.
 """
 
 import luigi
+import logging
 
 from data_importer.tasks.keemu.base import KeemuBaseTask
 from data_importer.tasks.keemu.etaxonomy import ETaxonomyTask
@@ -14,6 +15,8 @@ from data_importer.lib.operators import is_one_of, is_not_one_of
 from data_importer.lib.filter import Filter
 from data_importer.lib.dataset import dataset_get_tasks
 from data_importer.lib.db import db_view_exists
+
+logger = logging.getLogger('luigi-interface')
 
 
 class EcatalogueTask(KeemuBaseTask):
@@ -97,6 +100,7 @@ class EcatalogueTask(KeemuBaseTask):
 
     def on_success(self):
         if not db_view_exists('_multimedia_view', self.connection):
+            logger.info('Creating multimedia view')
             query = """
                 CREATE MATERIALIZED VIEW _multimedia_view AS (
                     SELECT
@@ -112,12 +116,14 @@ class EcatalogueTask(KeemuBaseTask):
                         GROUP BY _ecatalogue__emultimedia.irn); CREATE UNIQUE INDEX ON _multimedia_view (irn);
                 """
         else:
+            logger.info('Refreshing multimedia view')
             query = """
                 REFRESH MATERIALIZED VIEW _multimedia_view
                 """
 
         self.connection.cursor().execute(query)
         self.connection.commit()
+        self.connection.close()
 
     @property
     def file_input(self):
@@ -129,6 +135,7 @@ class EcatalogueTask(KeemuBaseTask):
         for i in self.input():
             if hasattr(i, 'path'):
                 return i
+
 
 if __name__ == "__main__":
     luigi.run(main_task_cls=EcatalogueTask)

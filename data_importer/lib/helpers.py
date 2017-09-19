@@ -11,33 +11,6 @@ import glob
 from data_importer.lib.config import Config
 
 
-# def get_dataset_tasks():
-#     """
-#     Get a list of all dataset tasks
-#     :return:
-#     """
-#     from data_importer.tasks.specimen import SpecimenDatasetTask
-#     from data_importer.tasks.indexlot import IndexLotDatasetTask
-#     from data_importer.tasks.artefact import ArtefactDatasetTask
-#     return [IndexLotDatasetTask]
-#     return [SpecimenDatasetTask, IndexLotDatasetTask, ArtefactDatasetTask]
-#
-#
-#
-#
-#
-#
-# def list_all_modules():
-#     """
-#     Build a list of all unique module names
-#     :return:
-#     """
-#     dataset_tasks = get_dataset_tasks()
-#     modules = set()
-#     [[modules.add(field.module_name) for field in dataset_task.fields] for dataset_task in dataset_tasks]
-#     return list(modules)
-
-
 def get_file_export_dates():
     """
     Get a list of all file export dates

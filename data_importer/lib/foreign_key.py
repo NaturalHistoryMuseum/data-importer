@@ -14,13 +14,15 @@ class ForeignKeyField(object):
     :param module_name:
     :param join_module:
     :param field_name: KE EMu field name
+    :param record_type: optional - foreign key is valid only for certain record types
     """
 
-    def __init__(self, module_name, join_module, field_name, join_alias=''):
+    def __init__(self, module_name, join_module, field_name, join_alias='', record_type=None):
         self.module_name = module_name
         self.join_module = join_module
         self.field_name = field_name
         self.join_alias = join_alias
+        self.record_type = record_type
 
     @property
     def table(self):
@@ -38,8 +40,8 @@ class ForeignKeyField(object):
         If there's a conflict on irn/rel_irn, do not insert
         """
         sql = """
-          INSERT INTO {table_name}(irn, rel_irn, dataset_name)
-          SELECT %(irn)s, %(rel_irn)s, %(dataset_name)s
+          INSERT INTO {table_name}(irn, rel_irn)
+          SELECT %(irn)s, %(rel_irn)s
             WHERE EXISTS(SELECT 1 FROM {join_module} where irn=%(rel_irn)s)
           ON CONFLICT (irn, rel_irn) DO NOTHING;
         """.format(

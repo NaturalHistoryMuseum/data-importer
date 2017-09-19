@@ -16,17 +16,17 @@ from prompter import yesno
 from data_importer.lib.config import Config
 from data_importer.lib.field import Field
 from data_importer.lib.foreign_key import ForeignKeyField
-from data_importer.lib.filter import Filter
 from data_importer.lib.ckan import CKAN
 from data_importer.tasks.solr.index import SolrIndexTask
-from data_importer.lib.db import db_table_exists, db_delete_record, db_create_index
+from data_importer.tasks.delete import DeleteTask
+from data_importer.lib.db import db_table_exists
 from data_importer.tasks.keemu.ecatalogue import EcatalogueTask
-from luigi.contrib.postgres import CopyToTable
+from data_importer.tasks.postgres import PostgresTask
 
 logger = logging.getLogger('luigi-interface')
 
 
-class DatasetTask(CopyToTable):
+class DatasetTask(PostgresTask):
     """
     Base Dataset Task
     """
@@ -163,7 +163,13 @@ class DatasetTask(CopyToTable):
         On etaxonomy and emultimedia
         :return:
         """
-        yield (
+        full_export_date = Config.getint('keemu', 'full_export_date')
+        requirements = [
             EcatalogueTask(date=self.date, limit=self.limit),
             SolrIndexTask(core=self.package_name)
-        )
+        ]
+        # There will be no eaudit file for full exports
+        if full_export_date != self.date:
+            requirements.append(DeleteTask(date=self.date))
+
+        return requirements

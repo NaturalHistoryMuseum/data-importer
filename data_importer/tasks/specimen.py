@@ -209,7 +209,8 @@ class SpecimenDatasetTask(DatasetTask):
 
     foreign_keys = DatasetTask.foreign_keys + [
         ForeignKeyField('ecatalogue', 'ecatalogue', 'RegRegistrationParentRef', join_alias='parent_catalogue'),
-        ForeignKeyField('ecatalogue', 'etaxonomy', 'CardParasiteRef'),
+        # Card parasite ref field is empty??
+        ForeignKeyField('ecatalogue', 'etaxonomy', 'CardParasiteRef', record_type='Parasite Card'),
     ]
 
     def create_table(self, connection):

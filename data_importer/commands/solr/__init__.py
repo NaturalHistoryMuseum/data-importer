@@ -81,11 +81,37 @@ class SolrCommand(object):
             ]),
         ])
 
+        # Fields to be coallesced in the specimens - join by parent catalogue properties
+        coalesced_fields = [
+            'class',
+            'genus',
+            'family',
+            'phylum',
+            'kingdom',
+            'order',
+            'scientificName',
+            'specificEpithet',
+            'sex',
+            'locality'
+        ]
+
         for field in self.dataset_fields:
-            sql['SELECT'].append('{0}.properties->>\'{1}\' as "{1}"'.format(
-                field.module_name,
-                field.field_alias
-            ))
+            # Blank recordedBy and identifiedBy fields
+            if field.field_alias in ['recordedBy', 'identifiedBy']:
+                sql['SELECT'].append('NULL as "{0}"'.format(
+                    field.field_alias
+                ))
+            elif self.dataset_name == 'collection-specimens' and field.field_alias in coalesced_fields:
+                # TODO: Check which modules these fields are from - e.g etaxonomy or ecatalogue
+                sql['SELECT'].append('COALESCE({0}.properties->>\'{1}\', parent_catalogue.properties->>\'{1}\', etaxonomy.properties->>\'{1}\') as "{1}"'.format(
+                    field.module_name,
+                    field.field_alias
+                ))
+            else:
+                sql['SELECT'].append('{0}.properties->>\'{1}\' as "{1}"'.format(
+                    field.module_name,
+                    field.field_alias
+                ))
 
         for fk in self.dataset.foreign_keys:
 
@@ -95,10 +121,17 @@ class SolrCommand(object):
                     primary_table=primary_table,
                 ))
             else:
-                sql['FROM'].append('LEFT JOIN {fk_table} ON {fk_table}.irn={primary_table}.irn'.format(
-                    fk_table=fk.table,
-                    primary_table=primary_table
-                ))
+                if fk.record_type:
+                    sql['FROM'].append('LEFT JOIN {fk_table} ON {fk_table}.irn={primary_table}.irn AND {primary_table}.record_type=\'{record_type}\''.format(
+                        fk_table=fk.table,
+                        primary_table=primary_table,
+                        record_type=fk.record_type
+                    ))
+                else:
+                    sql['FROM'].append('LEFT JOIN {fk_table} ON {fk_table}.irn={primary_table}.irn'.format(
+                        fk_table=fk.table,
+                        primary_table=primary_table
+                    ))
 
                 sql['FROM'].append('LEFT JOIN {join_module} {join_alias} ON {join_on}.irn={fk_table}.rel_irn'.format(
                     fk_table=fk.table,
@@ -106,9 +139,6 @@ class SolrCommand(object):
                     join_module=fk.join_module,
                     join_on=fk.join_alias if fk.join_alias else fk.join_module
                 ))
-
-        # https: // stackoverflow.com / questions / 34111913 / indexes - on - join - tables
-        # https://www.datadoghq.com/blog/100x-faster-postgres-performance-by-changing-1-line/
 
         # Special adjustments for the collection specimens dataset
         if self.dataset_name == 'collection-specimens':
@@ -123,7 +153,40 @@ class SolrCommand(object):
             sql['SELECT'].append('\'Specimen\' as "basisOfRecord"')
             sql['SELECT'].append('\'NHMUK\' as "institutionCode"')
 
-        return self._sql_to_string(sql)
+        return sql
+
+    def get_query(self, encode):
+        query = OrderedDict(
+            [('name', self.dataset_name.rstrip('s'))]
+        )
+        sql = self.get_sql()
+        # Base query uses just the full SQL statement
+        query['query'] = self._sql_to_string(sql)
+        # Make a copy of where - we're going to needed it in the delta queries
+        where = sql['WHERE']
+
+        # For delta query, replace the where statement with delta id
+        # The filtering on record type etc., will be handled by the delta queries
+        sql['WHERE'] = ["ecatalogue.irn = '${dih.delta._id}'"]
+        query['deltaImportQuery'] = self._sql_to_string(sql)
+        # Get IRN of records created or modified since last index
+        # Uses same filters as default query
+        query['deltaQuery'] = """
+            SELECT irn AS _id FROM ecatalogue WHERE (modified > '${dih.last_index_time}' OR created > '${dih.last_index_time}') AND (%s)
+        """ % ' AND '.join(where)
+
+        # Get IRN of records deleted since last index time
+        # Filter on deleted > index time and record type
+        query['deletedPkQuery'] = """
+            SELECT irn AS _id FROM ecatalogue WHERE deleted > '${dih.last_index_time}' AND ecatalogue.record_type IN ('%s')
+        """ % ('\',\''.join(self.dataset.record_types))
+
+        # If encoded, escape quotes so this is ready to be dropped into a solr schema doc
+        if encode:
+            for k, v in query.items():
+                query[k] = self._escape_quotes(v)
+
+        return self._dict2xml(query, 'entity')
 
     def get_schema(self):
         # Create basic schema fields with _id and multimedia
@@ -208,3 +271,13 @@ class SolrCommand(object):
                 xml = xml + '</' + root + '>'
 
         return xml
+
+    @staticmethod
+    def _escape_quotes(sql):
+        """
+        If this is to be used in a SOLR Xml schema, need to escape
+        Quotes - ' & "
+        @param sql:
+        @return: escaped str
+        """
+        return sql.replace('\'', '&#39;').replace('"', '&quot;').replace('<', '&lt;')

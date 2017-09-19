@@ -6,11 +6,16 @@ Created by Ben Scott on '31/03/2017'.
 
 import click
 import time
-from data_importer.commands.helpers import run_tasks
+import luigi
+
+from data_importer.tasks.specimen import SpecimenDatasetTask
+from data_importer.tasks.indexlot import IndexLotDatasetTask
+from data_importer.tasks.artefact import ArtefactDatasetTask
+
 
 @click.command()
-@click.option('--local-scheduler',  default=False, help='Whether to use the luigi local scheduler.', is_flag=True)
-def cron(local_scheduler):
+@click.option('--local-scheduler', default=False, help='Whether to use the luigi local scheduler.', is_flag=True)
+def run_cron(local_scheduler):
     """
     Run tasks on cron - gets the current date, and runs tasks for that date
     This should be used in conjunction with a cron task, that schedules
@@ -21,8 +26,13 @@ def cron(local_scheduler):
     :return: None
     """
     # Get today's date, formatted as per keemu export files - 20170608
-    date = int(time.strftime("%Y%m%d"))
-    run_tasks([date], local_scheduler)
+    params = {
+        'date': int(time.strftime("%Y%m%d")),
+        'limit': 10000
+    }
+    for task in [SpecimenDatasetTask, IndexLotDatasetTask, ArtefactDatasetTask]:
+        luigi.build([task(**params)], local_scheduler=local_scheduler)
+
 
 if __name__ == "__main__":
-    cron()
+    run_cron()

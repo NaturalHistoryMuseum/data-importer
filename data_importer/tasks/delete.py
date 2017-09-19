@@ -6,42 +6,44 @@ Created by Ben Scott on '30/03/2017'.
 
 import luigi
 import logging
-from luigi.contrib.postgres import PostgresQuery, PostgresTarget
-
-from data_importer.lib.config import Config
-from data_importer.tasks.keemu.file import FileTask
+from data_importer.tasks.postgres import PostgresTask
+from data_importer.tasks.file.keemu import KeemuFileTask
 from data_importer.lib.parser import Parser
-from data_importer.lib.helpers import list_all_modules
+from data_importer.lib.dataset import dataset_get_tasks
 from data_importer.lib.db import db_delete_record
 
 logger = logging.getLogger('luigi-interface')
 
 
-class DeleteTask(PostgresQuery):
+class DeleteTask(PostgresTask):
 
     # Task params
     date = luigi.IntParameter()
-
-    # Luigi Postgres database connections
-    host = Config.get('database', 'host')
-    database = Config.get('database', 'datastore_dbname')
-    user = Config.get('database', 'username')
-    password = Config.get('database', 'password')
     table = 'eaudit'
-    query = None
 
     # Run delete before all dataset tasks
     priority = 100
 
     def requires(self):
-        return FileTask(
+        return KeemuFileTask(
             file_name='eaudit.deleted-export',
             date=self.date
         )
 
+    @staticmethod
+    def list_all_modules():
+        """
+        Build a list of all unique module names
+        :return:
+        """
+        dataset_tasks = dataset_get_tasks()
+        modules = set()
+        [[modules.add(field.module_name) for field in dataset_task.fields] for dataset_task in dataset_tasks]
+        return list(modules)
+
     def run(self):
         logger.info('Executing task: {name}'.format(name=self.__class__))
-        modules = list_all_modules()
+        modules = self.list_all_modules()
         connection = self.output().connect()
         cursor = connection.cursor()
         for record in Parser(self.input().path):
