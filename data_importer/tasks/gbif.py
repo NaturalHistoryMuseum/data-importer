@@ -9,8 +9,8 @@ import csv
 import luigi
 import codecs
 from luigi.contrib.postgres import CopyToTable
-from ke2sql.lib.config import Config
 
+from data_importer.lib.config import Config
 from data_importer.tasks.file.remote import RemoteFileTask
 from data_importer.tasks.file.local import LocalFileTask
 from data_importer.lib.db import db_create_index
