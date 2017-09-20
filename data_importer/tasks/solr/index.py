@@ -25,6 +25,9 @@ class SolrIndexTask(PostgresTask):
     # Interval to wait before checking import has completed
     sleep_interval = 2
 
+    # Run after all tasks
+    priority = -1
+
     table = 'ecatalogue'
 
     def __init__(self, *args, **kwargs):
