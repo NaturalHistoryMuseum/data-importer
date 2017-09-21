@@ -164,12 +164,15 @@ class DatasetTask(PostgresTask):
         :return:
         """
         full_export_date = Config.getint('keemu', 'full_export_date')
+        # IS the date being run a full export date?
+        is_full_export = full_export_date == self.date
         requirements = [
             EcatalogueTask(date=self.date, limit=self.limit),
-            SolrIndexTask(core=self.package_name)
+            SolrIndexTask(core=self.package_name, full_import=is_full_export)
         ]
-        # There will be no eaudit file for full exports
-        if full_export_date != self.date:
+        # If this isn't a full export date, add the delete task
+        # On full exports there will be no eaudit file produced
+        if not is_full_export:
             requirements.append(DeleteTask(date=self.date))
 
         return requirements

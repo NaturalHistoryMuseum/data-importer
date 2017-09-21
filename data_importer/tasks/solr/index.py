@@ -21,6 +21,7 @@ logger = logging.getLogger('luigi-interface')
 class SolrIndexTask(PostgresTask):
     # Name of the solr core - e.g. collection-specimens
     core = luigi.Parameter()
+    full_import = luigi.BoolParameter()
 
     # Interval to wait before checking import has completed
     sleep_interval = 2
@@ -74,7 +75,10 @@ class SolrIndexTask(PostgresTask):
     def run(self):
         for solr_index in self.indexes:
             # We always call delta import - if this is the first run won't make any difference
-            solr_index.delta_import()
+            if self.full_import:
+                solr_index.full_import()
+            else:
+                solr_index.delta_import()
             while True:
                 r = solr_index.status()
                 if r['status'] == 'busy':
