@@ -156,7 +156,7 @@ class SolrCommand(object):
             # Add _geom field.
             # This is of type LatLonType (https://lucene.apache.org/solr/4_4_0/solr-core/org/apache/solr/schema/LatLonType.html)
             # So lat/lon fields need to be concatenated: lat,lng
-            sql['SELECT'].append('CONCAT_WS(\',\', {primary_table}.properties->>\'decimalLatitude\', {primary_table}.properties->>\'decimalLongitude\') as "_geom"'.format(
+            sql['SELECT'].append('CASE WHEN {primary_table}.properties->>\'decimalLatitude\' IS NOT NULL THEN CONCAT_WS(\',\', {primary_table}.properties->>\'decimalLatitude\', {primary_table}.properties->>\'decimalLongitude\') ELSE NULL END as "geom"'.format(
                 primary_table=primary_table
             ))
 
@@ -219,7 +219,7 @@ class SolrCommand(object):
 
         # Add additional collection specimen fields - GBIF issues and static fields
         if self.dataset_name == 'collection-specimens':
-            schema_fields.append(OrderedDict(name="_geom", type="geospatial", indexed="true", stored="false", required="false", default="false"))
+            schema_fields.append(OrderedDict(name="geom", type="geospatial_rpt", indexed="true", stored="false", required="false"))
             schema_fields.append(OrderedDict(name="gbifIssue", type="semiColonDelimited", indexed="true", stored="true", required="false", multiValued="true"))
             schema_fields.append(OrderedDict(name="gbifID", type="field_text", indexed="false", stored="true", required="false"))
             schema_fields.append(OrderedDict(name="basisOfRecord", type="field_text", indexed="false", stored="true", required="false"))
