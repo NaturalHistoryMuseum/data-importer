@@ -27,8 +27,7 @@ def run_cron(local_scheduler):
     """
     # Get today's date, formatted as per keemu export files - 20170608
     params = {
-        'date': int(time.strftime("%Y%m%d")),
-        'limit': 10000
+        'date': int(time.strftime("%Y%m%d"))
     }
     for task in [SpecimenDatasetTask, IndexLotDatasetTask, ArtefactDatasetTask]:
         luigi.build([task(**params)], local_scheduler=local_scheduler)
