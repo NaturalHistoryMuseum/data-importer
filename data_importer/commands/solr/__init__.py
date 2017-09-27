@@ -153,6 +153,13 @@ class SolrCommand(object):
             sql['SELECT'].append('\'Specimen\' as "basisOfRecord"')
             sql['SELECT'].append('\'NHMUK\' as "institutionCode"')
 
+            # Add _geom field.
+            # This is of type LatLonType (https://lucene.apache.org/solr/4_4_0/solr-core/org/apache/solr/schema/LatLonType.html)
+            # So lat/lon fields need to be concatenated: lat,lng
+            sql['SELECT'].append('CASE WHEN {primary_table}.properties->>\'decimalLatitude\' IS NOT NULL THEN CONCAT_WS(\',\', {primary_table}.properties->>\'decimalLatitude\', {primary_table}.properties->>\'decimalLongitude\') ELSE NULL END as "geom"'.format(
+                primary_table=primary_table
+            ))
+
         return sql
 
     def get_query(self, encode):
@@ -198,8 +205,10 @@ class SolrCommand(object):
             OrderedDict(name="created", type="date", indexed="true", stored="true", required="true"),
             OrderedDict(name="modified", type="date", indexed="true", stored="true", required="false"),
             OrderedDict(name="_has_multimedia", type="boolean", indexed="true", stored="false", required="false", default="false"),
-            OrderedDict(name="centroid", type="boolean", indexed="true", stored="false", required="false", default="false"),
-        ]
+            # sumPreferredCentroidLatDec is populated even when lat/lng is not centroid!
+            # What field denotes centroid?
+            # OrderedDict(name="centroid", type="boolean", indexed="true", stored="false", required="false", default="false"),
+         ]
 
         # Create a list of schema fields already added
         manual_schema_fields = [f['name'] for f in schema_fields]
@@ -212,6 +221,7 @@ class SolrCommand(object):
 
         # Add additional collection specimen fields - GBIF issues and static fields
         if self.dataset_name == 'collection-specimens':
+            schema_fields.append(OrderedDict(name="geom", type="geospatial_rpt", indexed="true", stored="false", required="false"))
             schema_fields.append(OrderedDict(name="gbifIssue", type="semiColonDelimited", indexed="true", stored="true", required="false", multiValued="true"))
             schema_fields.append(OrderedDict(name="gbifID", type="field_text", indexed="false", stored="true", required="false"))
             schema_fields.append(OrderedDict(name="basisOfRecord", type="field_text", indexed="false", stored="true", required="false"))

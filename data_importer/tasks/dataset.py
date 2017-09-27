@@ -10,6 +10,7 @@ import time
 import logging
 import abc
 import luigi
+import datetime
 from operator import is_not, ne
 from prompter import yesno
 
@@ -136,15 +137,20 @@ class DatasetTask(PostgresTask):
         }
 
         package = ckan.get_package(self.package_name)
+        resource = ckan.get_resource(self.resource_id)
+        # If we have a package, update resource modified date
+        if package:
+            logger.info('Updating CKAN resource %s', self.package_name)
+            resource['last_modified'] = datetime.datetime.now().isoformat()
+            ckan.update_resource(resource)
         # If we don't have a package, create it now
-        if not package:
+        else:
             if not yesno('Package {package_name} does not exist.  Do you want to create it?'.format(
                     package_name=self.package_name
             )):
                 sys.exit("Import cancelled")
 
-            # Check the resource doesn't exist
-            resource = ckan.get_resource(self.resource_id)
+            # Check the resource doesn't already exist
             if resource:
                 raise Exception('Resource {resource_title} ({resource_id}) already exists - package cannot be created')
 

@@ -46,6 +46,12 @@ class CKAN(object):
         except ckanapi.NotFound:
             return False
 
+    def create_package(self, pkg_dict):
+        self.remote_ckan.action.package_create(**pkg_dict)
+
+    def update_package(self, pkg_dict):
+        self.remote_ckan.action.package_update(**pkg_dict)
+
     def get_resource(self, resource_id):
         """
         Get a resource id for a dataset dict
@@ -58,5 +64,5 @@ class CKAN(object):
         except ckanapi.NotFound:
             return False
 
-    def create_package(self, pkg_dict):
-        self.remote_ckan.action.package_create(**pkg_dict)
+    def update_resource(self, resource_dict):
+        self.remote_ckan.action.resource_update(**resource_dict)

@@ -87,8 +87,8 @@ class SpecimenDatasetTask(DatasetTask):
         Field('ecatalogue', 'DarDecimalLatitude', 'decimalLatitude'),
         Field('ecatalogue', 'sumPreferredCentroidLongitude', 'verbatimLongitude'),
         Field('ecatalogue', 'sumPreferredCentroidLatitude', 'verbatimLatitude'),
-        # If sumPreferredCentroidLatDec is populated, lat/lng is centroid
-        Field('ecatalogue', 'sumPreferredCentroidLatDec', 'centroid', lambda v: True if v else False),
+        # FIXME: sumPreferredCentroidLatDec is populated, even when lat/lng is not centroid!
+        # Field('ecatalogue', 'sumPreferredCentroidLatDec', 'centroid', lambda v: True if v else False),
         Field('ecatalogue', 'DarGeodeticDatum', 'geodeticDatum'),
         Field('ecatalogue', 'DarGeorefMethod', 'georeferenceProtocol'),
         # Occurrence
