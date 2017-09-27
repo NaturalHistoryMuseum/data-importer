@@ -142,6 +142,7 @@ class DatasetTask(PostgresTask):
         if package:
             logger.info('Updating CKAN resource %s', self.package_name)
             resource['last_modified'] = datetime.datetime.now().isoformat()
+            print(resource)
             ckan.update_resource(resource)
         # If we don't have a package, create it now
         else:
