@@ -141,7 +141,6 @@ class DatasetTask(PostgresTask):
         # If we have a package, update resource modified date
         if package:
             logger.info('Updating CKAN resource %s', self.package_name)
-            print(resource)
             ckan.update_resource({
                 'id': self.resource_id,
                 'url': resource['url'],
