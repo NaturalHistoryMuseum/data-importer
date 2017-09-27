@@ -205,7 +205,9 @@ class SolrCommand(object):
             OrderedDict(name="created", type="date", indexed="true", stored="true", required="true"),
             OrderedDict(name="modified", type="date", indexed="true", stored="true", required="false"),
             OrderedDict(name="_has_multimedia", type="boolean", indexed="true", stored="false", required="false", default="false"),
-            OrderedDict(name="centroid", type="boolean", indexed="true", stored="false", required="false", default="false"),
+            # sumPreferredCentroidLatDec is populated even when lat/lng is not centroid!
+            # What field denotes centroid?
+            # OrderedDict(name="centroid", type="boolean", indexed="true", stored="false", required="false", default="false"),
          ]
 
         # Create a list of schema fields already added
