@@ -22,12 +22,12 @@ from data_importer.tasks.artefact import ArtefactDatasetTask
 def run_cron(date, local_scheduler):
     """
     Helper command to run all three dataset tasks
-    :param date: data of import to run.     
+    :param date: data of import to run.
     :param local_scheduler:
     :return: None
     """
     for task in [SpecimenDatasetTask, IndexLotDatasetTask, ArtefactDatasetTask]:
-        luigi.build([task(date=date)], local_scheduler=local_scheduler)
+        luigi.build([task(date=int(date))], local_scheduler=local_scheduler)
 
 
 if __name__ == "__main__":
