@@ -221,7 +221,7 @@ class SolrCommand(object):
 
         # Add additional collection specimen fields - GBIF issues and static fields
         if self.dataset_name == 'collection-specimens':
-            schema_fields.append(OrderedDict(name="geom", type="geospatial_rpt", indexed="true", stored="false", required="false"))
+            schema_fields.append(OrderedDict(name="geom", type="geospatial_rpt", indexed="true", stored="true", required="false"))
             schema_fields.append(OrderedDict(name="gbifIssue", type="semiColonDelimited", indexed="true", stored="true", required="false", multiValued="true"))
             schema_fields.append(OrderedDict(name="gbifID", type="field_text", indexed="false", stored="true", required="false"))
             schema_fields.append(OrderedDict(name="basisOfRecord", type="field_text", indexed="false", stored="true", required="false"))
