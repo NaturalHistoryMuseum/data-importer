@@ -140,15 +140,9 @@ class DatasetTask(PostgresTask):
         resource = ckan.get_resource(self.resource_id)
         # If we have a package, update resource modified date
         if package:
-            logger.info('Updating CKAN resource %s', self.package_name)
-            # FIXME: Why is this failing?
-            # ckan.update_resource({
-            #     'id': self.resource_id,
-            #     'url': resource['url'],
-            #     'name': resource['name'],
-            #     'last_modified': datetime.datetime.now().isoformat()
-            # })
-        # If we don't have a package, create it now
+            logger.info('Updating CKAN dataset %s', self.package_name)
+            package['last_modified'] = datetime.datetime.now().isoformat()
+            ckan.update_package(package)
         else:
             if not yesno('Package {package_name} does not exist.  Do you want to create it?'.format(
                     package_name=self.package_name
