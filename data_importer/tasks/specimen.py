@@ -160,8 +160,8 @@ class SpecimenDatasetTask(DatasetTask):
         # Silica gel
         Field('ecatalogue', 'SilPopulationCode', 'populationCode'),
         # Botany
-        Field('ecatalogue', 'CollExsiccati', 'exsiccati'),
-        Field('ecatalogue', 'ColExsiccatiNumber', 'exsiccatiNumber'),
+        Field('ecatalogue', 'CollExsiccati', 'exsiccata'),
+        Field('ecatalogue', 'ColExsiccatiNumber', 'exsiccataNumber'),
         Field('ecatalogue', 'ColSiteDescription', 'labelLocality'),
         Field('ecatalogue', 'ColPlantDescription', 'plantDescription'),
         # Paleo
