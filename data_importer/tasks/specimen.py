@@ -236,10 +236,10 @@ class SpecimenDatasetTask(DatasetTask):
                 4326),
             3857) as _the_geom_webmercator
             FROM ecatalogue
-            WHERE ecatalogue.properties->>'decimalLatitude' ~ '^[0-9\.]+$'
+            WHERE ecatalogue.properties->>'decimalLatitude' ~ '^-?[0-9\.]+$'
                 AND cast(ecatalogue.properties->>'decimalLatitude' as FLOAT8) > -90
                 AND cast(ecatalogue.properties->>'decimalLatitude' as FLOAT8) < 90
-                AND ecatalogue.properties->>'decimalLongitude' ~ '^[0-9\.]+$'
+                AND ecatalogue.properties->>'decimalLongitude' ~ '^-?[0-9\.]+$'
                 AND cast(ecatalogue.properties->>'decimalLongitude' as FLOAT8) >= -180
                 AND cast(ecatalogue.properties->>'decimalLongitude' as FLOAT8) <= 180
             )
