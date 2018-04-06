@@ -24,6 +24,10 @@ from data_importer.lib.dataset import (
     dataset_get_properties
 )
 
+from data_importer.lib.stats import (
+    get_milestones
+)
+
 logger = logging.getLogger('luigi-interface')
 
 
@@ -95,6 +99,8 @@ class KeemuBaseTask(LuigiCopyToTable):
         self.record_properties = dataset_get_properties(self.module_name)
         # Get all foreign keys
         self.foreign_keys = dataset_get_foreign_keys(self.module_name)
+        # Get current specimen record count
+        self.milestones = get_milestones(self.cursor)
 
     def create_table(self, connection):
         """
@@ -162,6 +168,14 @@ class KeemuBaseTask(LuigiCopyToTable):
                 return False
         return True
 
+    def milestone_check(self, record_dict):
+        """
+        Checks to see if this record reaches any of the defined milestones
+        :param record_dict: the current record
+        """
+        for m in self.milestones:
+            m.check(record_dict)
+
     def run(self):
         # Ensure table exists
         self.ensure_table()
@@ -170,6 +184,7 @@ class KeemuBaseTask(LuigiCopyToTable):
         for record in self.records():
             self.insert_count += 1
             record_dict = self._record_to_dict(record)
+            self.milestone_check(record_dict)
 
             # Cast all dict objects to PGJson
             for key in record_dict.keys():
