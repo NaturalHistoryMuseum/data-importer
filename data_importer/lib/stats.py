@@ -1,6 +1,5 @@
 import math
 from datetime import datetime as dt
-from pprint import pformat
 
 import abc
 import requests
@@ -77,22 +76,40 @@ class BaseMilestone(object):
         """
         return self.starting_records + self.matched_records
 
-    def log_item(self, record_dict):
-        """
-        Add a record to the log.
-        :param record_dict: the record to be logged
-        """
+    def _log_entry(self, record_dict):
         entry = '{0}: {1} {2} (IRN: {3})'.format(
             dt.now().strftime('%Y-%m-%d:%H:%M:%S'),
             self.current_count,
             self.name,
             record_dict.get('irn', 'no IRN')
             )
+        return entry
+
+    def log_item(self, record_dict):
+        """
+        Add a record to the log.
+        :param record_dict: the record to be logged
+        """
+        entry = self._log_entry(record_dict)
         try:
             with open(self.log, 'a') as logfile:
                 logfile.write(entry)
         except OSError:
             print(entry)
+
+    def _slack_msg(self, record_dict):
+        entry = self._log_entry(record_dict)
+        data = {
+            'attachments': [
+                {
+                    'fallback': entry,
+                    'pretext': 'The data importer just reached {0} {1}!'.format(
+                        self.current_count, self.name),
+                    'title': record_dict.get('irn', 'no IRN')
+                    }
+                ]
+            }
+        return data
 
     def slack(self, record_dict):
         """
@@ -102,30 +119,7 @@ class BaseMilestone(object):
         if self.slackurl is None:
             return
         try:
-            entry = '{0}: {1} {2} (IRN: {3})'.format(
-                dt.now().strftime('%Y-%m-%d:%H:%M:%S'),
-                self.current_count,
-                self.name,
-                record_dict.get('irn', 'no IRN')
-                )
-            data = {
-                'attachments': [
-                    {
-                        'fallback': entry,
-                        'pretext': 'The data importer just reached {0} {1}!'.format(
-                            self.current_count, self.name),
-                        'color': '#616ad3',
-                        'fields': [
-                            {
-                                'title': 'Record',
-                                'value': '```\n' + pformat(record_dict,
-                                                           depth=2) + '\n```',
-                                'short': False
-                                }
-                            ]
-                        }
-                    ]
-                }
+            data = self._slack_msg(record_dict)
             r = requests.post(self.slackurl, json=data)
             if not r.ok:
                 raise requests.ConnectionError
@@ -154,6 +148,27 @@ class SpecimenMilestone(BaseMilestone):
 
     def match(self, record_dict):
         return record_dict.get('record_type', None) in self.record_types
+
+    def _slack_msg(self, record_dict):
+        data = super(SpecimenMilestone, self)._slack_msg(record_dict)
+        properties = record_dict['properties'].adapted
+        data['attachments'][0]['color'] = '#616ad3'
+        data['attachments'][0]['author_name'] = properties.get('recordedBy',
+                                                               properties.get(
+                                                                   'identifiedBy',
+                                                                   properties.get(
+                                                                       'donorName',
+                                                                       '-')))
+        data['attachments'][0]['title'] = properties.get('scientificName',
+                                                         properties.get('catalogNumber',
+                                                                        'Record'))
+        data['attachments'][0][
+            'title_link'] = 'http://data.nhm.ac.uk/object/' + record_dict.get(
+            'guid')
+        created = properties.get('created', None)
+        if created is not None:
+            data['attachments'][0]['ts'] = dt.strptime(created, '%Y-%m-%d').timestamp()
+        return data
 
     @property
     def query(self):
