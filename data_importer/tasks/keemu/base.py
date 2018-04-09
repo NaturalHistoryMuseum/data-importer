@@ -184,7 +184,6 @@ class KeemuBaseTask(LuigiCopyToTable):
         for record in self.records():
             self.insert_count += 1
             record_dict = self._record_to_dict(record)
-            self.milestone_check(record_dict)
 
             # Cast all dict objects to PGJson
             for key in record_dict.keys():
@@ -198,6 +197,10 @@ class KeemuBaseTask(LuigiCopyToTable):
             # So the UPDATE statement uses RETURNING modified
             # If we have a modified date, this is an update; otherwise an insert
             is_update = self.cursor.fetchone()[0] is not None
+
+            if not is_update:
+                self.milestone_check(record_dict)
+
             # If we have foreign keys for this module, see if a foreign key
             # has been defined - and if it has insert it
             if self.foreign_keys:
