@@ -2,6 +2,7 @@ import math
 from datetime import datetime as dt
 
 import abc
+import psycopg2
 import requests
 
 from data_importer.lib.config import Config, configparser
@@ -46,8 +47,21 @@ class BaseMilestone(object):
         :param cursor: a cursor connected to the database
         :return: int
         """
-        cursor.execute(self.query)
-        row_count = cursor.fetchone()[0]
+        try:
+            cursor.execute(self.query)
+            row_count = cursor.fetchone()[0]
+        except psycopg2.ProgrammingError as e:
+            if e.pgcode == psycopg2.errorcodes.UNDEFINED_TABLE:
+                # the table we're attempting to count on doesn't exist yet, this just means this is the first import for
+                # this table and therefore we should return a count of 0
+                row_count = 0
+                # also rollback the connection otherwise any subsequent sql will fail. This is safe to do at this point
+                # without loss of any upserted records because this record count function is only called during
+                # initialisation, before any data has even been read from the keemu dumps
+                cursor.connection.rollback()
+            else:
+                # if it's not a undefined table issue then re-raise it
+                raise e
         return row_count
 
     @abc.abstractmethod
