@@ -34,8 +34,6 @@ class SpecimenDatasetTask(DatasetTask):
         'DNA Prep',
         'Mammal Group Parent',  # Not included in the actual output; added to part records
         'Mammal Group Part',
-        "Bird Group Parent",
-        "Bird Group Part",
         'Bryozoa Part Specimen',
         'Silica Gel Specimen',
         "Parasite Card",
