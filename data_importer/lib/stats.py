@@ -202,7 +202,7 @@ class SpecimenMilestone(BaseMilestone):
             'PAL': {
                 None: ':t-rex:',
                 'vertebrates': ':sauropod:',
-                'invertebrates': ':skull:',
+                'invertebrates': ':trilobite:',
                 'palaeobotany': ':fallen_leaf:'
                 },
             'ZOO': {
