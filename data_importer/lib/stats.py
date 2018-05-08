@@ -91,11 +91,12 @@ class BaseMilestone(object):
         return self.starting_records + self.matched_records
 
     def _log_entry(self, record_dict):
-        entry = '{0}: {1} {2} (IRN: {3})'.format(
+        entry = '{0}: {1} {2} (IRN: {3}, GUID: {4})'.format(
             dt.now().strftime('%Y-%m-%d:%H:%M:%S'),
             self.current_count,
             self.name,
-            record_dict.get('irn', 'no IRN')
+            record_dict.get('irn', 'no IRN'),
+            record_dict.get('guid', 'no GUID')
             )
         return entry
 
@@ -141,9 +142,13 @@ class BaseMilestone(object):
             data = self._slack_msg(record_dict)
             r = requests.post(self.slackurl, json=data)
             if not r.ok:
-                raise requests.ConnectionError
-        except requests.ConnectionError:
-            print('Could not post to slack.')
+                raise requests.ConnectionError(request=r.request, response=r)
+        except requests.ConnectionError as e:
+            try:
+                with open(self.log + '.errors', 'a') as logfile:
+                    logfile.write(e.response)
+            except OSError:
+                print('Could not post to slack.')
 
     def check(self, record_dict):
         """
