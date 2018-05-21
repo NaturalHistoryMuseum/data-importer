@@ -228,8 +228,12 @@ class SpecimenMilestone(BaseMilestone):
                 },
             }
 
-        coll = record_properties.get('collectionCode', None).upper()
-        sub_dep = record_properties.get('subDepartment', None).lower()
+        coll = record_properties.get('collectionCode', None)
+        if coll:
+            coll = coll.upper()
+        sub_dep = record_properties.get('subDepartment', None)
+        if sub_dep:
+            sub_dep = sub_dep.lower()
         coll_emojis = emoji_dict.get(coll, emoji_dict.get(None, {}))
         emoji = coll_emojis.get(sub_dep, coll_emojis.get(None, None))
         return emoji or ':question:'
