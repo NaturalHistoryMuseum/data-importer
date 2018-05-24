@@ -276,17 +276,35 @@ class KeemuBaseTask(LuigiCopyToTable):
 
     def _record_to_dict(self, record):
         """
-        Convert record object to a dict
+        Convert record object to a dict. This function combines the outputs of
+        the _record_to_core_dict and _record_to_columns_dict functions.
         :param record:
         :return:
         """
+        record_dict = self._record_to_core_dict(record)
+        record_dict.update(self._record_to_columns_dict(record))
+        return record_dict
 
-        record_dict = {
+    def _record_to_core_dict(self, record):
+        """
+        Convert a record to a dictionary that only includes the core details.
+        :param record:
+        :return:
+        """
+        return {
             'irn': record.irn,
             'guid': record.AdmGUIDPreferredValue,
             'properties': self._record_map_fields(record, self.record_properties),
             'import_date': int(self.date)
         }
+
+    def _record_to_columns_dict(self, record):
+        """
+        Convert a record into a dict containing the column data.
+        :param record:
+        :return:
+        """
+        column_dict = {}
         # Loop through columns, adding any extra fields
         # These need to be set even if null as they are part of the SQL statement
         for column in self.columns:
@@ -302,9 +320,9 @@ class KeemuBaseTask(LuigiCopyToTable):
                 else:
                     value = getattr(record, column.ke_field_name, None)
 
-                record_dict[column.field_name] = value
+                column_dict[column.field_name] = value
 
-        return record_dict
+        return column_dict
 
     @staticmethod
     def _record_map_fields(record, fields):
