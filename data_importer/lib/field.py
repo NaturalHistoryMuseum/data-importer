@@ -34,6 +34,9 @@ class Field(object):
         v = self._get_value(record)
         if self.formatter:
             v = self.formatter(v)
+        if v and isinstance(v, str):
+            # remove any whitespace at either end of the actual data
+            v = v.strip()
         return v
 
     def has_value(self, record):
