@@ -12,3 +12,27 @@ alter table emultimedia add column pending boolean;
 -- better than using a default value when altering the table as we avoid locking
 -- the entire table whilst updating some 2million rows which will take a while.
 update emultimedia set pending = false;
+
+
+-- drop the materialized view _multimedia_view so that it can be redefined
+drop view _multimedia_view;
+-- redefine the materialized view
+CREATE MATERIALIZED VIEW _multimedia_view AS (
+    SELECT
+        _ecatalogue__emultimedia.irn,
+        COALESCE(jsonb_agg(
+            jsonb_build_object('identifier', format('http://www.nhm.ac.uk/services/media-store/asset/%s/contents/preview', emultimedia.properties->>'assetID'),
+            'type', 'StillImage',
+            'license',  'http://creativecommons.org/licenses/by/4.0/',
+            'rightsHolder',  'The Trustees of the Natural History Museum, London') || emultimedia.properties)
+            FILTER (WHERE emultimedia.irn IS NOT NULL), NULL)::TEXT as multimedia,
+        string_agg(DISTINCT emultimedia.properties->>'category', ';') as category
+    FROM emultimedia
+    INNER JOIN _ecatalogue__emultimedia ON _ecatalogue__emultimedia.rel_irn = emultimedia.irn
+    WHERE
+        (embargo_date IS NULL OR embargo_date < NOW())
+      AND deleted IS NULL
+      AND pending IS FALSE
+    GROUP BY _ecatalogue__emultimedia.irn);
+
+CREATE UNIQUE INDEX ON _multimedia_view (irn);
