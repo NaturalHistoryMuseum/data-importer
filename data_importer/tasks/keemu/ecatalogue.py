@@ -112,7 +112,7 @@ class EcatalogueTask(KeemuBaseTask):
                             'rightsHolder',  'The Trustees of the Natural History Museum, London') || emultimedia.properties)
                             FILTER (WHERE emultimedia.irn IS NOT NULL), NULL)::TEXT as multimedia,
                         string_agg(DISTINCT emultimedia.properties->>'category', ';') as category FROM emultimedia
-                        INNER JOIN _ecatalogue__emultimedia ON _ecatalogue__emultimedia.rel_irn = emultimedia.irn WHERE (embargo_date IS NULL OR embargo_date < NOW()) AND deleted IS NULL
+                        INNER JOIN _ecatalogue__emultimedia ON _ecatalogue__emultimedia.rel_irn = emultimedia.irn WHERE (embargo_date IS NULL OR embargo_date < NOW()) AND deleted IS NULL AND pending IS FALSE
                         GROUP BY _ecatalogue__emultimedia.irn); CREATE UNIQUE INDEX ON _multimedia_view (irn);
                 """
         else:

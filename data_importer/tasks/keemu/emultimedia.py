@@ -4,15 +4,11 @@
 Created by Ben Scott on '30/08/2017'.
 """
 
-import abc
 import luigi
-from operator import is_not
-from operator import is_not, ne
-
-from data_importer.tasks.keemu.base import KeemuBaseTask
 from data_importer.lib.column import Column
-from data_importer.lib.operators import is_one_of, is_not_one_of
 from data_importer.lib.filter import Filter
+from data_importer.tasks.keemu.base import KeemuBaseTask
+from operator import is_not
 
 
 class EMultimediaTask(KeemuBaseTask):
@@ -24,13 +20,14 @@ class EMultimediaTask(KeemuBaseTask):
     # Additional columns for emultimedia module - add embargo date
     columns = KeemuBaseTask.columns + [
         Column('embargo_date', "DATE", ["NhmSecEmbargoDate", "NhmSecEmbargoExtensionDate"], True),
+        # note the use of the formatter parameter to turn the value into a bool
+        Column('pending', 'BOOLEAN', 'GenDigitalMediaId', True, lambda g: g == 'Pending')
     ]
 
     # Apply filters to each record, and do not import if any fail
     record_filters = KeemuBaseTask.record_filters + [
         Filter('GenDigitalMediaId', [
-            (is_not, None),
-            (ne, 'Pending')
+            (is_not, None)
         ]),
     ]
 
