@@ -15,7 +15,7 @@ update emultimedia set pending = false;
 
 
 -- drop the materialized view _multimedia_view so that it can be redefined
-drop view _multimedia_view;
+drop materialized view _multimedia_view;
 -- redefine the materialized view
 CREATE MATERIALIZED VIEW _multimedia_view AS (
     SELECT
