@@ -320,7 +320,7 @@ class KeemuBaseTask(LuigiCopyToTable):
                 else:
                     value = getattr(record, column.ke_field_name, None)
 
-                column_dict[column.field_name] = value
+                column_dict[column.field_name] = column.formatter(value)
 
         return column_dict
 
