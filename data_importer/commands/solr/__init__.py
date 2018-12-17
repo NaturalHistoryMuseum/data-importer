@@ -52,10 +52,10 @@ class SolrCommand(object):
         primary_table = 'ecatalogue'
         multimedia_view = '_multimedia_view'
 
-        # We don't want to include mammal group parent in the output - these
+        # We don't want to include mammal group part in the output - these
         # records
         try:
-            self.dataset.record_types.remove('Mammal Group Parent')
+            self.dataset.record_types.remove('Mammal Group Part')
         except ValueError:
             pass
 
