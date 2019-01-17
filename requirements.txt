@@ -4,5 +4,6 @@ prompter==0.3.10
 psycopg2==2.7.1
 SQLAlchemy==1.1.5
 tornado<5.0
+docutils==0.14
 luigi==2.6.1
 six==1.10.0
