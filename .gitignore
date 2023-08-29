@@ -1,21 +1,12 @@
-# Compiled source #
-###################
-*.pyc
-*.egg-info
-
-# Config #
-###################
-*.cfg
-
-# OS generated files #
-######################
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-luigi
-data
+*.py[cod]
+.venv
+.idea
+pip-selfcheck.json
+__pycache__/
+docs/_build
+.pytest_cache
+.coverage
+build
+dist
+htmlcov
+*.egg-info/
