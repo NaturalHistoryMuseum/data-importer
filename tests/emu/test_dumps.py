@@ -11,21 +11,9 @@ from dataimporter.emu.dumps import (
     EMuDump,
     EMuAuditDump,
     EMU_ID_FIELD,
-    EMuRecord,
 )
+from dataimporter.model import VersionedRecord
 from tests.helpers.dumps import create_dump
-
-
-class TestEMuRecord:
-    def test_is_deleted(self):
-        assert EMuRecord(1, 2, {}).is_deleted
-        assert not EMuRecord(1, 2, {"a": "4"}).is_deleted
-
-    def test_contains(self):
-        record = EMuRecord(1, 2, {"a": "4", "b": "26"})
-        assert "a" in record
-        assert "b" in record
-        assert "c" not in record
 
 
 class TestEMuTable:
@@ -155,7 +143,7 @@ class TestEMuDump:
 
         assert len(read_records) == len(records)
         assert read_records == [
-            EMuRecord(
+            VersionedRecord(
                 i, dump.version, {"rownum": str(i), EMU_ID_FIELD: str(i), **record}
             )
             for i, record in enumerate(records, start=1)
@@ -187,7 +175,7 @@ class TestEMuDump:
 
         assert len(read_records) == len(records)
         assert read_records == [
-            EMuRecord(
+            VersionedRecord(
                 i, dump.version, {"rownum": str(i), EMU_ID_FIELD: str(i), **record}
             )
             for i, record in enumerate(records, start=1)

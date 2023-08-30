@@ -1,48 +1,20 @@
 import gzip
 import itertools
 import re
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from functools import cached_property, total_ordering
 from pathlib import Path
-from typing import Dict, Union, Tuple, Iterable, Any
+from typing import Iterable, Any
 from typing import List
 
 from splitgill.utils import to_timestamp, parse_to_timestamp
 
+from dataimporter.model import VersionedRecord
+
 EMU_ID_FIELD = "irn"
 # this is arbitrary-ish but it's the time of the first good full dumps we have
 FIRST_VERSION = to_timestamp(datetime(2017, 8, 30))
-
-
-@dataclass
-class EMuRecord:
-    """
-    A class representing an EMu record.
-    """
-
-    id: int
-    version: int
-    data: Dict[str, Union[str, Tuple[str]]]
-
-    @property
-    def is_deleted(self) -> bool:
-        """
-        Returns True if the record's data represents a deletion, False if not.
-
-        :return: True if the record's data represents a deletion, False if not.
-        """
-        return not bool(self.data)
-
-    def __contains__(self, field: str) -> bool:
-        """
-        Checks if the given field is present in this record's data.
-
-        :param field: the field name
-        :return: True if the field exists, False if not
-        """
-        return field in self.data
 
 
 @total_ordering
@@ -182,7 +154,7 @@ class EMuDump:
         with gzip.open(self.path, "rt", encoding="utf-8") as f:
             return sum(1 for line in f if line.lstrip().startswith(irn_field_prefix))
 
-    def __iter__(self) -> Iterable[EMuRecord]:
+    def __iter__(self) -> Iterable[VersionedRecord]:
         """
         Reads the dump file and yield an EMuRecord object per record found in the dump.
         If a record read from the dump doesn't have a detectable IRN then no record is
@@ -232,7 +204,7 @@ class EMuDump:
                             data[field] = (existing, value)
                 else:
                     if emu_id is not None:
-                        yield EMuRecord(emu_id, version, data)
+                        yield VersionedRecord(emu_id, version, data)
 
                     # refresh our record state holding variables
                     emu_id = None
@@ -248,8 +220,8 @@ class EMuAuditDump(EMuDump):
     achieved through an overriden __iter__ method.
     """
 
-    def __iter__(self) -> Iterable[EMuRecord]:
-        def record_filter(record: EMuRecord):
+    def __iter__(self) -> Iterable[VersionedRecord]:
+        def record_filter(record: VersionedRecord):
             # filter the dump's records so that only valid deletions are yielded
             return (
                 # we only want delete operations
