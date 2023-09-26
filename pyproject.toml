@@ -29,7 +29,8 @@ dependencies = [
     "python-dateutil==2.8.2",
     "fastnumbers==5.0.1",
     "rich==13.5.2",
-    "tqdm==4.66.1"
+    "tqdm==4.66.1",
+    "msgpack==1.0.5",
 ]
 [project.optional-dependencies]
 test = [
