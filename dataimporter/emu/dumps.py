@@ -1,20 +1,19 @@
 import gzip
 import itertools
 import re
-from datetime import datetime, timezone
+from datetime import date, datetime
 from enum import Enum
 from functools import cached_property, total_ordering
 from pathlib import Path
-from typing import Iterable, Any
+from typing import Iterable, Any, Optional
 from typing import List
 
-from splitgill.utils import to_timestamp, parse_to_timestamp
-
-from dataimporter.model import VersionedRecord
+from dataimporter.dbs.converters import int_to_str
+from dataimporter.model import SourceRecord, Data
 
 EMU_ID_FIELD = "irn"
-# this is arbitrary-ish but it's the time of the first good full dumps we have
-FIRST_VERSION = to_timestamp(datetime(2017, 8, 30))
+# this is arbitrary-ish, but it's the time of the first good full dumps we have
+FIRST_VERSION = date(2017, 8, 30)
 
 
 @total_ordering
@@ -49,14 +48,14 @@ class EMuTable(Enum):
         return self != EMuTable.eaudit
 
 
-def find_emu_dumps(root: Path, after: int = FIRST_VERSION) -> List["EMuDump"]:
+def find_emu_dumps(root: Path, after: date = FIRST_VERSION) -> List["EMuDump"]:
     """
     Find all the EMu dumps in the given path and return them as a list of EMuDump
     objects. The list returned will be sorted in the order that the dumps should be
     processed.
 
     :param root: the root directory
-    :param after: only dumps on or after this version will be returned, defaults to the
+    :param after: only dumps on or after this date will be returned, defaults to the
                   first full EMu dump from 30/08/17 (see FIRST_VERSION at the module
                   level)
     :return: a sorted list of EMuDump objects
@@ -69,20 +68,24 @@ def find_emu_dumps(root: Path, after: int = FIRST_VERSION) -> List["EMuDump"]:
     for path in root.iterdir():
         match = dump_matcher.match(path.name)
         if match:
-            table_name, date = match.groups()
+            table_str, date_str = match.groups()
+
             try:
-                table = EMuTable[table_name]
-            except KeyError as e:
+                table = EMuTable[table_str]
+            except KeyError:
                 # ignore as we don't deal with this table
                 continue
 
-            if table is EMuTable.eaudit:
-                dump = EMuAuditDump(path, table, date)
-            else:
-                dump = EMuDump(path, table, date)
+            dump_date = datetime.strptime(date_str, "%Y%m%d").date()
+            if dump_date < after:
+                # ignore old dumps
+                continue
 
-            if dump.version >= after:
-                dumps.append(dump)
+            if table is EMuTable.eaudit:
+                dump = EMuAuditDump(path, table, dump_date)
+            else:
+                dump = EMuDump(path, table, dump_date)
+            dumps.append(dump)
 
     return sorted(dumps)
 
@@ -94,17 +97,19 @@ class EMuDump:
     Each file represents data from a single table.
     """
 
-    def __init__(self, path: Path, table: EMuTable, date: str):
+    def __init__(self, path: Path, table: EMuTable, dump_date: date):
         """
         :param path: the full path to the dump file
         :param table: the table the dump file is from
-        :param date: the date string of the export
+        :param dump_date: the date of the export
         """
         self.path = path
         self.table = table
-        self.date = date
-        # convert the date into a version timestamp
-        self.version = parse_to_timestamp(date, "%Y%m%d", tzinfo=timezone.utc)
+        self.date = dump_date
+
+    @property
+    def name(self) -> str:
+        return self.path.name
 
     @property
     def is_audit(self):
@@ -116,11 +121,11 @@ class EMuDump:
         return self.table == EMuTable.eaudit
 
     def __str__(self) -> str:
-        return f"Dump {self.table}@{self.version}/{self.date} [{self.path}]"
+        return f"Dump {self.table}@{self.date} [{self.path}]"
 
     def __eq__(self, other: Any):
         if isinstance(other, EMuDump):
-            return self.version == other.version and self.table == other.table
+            return self.date == other.date and self.table == other.table
         return NotImplemented
 
     def __lt__(self, other: Any):
@@ -128,7 +133,7 @@ class EMuDump:
             # order by version, then table. The main goal here is to ensure the versions
             # are ordered correctly and the audit dumps are ordered before normal tables
             # as we need to do deletes first
-            return (self.version, self.table) < (other.version, other.table)
+            return (self.date, self.table) < (other.date, other.table)
 
         return NotImplemented
 
@@ -154,7 +159,7 @@ class EMuDump:
         with gzip.open(self.path, "rt", encoding="utf-8") as f:
             return sum(1 for line in f if line.lstrip().startswith(irn_field_prefix))
 
-    def __iter__(self) -> Iterable[VersionedRecord]:
+    def __iter__(self) -> Iterable[SourceRecord]:
         """
         Reads the dump file and yield an EMuRecord object per record found in the dump.
         If a record read from the dump doesn't have a detectable IRN then no record is
@@ -162,14 +167,13 @@ class EMuDump:
 
         :return: yields EMuRecord objects
         """
-        # cache this, so we don't have to look it up everytime we want to use it (for
-        # performance)
-        version = self.version
+        # cache this so we don't have to look it up everytime we want to use it
+        source = self.name
 
         with gzip.open(self.path, "rt", encoding="utf-8") as f:
             # state variables for each record
-            emu_id = None
-            data = {}
+            emu_id: Optional[int] = None
+            data: Data = {}
 
             # each record is delimited in the EMu dump using a line with just ### on it.
             # This chain here ensures that the file ends with a ### line even if one
@@ -204,7 +208,9 @@ class EMuDump:
                             data[field] = (existing, value)
                 else:
                     if emu_id is not None:
-                        yield VersionedRecord(emu_id, version, data)
+                        # use a specially encoded int format to ensure sorting in the DB
+                        # works as you'd expect (i.e. numerical order)
+                        yield SourceRecord(int_to_str(emu_id), data, source)
 
                     # refresh our record state holding variables
                     emu_id = None
@@ -220,8 +226,8 @@ class EMuAuditDump(EMuDump):
     achieved through an overriden __iter__ method.
     """
 
-    def __iter__(self) -> Iterable[VersionedRecord]:
-        def record_filter(record: VersionedRecord):
+    def __iter__(self) -> Iterable[SourceRecord]:
+        def record_filter(record: SourceRecord):
             # filter the dump's records so that only valid deletions are yielded
             return (
                 # we only want delete operations

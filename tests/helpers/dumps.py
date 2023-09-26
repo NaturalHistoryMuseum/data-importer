@@ -1,5 +1,5 @@
 import gzip
-from datetime import datetime
+from datetime import date
 from pathlib import Path
 from typing import Union
 
@@ -7,7 +7,7 @@ from dataimporter.emu.dumps import EMuTable, EMU_ID_FIELD
 
 
 def create_dump(
-    root: Path, table: Union[str, EMuTable], date: datetime, *records: dict
+    root: Path, table: Union[str, EMuTable], dump_date: date, *records: dict
 ) -> Path:
     """
     Creates an EMu dump using the given parameters to form the path in the root, and
@@ -17,7 +17,7 @@ def create_dump(
     :param root: the directory to put the dump in
     :param table: the EMu table being dumped, doesn't need to be valid (hence the
                   str|EMuTable type)
-    :param date: the date of the dump
+    :param dump_date: the date of the dump
     :param records: 0+ records as dicts
     :return: the path of the created dump
     """
@@ -29,7 +29,7 @@ def create_dump(
         table = table.name
 
     # form the path
-    dump = root / f"{table}.{export_part}.{date.strftime('%Y%m%d')}.gz"
+    dump = root / f"{table}.{export_part}.{dump_date.strftime('%Y%m%d')}.gz"
 
     with gzip.open(dump, "wt", encoding="utf-8") as f:
         for row, record in enumerate(records, start=1):
