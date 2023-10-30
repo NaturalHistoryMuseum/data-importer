@@ -34,7 +34,7 @@ class TestGBIFView:
         data = gbif_view.transform(gbif_record)
         assert data == {
             "gbifID": SAMPLE_GBIF_RECORD_ID,
-            "gbifIssues": (
+            "gbifIssue": (
                 "GEODETIC_DATUM_ASSUMED_WGS84",
                 "INSTITUTION_MATCH_FUZZY",
                 "COLLECTION_MATCH_NONE",

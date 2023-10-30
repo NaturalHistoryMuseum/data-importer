@@ -33,7 +33,7 @@ class GBIFView(View):
         issue_value = record.get_first_value("issue", default="").strip()
         if issue_value:
             # make a tuple and remove any empty values (in case of formatting weirds)
-            data["gbifIssues"] = tuple(
+            data["gbifIssue"] = tuple(
                 issue for issue in issue_value.split(";") if issue
             )
         return data
