@@ -1,7 +1,6 @@
 import gzip
 from datetime import date
 from pathlib import Path
-from typing import Union
 
 from dataimporter.emu.dumps import EMU_ID_FIELD
 
