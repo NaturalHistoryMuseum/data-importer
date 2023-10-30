@@ -28,6 +28,9 @@ DISALLOWED_STATUSES = {
     "Stub Record",
     "Stub record",
 }
+# a dict containing department names -> collection codes. This is used both for checking
+# department validity (do we want to publish a record from this department?) as well as
+# to map the departments to their published collection codes
 DEPARTMENT_COLLECTION_CODES = {
     "Botany": "BOT",
     "Entomology": "BMNH(E)",
