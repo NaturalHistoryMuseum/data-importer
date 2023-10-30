@@ -29,6 +29,7 @@ def config(tmp_path: Path) -> Config:
         specimen_id="specimen-id",
         artefact_id="artefact-id",
         indexlot_id="indexlot-id",
+        iiif_base_url="https://not.a.real.domain.com/media",
         mongo_config=mongo_config,
         es_config=elasticsearch_config,
         gbif_username=None,

@@ -45,6 +45,7 @@ class TestConfig:
             MagicMock(),
             MagicMock(),
             MagicMock(),
+            MagicMock(),
         )
 
         assert isinstance(config.data_path, Path)
@@ -54,6 +55,7 @@ class TestConfig:
         config = Config(
             Path("/test/data"),
             Path("/test/dumps"),
+            MagicMock(),
             MagicMock(),
             MagicMock(),
             MagicMock(),
@@ -76,6 +78,7 @@ dumps_path: '/test/dumps/'
 specimen_id: 'specimen'
 artefact_id: 'artefact'
 indexlot_id: 'indexlot'
+iiif_base_url: 'https://not.a.real.domain.com/media'
 elasticsearch:
   hosts:
     - 'http://test_es:9200'
