@@ -10,10 +10,14 @@ from dataimporter.model import SourceRecord
 from dataimporter.view import FilterResult, SUCCESS_RESULT
 from tests.helpers.samples.image import SAMPLE_IMAGE_DATA, SAMPLE_IMAGE_ID
 
+FAKE_IIIF_BASE = "https://not.a.real.domain.com/media"
+
 
 @pytest.fixture
 def image_view(tmp_path: Path) -> ImageView:
-    view = ImageView(tmp_path / "image_view", DataDB(tmp_path / "image_data"))
+    view = ImageView(
+        tmp_path / "image_view", DataDB(tmp_path / "image_data"), FAKE_IIIF_BASE
+    )
     yield view
     view.close()
 
@@ -49,7 +53,7 @@ def test_make_data(image_view: ImageView):
         "created": "2013-11-12T16:13:51+00:00",
         "modified": "2016-02-03T09:13:10+00:00",
         "assetID": "c2bde4e9-ca2b-466c-ab41-509468b841a4",
-        "identifier": f"http://10.0.11.20/media/c2bde4e9-ca2b-466c-ab41-509468b841a4",
+        "identifier": f"{FAKE_IIIF_BASE}/c2bde4e9-ca2b-466c-ab41-509468b841a4",
         "title": "BM000019319",
         "mime": "image/tiff",
         "creator": None,

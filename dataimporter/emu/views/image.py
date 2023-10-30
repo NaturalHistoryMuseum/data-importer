@@ -1,7 +1,10 @@
+from pathlib import Path
+
 from dataimporter.emu.views.utils import NO_PUBLISH, is_web_published
 from dataimporter.emu.views.utils import emu_date
 from dataimporter.model import SourceRecord
 from dataimporter.view import FilterResult, View, SUCCESS_RESULT
+from dataimporter.dbs import DataDB
 
 MULTIMEDIA_NOT_IMAGE = FilterResult(False, "Multimedia not an image")
 
@@ -13,6 +16,15 @@ class ImageView(View):
     This view doesn't have a Data Portal resource that it populates, instead the records
     that go through this view are embedded within other record types.
     """
+
+    def __init__(self, path: Path, db: DataDB, iiif_url_base: str):
+        """
+        :param path: the root path that all view related data should be stored under
+        :param db: the DataDB object that backs this view
+        :param iiif_url_base: base URL for the IIIF image URLs created in make_data
+        """
+        super().__init__(path, db)
+        self.iiif_url_base = iiif_url_base
 
     def is_member(self, record: SourceRecord) -> FilterResult:
         """
@@ -51,8 +63,7 @@ class ImageView(View):
                 get_first("AdmDateModified"), get_first("AdmTimeModified")
             ),
             "assetID": asset_id,
-            # TODO: this
-            "identifier": f"http://10.0.11.20/media/{asset_id}",
+            "identifier": f"{self.iiif_url_base}/{asset_id}",
             "title": get_first("MulTitle"),
             "creator": get_first("MulCreator"),
             "category": get_first("DetResourceType"),

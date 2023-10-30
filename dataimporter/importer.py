@@ -68,7 +68,9 @@ class DataImporter:
 
         # CREATE THE VIEWS
         mss_view = MSSView(self.views_path / "mss", emultimedia_db)
-        image_view = ImageView(self.views_path / "image", emultimedia_db)
+        image_view = ImageView(
+            self.views_path / "image", emultimedia_db, config.iiif_base_url
+        )
         taxonomy_view = TaxonomyView(self.views_path / "taxonomy", etaxonomy_db)
         gbif_view = GBIFView(self.views_path / "gbif", gbif_db)
         artefact_view = ArtefactView(self.views_path / "artefact", ecatalogue_db)
