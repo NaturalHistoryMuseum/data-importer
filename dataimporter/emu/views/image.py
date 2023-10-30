@@ -42,7 +42,7 @@ class ImageView(View):
         get_first = record.get_first_value
 
         asset_id = get_first("AdmGUIDPreferredValue")
-        return {
+        data = {
             "_id": record.id,
             "created": emu_date(
                 get_first("AdmDateInserted"), get_first("AdmTimeInserted")
@@ -54,9 +54,6 @@ class ImageView(View):
             # TODO: this
             "identifier": f"http://10.0.11.20/media/{asset_id}",
             "title": get_first("MulTitle"),
-            # TODO: maybe this should be an actual mime type? Seems to usually just be a
-            #       file type like "tiff" or "jpeg"
-            "mime": get_first("MulMimeFormat"),
             "creator": get_first("MulCreator"),
             "category": get_first("DetResourceType"),
             "type": "StillImage",
@@ -65,3 +62,9 @@ class ImageView(View):
             "width": get_first("ChaImageWidth"),
             "height": get_first("ChaImageHeight"),
         }
+
+        if mime_subtype := get_first("MulMimeFormat"):
+            # we know that the mime type is image because it's in our member filter
+            data["mime"] = f"image/{mime_subtype}"
+
+        return data

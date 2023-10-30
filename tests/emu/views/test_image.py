@@ -51,7 +51,7 @@ def test_make_data(image_view: ImageView):
         "assetID": "c2bde4e9-ca2b-466c-ab41-509468b841a4",
         "identifier": f"http://10.0.11.20/media/c2bde4e9-ca2b-466c-ab41-509468b841a4",
         "title": "BM000019319",
-        "mime": "tiff",
+        "mime": "image/tiff",
         "creator": None,
         "category": "Specimen",
         "type": "StillImage",
