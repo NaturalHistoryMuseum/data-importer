@@ -55,8 +55,7 @@ class ArtefactView(View):
         :return: a dict containing the data for this record that should be displayed on
                  the Data Portal
         """
-        # cache these for perf
-        get_all = record.get_all_values
+        # cache this for perf
         get_first = record.get_first_value
 
         return {
