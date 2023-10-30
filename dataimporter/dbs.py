@@ -5,9 +5,47 @@ from typing import Iterable, Optional, Tuple, List
 import msgpack
 import plyvel
 from cytoolz.itertoolz import partition_all
+from fastnumbers import check_int
 from splitgill.utils import parse_to_timestamp, now
 
 from dataimporter.model import SourceRecord
+
+# the maximum integer we can represent as a sortable string is 78 digits
+MAX_INT = int("9" * 78)
+
+
+def int_to_sortable_str(number: int) -> str:
+    """
+    Encodes the given number and returns a string that when compared to other strings is
+    alphanumerically orderable. This fixes the standard 1, 2, 20, 21, 3 problem without
+    using zero padding which wastes space and requires a much lower maximum input value.
+    The algorithm used is based on the one presented here:
+    https://www.arangodb.com/2017/09/sorting-number-strings-numerically/ with a couple
+    of tweaks.
+
+    Essentially, we encode the length of the number before the number itself using a
+    single ASCII character. This allows sorting to be done properly as the ASCII
+    character is compared first and then the number next. For example, the number 1 gets
+    the character 1 so is encoded as "1_1", whereas 10 gets the character 2 and is
+    encoded "2_10". Because we are restricted to not use . in keys and for low number
+    convenience, we start at character point 49 which is the character 1 and therefore
+    all numbers less than 1,000,000,000 are encoded with the numbers 1 to 9 which is
+    convenient for users.
+
+    This encoding structure can support a number with a maximum length of 78 digits
+    (ASCII char 1 (49) to ~ (126)).
+
+    This function only works on positive integers. If the input isn't valid, a
+    ValueError is raised.
+
+    :param number: the number to encode, must be positive
+    :return: the encoded number as a str object
+    """
+    if not check_int(number):
+        raise ValueError("Number must be a valid integer")
+    if number < 0 or number > MAX_INT:
+        raise ValueError(f"Number must be positive and no more than {MAX_INT}")
+    return f"{chr(48 + len(str(number)))}_{number}"
 
 
 class DB:
@@ -77,8 +115,10 @@ class DB:
 
     def clear(self):
         """
-        Clear the database of all data. This is achieved by deleting the database and
-        then recreating it as it's the fastest way to do it.
+        Clear the database of all data.
+
+        This is achieved by deleting the database and then recreating it as it's the
+        fastest way to do it.
         """
         self.close()
         shutil.rmtree(self.path)
@@ -94,9 +134,10 @@ class DB:
 
 class DataDB(DB):
     """
-    Class representing a data database. This is a database where the keys are integer
-    IDs and the data is a VersionedRecord. The VersionedRecord will be serialised for
-    storage by msgpack.
+    Class representing a data database.
+
+    This is a database where the keys are string IDs and the data is a SourceRecord. The
+    SourceRecord will be serialised for storage by msgpack.
     """
 
     def __init__(self, path: Path):
@@ -172,6 +213,7 @@ class DataDB(DB):
         # TODO: it's probably not worth it, but if this becomes a bottleneck it may be
         #       worth investigating implementing a sort merge, similar to how SQL joins
         #       work, if the record_ids parameter is sorted.
+
         # cache so that we don't have to look these up on each iteration
         unpacker = self._unpacker
         get = self.db.get
@@ -183,52 +225,81 @@ class DataDB(DB):
             yield from (SourceRecord(*params) for params in unpacker)
 
 
-class LinkDB(DB):
+class Index(DB):
     """
-    Database providing link information between two tables (these tables can be the
-    same).
+    A general purpose index mapping keys to values.
 
-    The data is stored in a way to enable quick lookups from the foreign table back to
-    the base table. This is because in the EMu records, we get the link information from
-    the base record and the foreign record has no idea what it is linked to. So this
-    database provides a quick way of looking up those connections from the foreign table
-    side.
+    This supports both one-to-one and one-to-many relationships. Key and value mappings
+    are stored both ways to enable lookup via the key or the value.
     """
 
-    def __init__(self, path: Path, field: str):
+    def put_one_to_many(self, keys_and_values: Iterable[Tuple[str, Iterable[str]]]):
         """
-        :param path: the database path
-        :param field: the field on the base table which contains the foreign IDs
-        """
-        super().__init__(path)
-        self.field = field
+        Put the key -> values into the index. All data is written in one transaction. If
+        a key is passed with an empty values iterable, it is ignored.
 
-    def put_many(self, records: List[SourceRecord]):
-        """
-        Update the database with the given records. Each record will be iterated over
-        and the linked field checked for values. Any values will be extracted and then
-        added to the database. The linked ids will be added to the database in a
-        transaction.
-
-        :param records: a list of records
+        :param keys_and_values: tuples containing a single str key and an iterable of
+                                potentially many str values
         """
         with self.db.write_batch(transaction=True) as wb:
-            for record in records:
-                for foreign_id in record.iter_all_values(self.field):
-                    wb.put(f"{foreign_id}.{record.id}".encode("utf-8"), b"")
+            for key, values in keys_and_values:
+                for value in values:
+                    wb.put(f"k.{key}.{value}".encode("utf-8"), b"")
+                    wb.put(f"v.{value}.{key}".encode("utf-8"), b"")
 
-    def lookup(self, foreign_ids: Iterable[str]) -> Iterable[str]:
+    def put_one_to_one(self, keys_and_values: Iterable[Tuple[str, str]]):
         """
-        Lookup the linked base IDs for the given foreign IDs. Yielded one by one.
+        Put the key -> value pairs into the index. All data is written in one
+        transaction.
 
-        TODO: explain why this works like it does, i.e. why we don't need to yield pairs
-
-        :param foreign_ids: an iterable of foreign IDs to lookup
-        :return: yields the linked base IDs
+        :param keys_and_values: tuples containing a single str key and a single value
         """
-        for foreign_id in foreign_ids:
-            for key in self.keys(prefix=f"{foreign_id}.".encode("utf-8")):
-                yield key.split(b".")[1].decode("utf-8")
+        # just wrap the single str into a 1-tuple
+        self.put_one_to_many((key, (value,)) for key, value in keys_and_values)
+
+    def get(self, key: str) -> Iterable[str]:
+        """
+        Get the values associated with the given key and yield them all.
+
+        :param key: the key
+        :return: the associated value or None if the key isn't present
+        """
+        prefix = f"k.{key}.".encode("utf-8")
+        prefix_length = len(prefix)
+        for raw_key in self.keys(prefix=prefix):
+            yield raw_key[prefix_length:].decode("utf-8")
+
+    def get_one(self, key: str) -> Optional[str]:
+        """
+        Get the first value associated with the given key, or None if the key doesn't
+        exist in this index.
+
+        :param key: the str key
+        :return: the associated value or None
+        """
+        return next(iter(self.get(key)), None)
+
+    def reverse_get(self, value: str) -> Iterable[str]:
+        """
+        Get the keys associated with the given value and yield them all.
+
+        :param value: the value
+        :return: the associated keys or None if the value isn't present
+        """
+        prefix = f"v.{value}.".encode("utf-8")
+        prefix_length = len(prefix)
+        for raw_key in self.keys(prefix=prefix):
+            yield raw_key[prefix_length:].decode("utf-8")
+
+    def reverse_get_one(self, value: str) -> Optional[str]:
+        """
+        Get the first key associated with the given value, or None if the value doesn't
+        exist in this index.
+
+        :param value: the str value
+        :return: the associated key or None
+        """
+        return next(iter(self.reverse_get(value)), None)
 
 
 class ChangeQueue(DB):
@@ -284,9 +355,13 @@ class EmbargoQueue(DB):
         """
         source_fields = ("NhmSecEmbargoDate", "NhmSecEmbargoExtensionDate")
         embargoed_records = []
+        current_timestamp = now()
 
         with self.db.write_batch(transaction=True) as wb:
             for record in records:
+                if record.is_deleted:
+                    continue
+
                 embargo = None
                 for value in record.iter_all_values(*source_fields):
                     try:
@@ -295,9 +370,8 @@ class EmbargoQueue(DB):
                             embargo = date
                     except ValueError:
                         pass
-                # TODO: nothing else in the embargodb uses now, should they all use now
-                #       or should they all take a parameter to define the threshold?
-                if embargo is not None and embargo > now():
+
+                if embargo is not None and embargo > current_timestamp:
                     wb.put(record.id.encode("utf-8"), str(embargo).encode("utf-8"))
                     embargoed_records.append(record)
 
@@ -386,8 +460,8 @@ class EmbargoQueue(DB):
     def stats(self, up_to: int) -> Tuple[int, int]:
         """
         Counts how many records in the database have an embargo timestamp beyond the
-        given up_to timestamp and how many do not. Returns these counts as a 2-tuple
-        of the embargoed count and the not embargoed count.
+        given up_to timestamp and how many do not. Returns these counts as a 2-tuple of
+        the embargoed count and the not embargoed count.
 
         :param up_to: the exclusive embargo timestamp upper limit
         :return: a 2-tuple of (embargoed count, not embargoed count)

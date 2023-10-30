@@ -2,63 +2,33 @@ import gzip
 import itertools
 import re
 from datetime import date, datetime
-from enum import Enum
-from functools import cached_property, total_ordering
+from functools import cached_property
 from pathlib import Path
-from typing import Iterable, Any, Optional
+from typing import Iterable, Any, Optional, Set
 from typing import List
 
-from dataimporter.dbs.converters import int_to_str
 from dataimporter.model import SourceRecord, Data
 
 EMU_ID_FIELD = "irn"
-# this is arbitrary-ish, but it's the time of the first good full dumps we have
-FIRST_VERSION = date(2017, 8, 30)
+# this is arbitrary-ish, but it's the day before the first good full dumps we have
+FIRST_VERSION = date(2017, 8, 29)
+# the EMu tables we currently use
+EMU_TABLES = {"eaudit", "ecatalogue", "emultimedia", "etaxonomy"}
 
 
-@total_ordering
-class EMuTable(Enum):
-    """
-    Enumeration of the EMu tables we currently handle.
-
-    The value of the enum indicates the order they should be ingested in with EAudit
-    first and then the others after.
-    """
-
-    eaudit = 0
-    ecatalogue = 1
-    emultimedia = 2
-    etaxonomy = 3
-
-    def __lt__(self, other):
-        # implemented for the total_ordering annotation on the class and allow the
-        # values to be used to prioritise the ingest of the tables
-        if isinstance(other, EMuTable):
-            return self.value < other.value
-        return NotImplemented
-
-    @property
-    def is_stored(self) -> bool:
-        """
-        Whether the table's data should be stored or not.
-
-        Currently, only EAudit is ignored as it is actually providing information about
-        the other tables (like deletes).
-        """
-        return self != EMuTable.eaudit
-
-
-def find_emu_dumps(root: Path, after: date = FIRST_VERSION) -> List["EMuDump"]:
+def find_emu_dumps(
+    root: Path,
+    after: date = FIRST_VERSION,
+) -> List["EMuDump"]:
     """
     Find all the EMu dumps in the given path and return them as a list of EMuDump
-    objects. The list returned will be sorted in the order that the dumps should be
-    processed.
+    objects.
 
     :param root: the root directory
-    :param after: only dumps on or after this date will be returned, defaults to the
-                  first full EMu dump from 30/08/17 (see FIRST_VERSION at the module
-                  level)
-    :return: a sorted list of EMuDump objects
+    :param after: only dumps after this date will be returned, defaults to the day
+                  before the first full EMu dump from 30/08/17 (see FIRST_VERSION at the
+                  module level)
+    :return: a list of EMuDump objects
     """
     dumps = []
     dump_matcher = re.compile(
@@ -68,26 +38,20 @@ def find_emu_dumps(root: Path, after: date = FIRST_VERSION) -> List["EMuDump"]:
     for path in root.iterdir():
         match = dump_matcher.match(path.name)
         if match:
-            table_str, date_str = match.groups()
+            table, date_str = match.groups()
 
-            try:
-                table = EMuTable[table_str]
-            except KeyError:
-                # ignore as we don't deal with this table
+            if table not in EMU_TABLES:
+                # ignore invalid tables
                 continue
 
             dump_date = datetime.strptime(date_str, "%Y%m%d").date()
-            if dump_date < after:
+            if dump_date <= after:
                 # ignore old dumps
                 continue
 
-            if table is EMuTable.eaudit:
-                dump = EMuAuditDump(path, table, dump_date)
-            else:
-                dump = EMuDump(path, table, dump_date)
-            dumps.append(dump)
+            dumps.append(EMuDump(path, table, dump_date))
 
-    return sorted(dumps)
+    return dumps
 
 
 class EMuDump:
@@ -97,7 +61,7 @@ class EMuDump:
     Each file represents data from a single table.
     """
 
-    def __init__(self, path: Path, table: EMuTable, dump_date: date):
+    def __init__(self, path: Path, table: str, dump_date: date):
         """
         :param path: the full path to the dump file
         :param table: the table the dump file is from
@@ -111,30 +75,12 @@ class EMuDump:
     def name(self) -> str:
         return self.path.name
 
-    @property
-    def is_audit(self):
-        """
-        Is this an audit dump?
-
-        :return: True if it is, False if not.
-        """
-        return self.table == EMuTable.eaudit
-
     def __str__(self) -> str:
         return f"Dump {self.table}@{self.date} [{self.path}]"
 
     def __eq__(self, other: Any):
         if isinstance(other, EMuDump):
             return self.date == other.date and self.table == other.table
-        return NotImplemented
-
-    def __lt__(self, other: Any):
-        if isinstance(other, EMuDump):
-            # order by version, then table. The main goal here is to ensure the versions
-            # are ordered correctly and the audit dumps are ordered before normal tables
-            # as we need to do deletes first
-            return (self.date, self.table) < (other.date, other.table)
-
         return NotImplemented
 
     @property
@@ -159,7 +105,7 @@ class EMuDump:
         with gzip.open(self.path, "rt", encoding="utf-8") as f:
             return sum(1 for line in f if line.lstrip().startswith(irn_field_prefix))
 
-    def __iter__(self) -> Iterable[SourceRecord]:
+    def read(self) -> Iterable[SourceRecord]:
         """
         Reads the dump file and yield an EMuRecord object per record found in the dump.
         If a record read from the dump doesn't have a detectable IRN then no record is
@@ -172,7 +118,7 @@ class EMuDump:
 
         with gzip.open(self.path, "rt", encoding="utf-8") as f:
             # state variables for each record
-            emu_id: Optional[int] = None
+            emu_id: Optional[str] = None
             data: Data = {}
 
             # each record is delimited in the EMu dump using a line with just ### on it.
@@ -191,7 +137,7 @@ class EMuDump:
                     field = field.split(":", 1)[0]
 
                     if field == EMU_ID_FIELD:
-                        emu_id = int(value)
+                        emu_id = value
 
                     existing = data.get(field)
                     if existing is None:
@@ -208,34 +154,38 @@ class EMuDump:
                             data[field] = (existing, value)
                 else:
                     if emu_id is not None:
-                        # use a specially encoded int format to ensure sorting in the DB
-                        # works as you'd expect (i.e. numerical order)
-                        yield SourceRecord(int_to_str(emu_id), data, source)
+                        yield SourceRecord(emu_id, data, source)
 
                     # refresh our record state holding variables
                     emu_id = None
                     data = {}
 
 
-class EMuAuditDump(EMuDump):
+def is_valid_eaudit_record(record: SourceRecord, tables: Set[str]) -> bool:
     """
-    Class representing an EMu audit table export (or "dump") texexport file.
+    Given a record and a set of current tables, returns True if the record is an audit
+    deletion record on one of the tables.
 
-    Each file represents data from the EAudit table which accounts for changes to any
-    table in EMu. We specifically filter the audit table dumps for deletions, this is
-    achieved through an overriden __iter__ method.
+    :param record: the record to check
+    :param tables: the tables the deletion must have occurred in to be valid
+    :return: whether the record is a valid audit deletion on a table we are tracking
     """
+    return (
+        # we only want delete operations
+        record.data.get("AudOperation") == "delete"
+        # we only want deletions on tables we actually have data for already
+        and record.data.get("AudTable") in tables
+        # AudKey is the irn of the deleted record, so it must have this field
+        and "AudKey" in record.data
+    )
 
-    def __iter__(self) -> Iterable[SourceRecord]:
-        def record_filter(record: SourceRecord):
-            # filter the dump's records so that only valid deletions are yielded
-            return (
-                # we only want delete operations
-                record.data.get("AudOperation") == "delete"
-                # AudKey is the irn of the deleted record, so it must have this field
-                and "AudKey" in record.data
-                # and this is the table the record was deleted from
-                and "AudTable" in record.data
-            )
 
-        yield from filter(record_filter, super().__iter__())
+def convert_eaudit_to_delete(record: SourceRecord) -> SourceRecord:
+    """
+    Convert the given eaudit record into a deletion record.
+
+    :param record: the audit record in full
+    :return: a new SourceRecord object which will produce a deletion on the target
+             record ID in the target table
+    """
+    return SourceRecord(record.data["AudKey"], {}, record.source)

@@ -3,12 +3,10 @@ from datetime import date
 from pathlib import Path
 from typing import Union
 
-from dataimporter.emu.dumps import EMuTable, EMU_ID_FIELD
+from dataimporter.emu.dumps import EMU_ID_FIELD
 
 
-def create_dump(
-    root: Path, table: Union[str, EMuTable], dump_date: date, *records: dict
-) -> Path:
+def create_dump(root: Path, table: str, dump_date: date, *records: dict) -> Path:
     """
     Creates an EMu dump using the given parameters to form the path in the root, and
     then adding the records. If no records are provided, a valid dump is still
@@ -22,11 +20,9 @@ def create_dump(
     :return: the path of the created dump
     """
     export_part = "export"
-    if isinstance(table, EMuTable):
-        # eaudit dumps have a slightly different name format to normal dumps
-        if table == EMuTable.eaudit:
-            export_part = "deleted-export"
-        table = table.name
+    # eaudit dumps have a slightly different name format to normal dumps
+    if table == "eaudit":
+        export_part = "deleted-export"
 
     # form the path
     dump = root / f"{table}.{export_part}.{dump_date.strftime('%Y%m%d')}.gz"

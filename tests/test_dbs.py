@@ -5,11 +5,36 @@ from typing import Optional
 
 import pytest
 from freezegun import freeze_time
-from splitgill.utils import partition, parse_to_timestamp, now, to_timestamp
+from splitgill.utils import partition, now, to_timestamp
 
-from dataimporter.dbs.dbs import DB, DataDB, LinkDB, ChangeQueue, EmbargoQueue
+from dataimporter.dbs import (
+    DB,
+    DataDB,
+    Index,
+    ChangeQueue,
+    EmbargoQueue,
+    int_to_sortable_str,
+    MAX_INT,
+)
 from dataimporter.model import SourceRecord
-from dataimporter.dbs.converters import int_to_str
+
+
+def test_int_to_sortable_str():
+    with pytest.raises(ValueError):
+        assert int_to_sortable_str(20.5)
+
+    with pytest.raises(ValueError):
+        assert int_to_sortable_str(20.0)
+
+    with pytest.raises(ValueError):
+        assert int_to_sortable_str(-1)
+
+    with pytest.raises(ValueError):
+        assert int_to_sortable_str(MAX_INT + 1)
+
+    assert int_to_sortable_str(10) == "2_10"
+    assert int_to_sortable_str(0) == "1_0"
+    assert int_to_sortable_str(MAX_INT - 1) == f"~_{MAX_INT - 1}"
 
 
 class TestDB:
@@ -74,7 +99,8 @@ class TestDataDB:
         assert not list(db)
 
         records = [
-            SourceRecord(int_to_str(i), {"a": "banana"}, "test") for i in range(5000)
+            SourceRecord(i, {"a": "banana"}, "test")
+            for i in sorted(map(str, range(5000)))
         ]
 
         for chunk in partition(records, 541):
@@ -85,26 +111,22 @@ class TestDataDB:
     def test_get_record(self, tmp_path: Path):
         db = DataDB(tmp_path / "database")
 
-        records = [
-            SourceRecord(int_to_str(i), {"a": "banana"}, "test") for i in range(40)
-        ]
+        records = [SourceRecord(str(i), {"a": "banana"}, "test") for i in range(40)]
 
         db.put_many(records)
 
-        assert db.get_record(int_to_str(41)) is None
-        assert db.get_record(int_to_str(23)) == records[23]
+        assert db.get_record("41") is None
+        assert db.get_record("23") == records[23]
 
     def test_get_records(self, tmp_path: Path):
         db = DataDB(tmp_path / "database")
 
-        records = [
-            SourceRecord(int_to_str(i), {"a": "banana"}, "test") for i in range(40)
-        ]
+        records = [SourceRecord(str(i), {"a": "banana"}, "test") for i in range(40)]
 
         db.put_many(records)
 
         ids = [6, 10, 3, 50, 8, 9, 9, 35]
-        assert list(db.get_records(map(int_to_str, ids))) == [
+        assert list(db.get_records(map(str, ids))) == [
             records[6],
             records[10],
             records[3],
@@ -116,25 +138,69 @@ class TestDataDB:
         ]
 
 
-class TestLinkDB:
-    def test_put_many_and_lookup(self, tmp_path: Path):
-        db = LinkDB(tmp_path / "database", "linked")
+class TestIndex:
+    def test_put_one_to_one_and_gets(self, tmp_path: Path):
+        db = Index(tmp_path / "database")
 
-        records = [
-            # one to one from 1 -> 6
-            SourceRecord("1", {"x": "A", "linked": "6"}, "test"),
-            # one to many, oh boy! 2 -> 8 and 2 -> 5
-            SourceRecord("2", {"x": "B", "linked": ("8", "5")}, "test"),
-            # no linked field present so should be ignored
-            SourceRecord("3", {"x": "C"}, "test"),
-            # another one to one with 4 -> 8 but, this is the second id that links to 8
-            SourceRecord("4", {"x": "D", "linked": "8"}, "test"),
-        ]
+        db.put_one_to_one([("a", "1"), ("b", "2"), ("c", "3"), ("e", "2")])
 
-        db.put_many(records)
+        assert list(db.get("a")) == ["1"]
+        assert list(db.get("b")) == ["2"]
+        assert list(db.get("c")) == ["3"]
+        assert list(db.get("d")) == []
+        assert list(db.get("e")) == ["2"]
 
-        assert db.size() == 4
-        assert list(db.lookup(["6", "8", "5"])) == ["1", "2", "4", "2"]
+        assert db.get_one("a") == "1"
+        assert db.get_one("b") == "2"
+        assert db.get_one("c") == "3"
+        assert db.get_one("d") is None
+        assert db.get_one("e") == "2"
+
+        assert list(db.reverse_get("1")) == ["a"]
+        assert list(db.reverse_get("2")) == ["b", "e"]
+        assert list(db.reverse_get("3")) == ["c"]
+        assert list(db.reverse_get("4")) == []
+
+        assert db.reverse_get_one("1") == "a"
+        assert db.reverse_get_one("2") == "b"
+        assert db.reverse_get_one("3") == "c"
+        assert db.reverse_get_one("4") is None
+
+    def test_put_one_to_many_and_gets(self, tmp_path: Path):
+        db = Index(tmp_path / "database")
+
+        db.put_one_to_many([("a", ("1", "2", "3")), ("b", ("4", "2")), ("c", ("3",))])
+
+        assert list(db.get("a")) == ["1", "2", "3"]
+        assert list(db.get("b")) == ["2", "4"]
+        assert list(db.get("c")) == ["3"]
+        assert list(db.get("d")) == []
+
+        assert db.get_one("a") == "1"
+        assert db.get_one("b") == "2"
+        assert db.get_one("c") == "3"
+        assert db.get_one("d") is None
+
+        assert list(db.reverse_get("1")) == ["a"]
+        assert list(db.reverse_get("2")) == ["a", "b"]
+        assert list(db.reverse_get("3")) == ["a", "c"]
+        assert list(db.reverse_get("4")) == ["b"]
+        assert list(db.reverse_get("5")) == []
+
+        assert db.reverse_get_one("1") == "a"
+        assert db.reverse_get_one("2") == "a"
+        assert db.reverse_get_one("3") == "a"
+        assert db.reverse_get_one("4") == "b"
+        assert db.reverse_get_one("5") is None
+
+    def test_put_one_to_many_empty_iterables(self, tmp_path: Path):
+        db = Index(tmp_path / "database")
+
+        db.put_one_to_many([("a", tuple()), ("b", ("4", "2")), ("c", iter(tuple()))])
+
+        assert list(db.get("a")) == []
+        assert list(db.get("b")) == ["2", "4"]
+        assert list(db.get("c")) == []
 
 
 class TestChangeQueue:
@@ -150,7 +216,9 @@ class TestChangeQueue:
     def test_put_many(self, tmp_path: Path):
         db = ChangeQueue(tmp_path / "database")
 
-        records = [SourceRecord(int_to_str(i), {"a": "x"}, "test") for i in range(50)]
+        records = [
+            SourceRecord(i, {"a": "x"}, "test") for i in sorted(map(str, range(50)))
+        ]
 
         db.put_many(records)
 
@@ -175,6 +243,8 @@ class TestEmbargoQueue:
     put_many_scenarios = [
         # no embargo
         (SourceRecord("1", {"arms": "4"}, "test"), None),
+        # a delete
+        (SourceRecord("1", {}, "test"), None),
         # an embargo using NhmSecEmbargoDate
         (SourceRecord("1", {"NhmSecEmbargoDate": "2021-01-06"}, "test"), 1609891200000),
         # an embargo using NhmSecEmbargoExtensionDate
