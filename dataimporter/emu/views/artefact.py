@@ -67,8 +67,9 @@ class ArtefactView(View):
             "modified": emu_date(
                 get_first("AdmDateModified"), get_first("AdmTimeModified")
             ),
-            "artefactName": get_all("PalArtObjectName"),
-            "artefactType": get_all("PalArtType"),
-            "artefactDescription": get_all("PalArtDescription"),
-            "scientificName": get_all("IdeCurrentScientificName"),
+            "artefactName": get_first("PalArtObjectName"),
+            # seems to not be populated in any of the current artefact records
+            "artefactType": get_first("PalArtType"),
+            "artefactDescription": get_first("PalArtDescription"),
+            "scientificName": get_first("IdeCurrentScientificName"),
         }
