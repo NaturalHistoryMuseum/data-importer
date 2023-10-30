@@ -62,7 +62,6 @@ class ImageView(View):
             "type": "StillImage",
             "license": "http://creativecommons.org/licenses/by/4.0/",
             "rightsHolder": "The Trustees of the Natural History Museum, London",
-            # TODO: new!
             "width": get_first("ChaImageWidth"),
             "height": get_first("ChaImageHeight"),
         }
