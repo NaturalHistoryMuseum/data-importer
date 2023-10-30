@@ -31,6 +31,8 @@ dependencies = [
     "rich==13.5.2",
     "tqdm==4.66.1",
     "msgpack==1.0.5",
+    "ciso8601==2.3.0",
+    "requests==2.31.0",
 ]
 [project.optional-dependencies]
 test = [
@@ -39,6 +41,7 @@ test = [
     "pytest-cov",
     "coveralls",
     "freezegun",
+    "responses",
 ]
 docs = [
     "mkdocs",
