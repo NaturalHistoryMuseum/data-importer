@@ -1,0 +1,14 @@
+---
+data_path: '/dimp/data'
+dumps_path: '/usr/src/app/docker/emu/'
+specimen_id: 'specimen'
+artefact_id: 'artefact'
+indexlot_id: 'indexlot'
+
+elasticsearch:
+  hosts:
+    - "http://es:9200"
+
+mongo:
+  host: "mongo"
+  port: 27017

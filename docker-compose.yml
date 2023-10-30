@@ -9,9 +9,13 @@ services:
     environment:
       PYTHONUNBUFFERED: 1
       PYTHONDONTWRITEBYTECODE: 1
+      DIMP_CONFIG: "/usr/src/app/docker/config.yml"
     depends_on:
       - es
       - mongo
+    volumes:
+      - ./tests:/usr/src/app/tests
+      - ./docker/config.yml:/usr/src/app/docker/config.yml
 
   # serves the docs locally with realtime auto-reloading
   docs:

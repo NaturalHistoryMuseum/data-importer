@@ -8,6 +8,8 @@ RUN apt-get update \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
+RUN mkdir -p /dimp/data
+
 WORKDIR /usr/src/app
 
 # install main dependencies + test dependencies + docs dependencies
