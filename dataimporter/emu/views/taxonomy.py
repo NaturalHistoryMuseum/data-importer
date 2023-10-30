@@ -34,7 +34,6 @@ class TaxonomyView(View):
                  the Data Portal
         """
         # cache for perf
-        get_all = record.get_all_values
         get_first = record.get_first_value
 
         return {
@@ -45,19 +44,19 @@ class TaxonomyView(View):
             "modified": emu_date(
                 get_first("AdmDateModified"), get_first("AdmTimeModified")
             ),
-            "scientificName": get_all("ClaScientificNameBuilt"),
-            "currentScientificName": get_all("ClaCurrentSciNameLocal"),
-            "taxonRank": get_all("ClaRank"),
-            "kingdom": get_all("ClaKingdom"),
-            "phylum": get_all("ClaPhylum"),
-            "class": get_all("ClaClass"),
-            "order": get_all("ClaOrder"),
-            "suborder": get_all("ClaSuborder"),
-            "superfamily": get_all("ClaSuperfamily"),
-            "family": get_all("ClaFamily"),
-            "subfamily": get_all("ClaSubfamily"),
-            "genus": get_all("ClaGenus"),
-            "subgenus": get_all("ClaSubgenus"),
-            "specificEpithet": get_all("ClaSpecies"),
-            "infraspecificEpithet": get_all("ClaSubspecies"),
+            "scientificName": get_first("ClaScientificNameBuilt"),
+            "currentScientificName": get_first("ClaCurrentSciNameLocal"),
+            "taxonRank": get_first("ClaRank"),
+            "kingdom": get_first("ClaKingdom"),
+            "phylum": get_first("ClaPhylum"),
+            "class": get_first("ClaClass"),
+            "order": get_first("ClaOrder"),
+            "suborder": get_first("ClaSuborder"),
+            "superfamily": get_first("ClaSuperfamily"),
+            "family": get_first("ClaFamily"),
+            "subfamily": get_first("ClaSubfamily"),
+            "genus": get_first("ClaGenus"),
+            "subgenus": get_first("ClaSubgenus"),
+            "specificEpithet": get_first("ClaSpecies"),
+            "infraspecificEpithet": get_first("ClaSubspecies"),
         }
