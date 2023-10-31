@@ -38,9 +38,9 @@ BASIS_OF_RECORD_LOOKUP = {
 
 class SpecimenView(View):
     """
-    View for preparation records.
+    View for specimen records.
 
-    This view populates the preparation resource on the Data Portal.
+    This view populates the specimen resource on the Data Portal.
     """
 
     def is_member(self, record: SourceRecord) -> FilterResult:
