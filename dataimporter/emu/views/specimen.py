@@ -1,3 +1,7 @@
+from typing import Optional
+
+from fastnumbers import try_int
+
 from dataimporter.emu.views.utils import (
     NO_PUBLISH,
     DISALLOWED_STATUSES,
@@ -34,6 +38,22 @@ BASIS_OF_RECORD_LOOKUP = {
     "Paleontology": "FossilSpecimen",
     "Mineralogy": "Occurrence",
 }
+
+
+def get_individual_count(record: SourceRecord) -> Optional[str]:
+    """
+    Returns the individual count value from the record only if it is available, and it
+    is greater than 0. We need to do this because we have a lot of records where
+    DarIndividualCount = "0" and by passing this on to the Portal we confuse users and
+    cause problems on GBIF too as they interpret this to mean an absence of a specimen.
+
+    :return: the individual count value or None
+    """
+    value = record.get_first_value("DarIndividualCount", default="")
+    count = try_int(value, on_fail=None)
+    if count is not None and count > 0:
+        return value
+    return None
 
 
 class SpecimenView(View):
@@ -124,7 +144,7 @@ class SpecimenView(View):
             "recordNumber": get_first("DarCollectorNumber"),
             "occurrenceID": get_first("AdmGUIDPreferredValue"),
             "recordedBy": get_first("DarCollector", "CollEventNameSummaryData"),
-            "individualCount": get_first("DarIndividualCount"),
+            "individualCount": get_individual_count(record),
             "sex": get_first("DarSex"),
             "preparations": get_first("DarPreparations"),
             # identification

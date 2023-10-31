@@ -1,10 +1,10 @@
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import pytest
 
 from dataimporter.dbs import DataDB
-from dataimporter.emu.views.specimen import SpecimenView
+from dataimporter.emu.views.specimen import SpecimenView, get_individual_count
 from dataimporter.emu.views.utils import (
     INVALID_TYPE,
     NO_PUBLISH,
@@ -22,6 +22,19 @@ def specimen_view(tmp_path: Path) -> SpecimenView:
     view = SpecimenView(tmp_path / "specimen_view", DataDB(tmp_path / "specimen_data"))
     yield view
     view.close()
+
+
+@pytest.mark.parametrize(
+    "count, expected", [("0", None), ("1", "1"), ("-1", None), ("", None), (None, None)]
+)
+def test_get_individual_count(count: str, expected: Optional[str]):
+    if count:
+        data = {"DarIndividualCount": count}
+    else:
+        data = {"not the count, this record has no count": "beans"}
+
+    record = SourceRecord("1", data, "test")
+    assert get_individual_count(record) == expected
 
 
 is_member_scenarios: List[Tuple[dict, FilterResult]] = [
