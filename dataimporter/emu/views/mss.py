@@ -1,6 +1,6 @@
 from itertools import zip_longest
 
-from fastnumbers import fast_int
+from fastnumbers import try_int
 
 from dataimporter.emu.views.utils import NO_PUBLISH, is_web_published
 from dataimporter.model import SourceRecord
@@ -44,28 +44,27 @@ class MSSView(View):
         :return: a dict containing the data for this record that should be stored in the
                  MSS index
         """
-        # cache for perf
-        get_first = record.get_first_value
-        iter_all = record.iter_all_values
-
-        identifiers = tuple(iter_all("DocIdentifier"))
+        # get all the doc identifiers as a tuple (would use get_all_values here but that
+        # returns just a str if there's only one)
+        identifiers = tuple(record.iter_all_values("DocIdentifier"))
 
         data = {
             "id": record.id,
-            "mime": get_first("MulMimeFormat"),
-            "guid": get_first("AdmGUIDPreferredValue"),
-            # there will be 1+ ids due to the check we do in the filter method so this
-            # is safe
+            "mime": record.get_first_value("MulMimeFormat"),
+            "guid": record.get_first_value("AdmGUIDPreferredValue"),
+            # there will be 1+ ids due to the check we do in the is_member method so
+            # this is safe
             "file": identifiers[0],
         }
 
-        widths = tuple(iter_all("DocWidth"))
-        heights = tuple(iter_all("DocHeight"))
+        # grab the widths and heights of the original and all the derivatives
+        widths = tuple(record.iter_all_values("DocWidth"))
+        heights = tuple(record.iter_all_values("DocHeight"))
 
         # could be 0+ widths and heights, so we need to do this in a way that avoids
         # errors
-        original_width = fast_int(next(iter(widths), ""), default=None)
-        original_height = fast_int(next(iter(heights), ""), default=None)
+        original_width = try_int(next(iter(widths), ""), on_fail=None)
+        original_height = try_int(next(iter(heights), ""), on_fail=None)
         if original_width is not None or original_height is not None:
             # set the width and height of the original image at the root of the data
             # dict
@@ -76,10 +75,9 @@ class MSSView(View):
         for identifier, width, height in zip_longest(
             identifiers[1:], widths[1:], heights[1:], fillvalue=""
         ):
-            width = fast_int(width, default=None)
-            height = fast_int(height, default=None)
-
-            # ignore the triple if we don't have one of the values
+            width = try_int(width, on_fail=None)
+            height = try_int(height, on_fail=None)
+            # ignore the triple if we don't have all of these values
             if identifier and width is not None and height is not None:
                 derivatives.append(
                     {"file": identifier, "width": width, "height": height}
