@@ -67,12 +67,12 @@ class IndexLotView(View):
             "modified": emu_date(
                 get_first("AdmDateModified"), get_first("AdmTimeModified")
             ),
-            "material": get_all("EntIndMaterial"),
-            "type": get_all("EntIndType"),
-            "media": get_all("EntIndMedia"),
-            "british": get_all("EntIndBritish"),
-            "kindOfMaterial": get_all("EntIndKindOfMaterial"),
-            "kindOfMedia": get_all("EntIndKindOfMedia"),
+            "material": get_first("EntIndMaterial"),
+            "type": get_first("EntIndType"),
+            "media": get_first("EntIndMedia"),
+            "british": get_first("EntIndBritish"),
+            "kindOfMaterial": get_first("EntIndKindOfMaterial"),
+            "kindOfMedia": get_first("EntIndKindOfMedia"),
             "materialCount": get_all("EntIndCount"),
             "materialSex": get_all("EntIndSex"),
             "materialStage": get_all("EntIndStage"),
