@@ -168,8 +168,6 @@ def test_make_data(specimen_view: SpecimenView):
         "recovery": None,
         "recoveryDate": None,
         "recoveryWeight": None,
-        "registeredWeight": None,
-        "registeredWeightUnit": None,
         "registrationCode": "PI03",
         "resuspendedIn": None,
         "samplingProtocol": None,
