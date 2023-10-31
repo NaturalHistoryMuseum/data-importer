@@ -233,6 +233,9 @@ class SpecimenView(View):
             "recoveryWeight": get_first("MinMetRecoveryWeight"),
             "registeredWeight": get_first("MinMetWeightAsRegistered"),
             "registeredWeightUnit": get_first("MinMetWeightAsRegisteredUnit"),
+            # these need clean=False because each should return a tuple of the same
+            # length where the values at each index align across all three tuples,
+            # therefore we need to keep empty values
             "determinationTypes": get_all("IdeCitationTypeStatus", clean=False),
             "determinationNames": get_all("EntIdeScientificNameLocal", clean=False),
             "determinationFiledAs": get_all("EntIdeFiledAs", clean=False),
