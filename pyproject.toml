@@ -21,8 +21,8 @@ classifiers = [
 dependencies = [
     # TODO: switch to pypi once stable
     "splitgill@git+https://github.com/NaturalHistoryMuseum/splitgill@josh/vNext",
-    "elasticsearch>=7.0.0,<8.0.0",
-    "elasticsearch-dsl>=7.0.0,<8.0.0",
+    "elasticsearch==8.10.1",
+    "elasticsearch-dsl==8.9.0",
     "pymongo==4.4.1",
     "plyvel==1.5.0",
     "cytoolz==0.12.2",
