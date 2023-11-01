@@ -4,7 +4,13 @@ from typing import List, Tuple, Optional
 import pytest
 
 from dataimporter.dbs import DataDB
-from dataimporter.emu.views.specimen import SpecimenView, get_individual_count
+from dataimporter.emu.views.specimen import (
+    SpecimenView,
+    get_individual_count,
+    person_string_remover,
+    get_first_non_person_string,
+    clean_determination_names,
+)
 from dataimporter.emu.views.utils import (
     INVALID_TYPE,
     NO_PUBLISH,
@@ -35,6 +41,49 @@ def test_get_individual_count(count: str, expected: Optional[str]):
 
     record = SourceRecord("1", data, "test")
     assert get_individual_count(record) == expected
+
+
+person_string_scenarios = [
+    ("Person String", None),
+    ("Person String     ", None),
+    ("banana", "banana"),
+    (
+        "Person String; Bert Lemon; Greg Person; Gwen String;",
+        "Bert Lemon; Greg Person; Gwen String;",
+    ),
+    (
+        "Person String Lyall McCheese Molly Sack Person String",
+        "Lyall McCheese Molly Sack",
+    ),
+    (
+        "Person String;Bert Lemon;Greg Person;Gwen String;",
+        "Bert Lemon;Greg Person;Gwen String;",
+    ),
+    (
+        "<name>, Person String; <name>, Person String; <name>, Person String; <name>",
+        "<name>, <name>, <name>, <name>",
+    ),
+]
+
+
+@pytest.mark.parametrize("value, expected", person_string_scenarios)
+def test_person_string_remover(value: str, expected: Optional[str]):
+    assert person_string_remover(value) == expected
+
+
+def test_get_first_non_person_string():
+    assert get_first_non_person_string([]) is None
+    assert get_first_non_person_string(["banana"]) == "banana"
+    assert get_first_non_person_string(["Person String", "banana"]) == "banana"
+
+
+def test_clean_determination_names():
+    assert clean_determination_names([]) is None
+    assert clean_determination_names(["banana"]) == ("banana",)
+    assert clean_determination_names(["Person String", "banana"]) == (None, "banana")
+    assert clean_determination_names(
+        ["Person String", "banana", "Person String; lemon"]
+    ) == (None, "banana", "lemon")
 
 
 is_member_scenarios: List[Tuple[dict, FilterResult]] = [
@@ -93,8 +142,8 @@ def test_make_data(specimen_view: SpecimenView):
         "decimalLatitude": "10.0833333",
         "decimalLongitude": "35.6333333",
         "depositType": None,
-        "determinationFiledAs": "Yes",
-        "determinationNames": "Synodontis schall (Bloch & Schneider, 1801)",
+        "determinationFiledAs": ("Yes",),
+        "determinationNames": ("Synodontis schall (Bloch & Schneider, 1801)",),
         "determinationTypes": None,
         "donorName": "Sandhurst Ethiopian Expedition 1968",
         "earliestAgeOrLowestStage": None,

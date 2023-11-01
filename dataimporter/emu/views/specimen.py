@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Iterable, Tuple
 
 from fastnumbers import try_int
 
@@ -56,6 +56,65 @@ def get_individual_count(record: SourceRecord) -> Optional[str]:
     return None
 
 
+def person_string_remover(value: str) -> Optional[str]:
+    """
+    Given a value, remove any occurrences of "Person String" in it. If after removing
+    all "Person String" occurrences from the value there is no string left (after
+    stripping!) return None.
+
+    I can't remember the EMu side reasons for this, but for a few fields which have
+    people's names in, we get "Person String" inserted into values, and we need to
+    remove it.
+
+    :param value: the field value
+    :return: a cleaned version with no "Person String"s, None, or just the unchanged
+             value
+    """
+    if "Person String" in value:
+        # straight match to start with
+        if "Person String" == value:
+            return None
+        # - with a space, catches this kind of thing:
+        #   <name>, Person String; <name>, Person String; <name>, Person String; <name>
+        #   and turns it into:
+        #   <name>, <name>, <name>, <name>
+        # - without a space just catches oddities where there is no space
+        # - without a semicolon ensures that even if we don't do it cleanly, we remove
+        #   the Person String
+        for search in ("Person String; ", "Person String;", "Person String"):
+            if search in value:
+                new_search = value.replace(search, "").strip()
+                return new_search if new_search else None
+    return value
+
+
+def get_first_non_person_string(values: Iterable[str]) -> Optional[str]:
+    """
+    Retrieve the first value from the values iterable which is non-None after being
+    passed through the person string remover.
+
+    :param values: the values to filter
+    :return: None if no values are valid, otherwise the first valid string
+    """
+    return next(filter(None, map(person_string_remover, values)), None)
+
+
+def clean_determination_names(values: Iterable[str]) -> Optional[Tuple[str, ...]]:
+    """
+    Clean the determination names field values. This is a special function which passes
+    the given values through the person string remover and then returns either None or a
+    tuple. This does essentially the same as reduce=False parameter on the
+    SourceRecord's get_all_values method but with the added person string removal.
+
+    :param values: an iterable of values to clean
+    :return: None if there are no values
+    """
+    filtered_values = tuple(map(person_string_remover, values))
+    if len(filtered_values) == 0:
+        return None
+    return filtered_values
+
+
 class SpecimenView(View):
     """
     View for specimen records.
@@ -100,6 +159,7 @@ class SpecimenView(View):
         # cache these for perf
         get_all = record.get_all_values
         get_first = record.get_first_value
+        iter_all_values = record.iter_all_values
 
         return {
             # record level
@@ -143,18 +203,26 @@ class SpecimenView(View):
             "catalogNumber": get_first("DarCatalogNumber", "RegRegistrationNumber"),
             "recordNumber": get_first("DarCollectorNumber"),
             "occurrenceID": get_first("AdmGUIDPreferredValue"),
-            "recordedBy": get_first("DarCollector", "CollEventNameSummaryData"),
+            "recordedBy": get_first_non_person_string(
+                iter_all_values("DarCollector", "CollEventNameSummaryData")
+            ),
             "individualCount": get_individual_count(record),
             "sex": get_first("DarSex"),
             "preparations": get_first("DarPreparations"),
             # identification
             "typeStatus": get_first("DarTypeStatus", "sumTypeStatus"),
-            "identifiedBy": get_first("DarIdentifiedBy"),
+            "identifiedBy": get_first_non_person_string(
+                iter_all_values("DarIdentifiedBy")
+            ),
             "dateIdentified": get_first("EntIdeDateIdentified"),
             "identificationQualifier": get_first("DarIdentificationQualifier"),
             # taxon
-            "scientificName": get_first("DarScientificName"),
-            "scientificNameAuthorship": get_first("IdeFiledAsAuthors"),
+            "scientificName": get_first_non_person_string(
+                iter_all_values("DarScientificName")
+            ),
+            "scientificNameAuthorship": get_first_non_person_string(
+                iter_all_values("IdeFiledAsAuthors")
+            ),
             "kingdom": get_first("DarKingdom"),
             "phylum": get_first("DarPhylum"),
             "class": get_first("DarClass"),
@@ -254,8 +322,12 @@ class SpecimenView(View):
             # these need clean=False because each should return a tuple of the same
             # length where the values at each index align across all three tuples,
             # therefore we need to keep empty values
-            "determinationTypes": get_all("IdeCitationTypeStatus", clean=False),
-            "determinationNames": get_all("EntIdeScientificNameLocal", clean=False),
-            "determinationFiledAs": get_all("EntIdeFiledAs", clean=False),
+            "determinationTypes": get_all(
+                "IdeCitationTypeStatus", clean=False, reduce=False
+            ),
+            "determinationNames": clean_determination_names(
+                iter_all_values("EntIdeScientificNameLocal", clean=False)
+            ),
+            "determinationFiledAs": get_all("EntIdeFiledAs", clean=False, reduce=False),
             "project": get_all("NhmSecProjectName"),
         }
