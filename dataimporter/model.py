@@ -88,7 +88,10 @@ class SourceRecord:
                         yield value
 
     def get_all_values(
-        self, *fields: str, clean: bool = True
+        self,
+        *fields: str,
+        clean: bool = True,
+        reduce=True,
     ) -> Union[None, str, Tuple[str]]:
         """
         Retrieves all the values from the given fields and returns them. If there are no
@@ -106,13 +109,15 @@ class SourceRecord:
 
         :param fields: the fields to extract the values from
         :param clean: whether to remove empty strings (default: True)
+        :param reduce: whether to turn a 1 length tuple into a string or leave it as a
+                       1 length tuple. Defaults to True which will do this conversion.
         :return: None if no values, a str if there's only one value, otherwise, a tuple
                  of str containing all the values, in provided field order.
         """
         values = tuple(self.iter_all_values(*fields, clean=clean))
         if len(values) == 0:
             return None
-        elif len(values) == 1:
+        elif len(values) == 1 and reduce:
             return values[0]
         else:
             return values

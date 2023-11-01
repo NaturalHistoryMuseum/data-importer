@@ -68,6 +68,13 @@ class TestRecord:
         assert record.get_all_values("a", "b") == ("4", "a", "b")
         assert record.get_all_values("c", "a") == ("banana", "4")
 
+        # try all these again but with reduce=False
+        assert record.get_all_values("x", reduce=False) is None
+        assert record.get_all_values("a", reduce=False) == ("4",)
+        assert record.get_all_values("a", "x", reduce=False) == ("4",)
+        assert record.get_all_values("a", "b", reduce=False) == ("4", "a", "b")
+        assert record.get_all_values("c", "a", reduce=False) == ("banana", "4")
+
     def test_get_all_values_cleaning(self):
         # check some combinations using the clean parameter
         record = SourceRecord("1", {"a": "", "b": ("", "b"), "c": "banana"}, "test")
@@ -76,6 +83,16 @@ class TestRecord:
         assert record.get_all_values("a", "b", clean=True) == "b"
         assert record.get_all_values("a", clean=False) == ""
         assert record.get_all_values("a", "b", clean=False) == ("", "", "b")
+
+        # try all these again but with reduce=False
+        assert record.get_all_values("a", clean=True, reduce=False) is None
+        assert record.get_all_values("a", "b", clean=True, reduce=False) == ("b",)
+        assert record.get_all_values("a", clean=False, reduce=False) == ("",)
+        assert record.get_all_values("a", "b", clean=False, reduce=False) == (
+            "",
+            "",
+            "b",
+        )
 
     def test_get_first_value(self):
         record = SourceRecord("1", {"a": "4", "b": ("a", "b"), "c": "banana"}, "test")
