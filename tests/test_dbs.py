@@ -1,3 +1,4 @@
+from contextlib import closing
 from datetime import datetime
 from itertools import chain
 from pathlib import Path
@@ -15,6 +16,7 @@ from dataimporter.dbs import (
     EmbargoQueue,
     int_to_sortable_str,
     MAX_INT,
+    RedactionDB,
 )
 from dataimporter.model import SourceRecord
 
@@ -136,6 +138,44 @@ class TestDataDB:
             records[9],
             records[35],
         ]
+
+    def test_contains(self, tmp_path: Path):
+        db = DataDB(tmp_path / "database")
+
+        db.put_many(
+            [
+                SourceRecord("1", {"a": "4"}, "test"),
+                SourceRecord("43", {"a": "f"}, "test"),
+            ]
+        )
+
+        assert "1" in db
+        assert "43" in db
+        assert "4" not in db
+
+    def test_delete(self, tmp_path: Path):
+        db = DataDB(tmp_path / "database")
+
+        db.put_many(
+            [
+                SourceRecord("1", {"a": "4"}, "test"),
+                SourceRecord("43", {"a": "f"}, "test"),
+                SourceRecord("600", {"a": "v"}, "test"),
+                SourceRecord("34", {"a": "v"}, "test"),
+            ]
+        )
+
+        deleted = db.delete(["1", "4"])
+        assert deleted == 1
+        assert "1" not in db
+        assert "43" in db
+
+        deleted_second_time = db.delete(["1", "43", "600"])
+        assert deleted_second_time == 2
+        assert "1" not in db
+        assert "43" not in db
+        assert "600" not in db
+        assert "34" in db
 
 
 class TestIndex:
@@ -397,3 +437,48 @@ class TestEmbargoQueue:
 
         assert embargoed == 5
         assert released == 5
+
+
+@pytest.fixture
+def redaction_db(tmp_path: Path):
+    with closing(RedactionDB(tmp_path / "redactions")) as rdb:
+        yield rdb
+
+
+class TestRedactionDB:
+    def test_add_ids(self, redaction_db: RedactionDB):
+        redaction_db.add_ids("db_1", ["1", "5", "1040"], "red_1")
+        redaction_db.add_ids("db_1", ["4", "5"], "red_2")
+        redaction_db.add_ids("db_2", ["4003", "4004"], "red_2")
+
+        assert redaction_db.size() == 6
+        assert redaction_db.is_redacted("db_1", "1")
+        assert redaction_db.is_redacted("db_1", "4")
+        assert redaction_db.is_redacted("db_1", "5")
+        assert redaction_db.is_redacted("db_1", "1040")
+        assert not redaction_db.is_redacted("db_1", "3")
+
+        assert redaction_db.get_all_redacted_ids("db_1") == {
+            "1": "red_1",
+            "4": "red_2",
+            # this one gets the last value when it's added multiple times
+            "5": "red_2",
+            "1040": "red_1",
+        }
+
+    def test_is_redacted(self, redaction_db: RedactionDB):
+        redaction_db.add_ids("test", ["50", "7"], "reasons")
+
+        assert redaction_db.is_redacted("test", "50")
+        assert redaction_db.is_redacted("test", "7")
+        assert not redaction_db.is_redacted("test", "4")
+        assert not redaction_db.is_redacted("test_2", "50")
+
+    def test_get_all_redacted_ids(self, redaction_db: RedactionDB):
+        redaction_db.add_ids("test", ["50", "7"], "reasons")
+
+        assert redaction_db.get_all_redacted_ids("test") == {
+            "50": "reasons",
+            "7": "reasons",
+        }
+        assert redaction_db.get_all_redacted_ids("test_2") == {}

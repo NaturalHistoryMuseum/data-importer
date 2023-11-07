@@ -1,6 +1,6 @@
 import shutil
 from pathlib import Path
-from typing import Iterable, Optional, Tuple, List
+from typing import Iterable, Optional, Tuple, List, Dict
 
 import msgpack
 import plyvel
@@ -223,6 +223,39 @@ class DataDB(DB):
             data = filter(None, (get(record_id.encode("utf-8")) for record_id in batch))
             unpacker.feed(b"".join(data))
             yield from (SourceRecord(*params) for params in unpacker)
+
+    def __contains__(self, record_id: str) -> bool:
+        """
+        Checks if the record ID is in this database. If it is returns True, if not
+        returns False.
+
+        :param record_id:
+        :return:
+        """
+        return self.db.get(record_id.encode("utf-8")) is not None
+
+    def delete(self, record_ids: Iterable[str]) -> int:
+        """
+        Deletes all the record data associated with the given record IDs.
+
+        Note: this is NOT the same as deleting a SourceRecord by setting its data
+        property to an empty dict, this is a hard delete where the data is removed. It
+        should only be used for redactions in extreme cases.
+
+        :param record_ids: an iterable of record ids to delete
+        :return: the number of IDs that were deleted (i.e. existed and were removed)
+        """
+        deleted = 0
+
+        for batch in partition_all(1000, record_ids):
+            # check which IDs existed before we run the delete and add that to the total
+            deleted += sum(1 for record_id in batch if record_id in self)
+
+            with self.db.write_batch(transaction=True) as wb:
+                for record_id in batch:
+                    wb.delete(record_id.encode("utf-8"))
+
+        return deleted
 
 
 class Index(DB):
@@ -474,3 +507,58 @@ class EmbargoQueue(DB):
             else:
                 embargoed += 1
         return embargoed, released
+
+
+class RedactionDB(DB):
+    """
+    A database to store redactions.
+    """
+
+    def __init__(self, path: Path):
+        """
+        :param path: the path to store the database data in
+        """
+        super().__init__(path)
+
+    def add_ids(self, db_name: str, record_ids: Iterable[str], redaction_id: str):
+        """
+        Add all the given record IDs to the database. They will be stored under the
+        given DB name with the given redaction ID so that the reason for the redaction
+        can be identified in an external service.
+
+        :param db_name: the name of the database
+        :param record_ids: an iterable of record IDs to redact
+        :param redaction_id: an identifier for why the records have been redacted. This
+                             isn't expected to be an ID that is represented in this
+                             system but perhaps can be looked up in a different system
+                             to understand why the record has been redacted.
+        """
+        with self.db.write_batch(transaction=True) as wb:
+            for record_id in record_ids:
+                wb.put(
+                    f"{db_name}.{record_id}".encode("utf-8"),
+                    redaction_id.encode("utf-8"),
+                )
+
+    def is_redacted(self, db_name: str, record_id: str) -> bool:
+        """
+        Checks if the given record is redacted for the given database name.
+
+        :param db_name: the name of the database
+        :param record_id: the record ID
+        :return: True if the record is redacted, False if not
+        """
+        return self.db.get(f"{db_name}.{record_id}".encode("utf-8")) is not None
+
+    def get_all_redacted_ids(self, db_name: str) -> Dict[str, str]:
+        """
+        Return a dict of redacted record IDs along with the redaction ID for each record
+        ID.
+
+        :param db_name: the database to retrieve the retractions for
+        :return: a dict of record IDs -> retraction IDs
+        """
+        return {
+            key.decode("utf-8").split(".")[1]: value.decode("utf-8")
+            for key, value in self.items(prefix=f"{db_name}.".encode("utf-8"))
+        }
