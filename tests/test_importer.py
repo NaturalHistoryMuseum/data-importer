@@ -8,8 +8,8 @@ from splitgill.manager import SplitgillDatabase
 from splitgill.utils import to_timestamp
 
 from dataimporter.config import Config, MongoConfig, ElasticsearchConfig
-from dataimporter.importer import DataImporter, EMuStatus
 from dataimporter.emu.dumps import FIRST_VERSION
+from dataimporter.importer import DataImporter, EMuStatus
 from dataimporter.model import SourceRecord
 from tests.helpers.samples.dumps import (
     create_ecatalogue_dump,
@@ -220,6 +220,45 @@ class TestDataImporter:
                 )["count"]
                 == count
             )
+
+    def test_queue_changes_redactions(self, config: Config):
+        importer = DataImporter(config)
+
+        changed_records = [
+            SourceRecord("1", {"a": "a"}, "test"),
+            SourceRecord("2", {"a": "b"}, "test"),
+            SourceRecord("3", {"a": "c"}, "test"),
+        ]
+
+        # redact records 2 and 3
+        importer.redaction_database.add_ids("ecatalogue", ["2", "3"], "reason_1")
+
+        # queue all the change records
+        importer._queue_changes(changed_records, "ecatalogue")
+
+        assert "1" in importer.dbs["ecatalogue"]
+        assert "2" not in importer.dbs["ecatalogue"]
+        assert "3" not in importer.dbs["ecatalogue"]
+
+    def test_redact_records(self, config: Config):
+        importer = DataImporter(config)
+
+        records = [
+            SourceRecord("1", {"a": "a"}, "test"),
+            SourceRecord("2", {"a": "b"}, "test"),
+            SourceRecord("3", {"a": "c"}, "test"),
+        ]
+
+        # queue all the records
+        importer._queue_changes(records, "ecatalogue")
+
+        # redact records 2 and 3
+        redacted_count = importer.redact_records("ecatalogue", ["2", "3"], "reason1")
+
+        assert redacted_count == 2
+        assert "1" in importer.dbs["ecatalogue"]
+        assert "2" not in importer.dbs["ecatalogue"]
+        assert "3" not in importer.dbs["ecatalogue"]
 
 
 class TestEMuStatus:

@@ -2,14 +2,14 @@ from datetime import date, datetime
 from functools import partial
 from itertools import groupby
 from pathlib import Path
-from typing import Iterable, Dict
+from typing import Iterable, Dict, List
 
 from splitgill.manager import SplitgillClient, SplitgillDatabase
 from splitgill.model import Record
 from splitgill.utils import partition
 
 from dataimporter.config import Config
-from dataimporter.dbs import DataDB
+from dataimporter.dbs import DataDB, RedactionDB
 from dataimporter.emu.dumps import (
     find_emu_dumps,
     is_valid_eaudit_record,
@@ -148,6 +148,9 @@ class DataImporter:
             "mss": SplitgillDatabase("mss", self.client),
         }
 
+        # a database for each data db's redacted IDs to be stored in
+        self.redaction_database = RedactionDB(config.data_path / "redactions")
+
     def _queue_changes(self, records: Iterable[SourceRecord], db_name: str):
         """
         Update the records in the data DB with the given name. The views based on the DB
@@ -160,6 +163,15 @@ class DataImporter:
         db = self.dbs[db_name]
         # find the views based on the db
         views = [view for view in self.views.values() if view.db.name == db.name]
+
+        # the number of redactions is unlikely to be enormous, so it should be safe to
+        # load the redactions for this db completely into memory
+        redactions = self.redaction_database.get_all_redacted_ids(db_name)
+        if redactions:
+            # if we have redactions on this dataDB, wrap the records iterable with a
+            # generator which filters out any redacted records
+            records = (record for record in records if record.id not in redactions)
+
         for batch in partition(records, batch_size):
             db.put_many(batch)
             for view in views:
@@ -218,6 +230,28 @@ class DataImporter:
             "gbif",
         )
 
+    def redact_records(
+        self, db_name: str, record_ids: List[str], redaction_id: str
+    ) -> int:
+        """
+        Deletes the given record IDs from the named DataDB. This doesn't delete any data
+        from the views, MongoDB, or Elasticsearch. This will need to be done manually.
+
+        This operation should only be performed in extreme circumstances where we need
+        to remove data that should never have been released and should not be searchable
+        at all, even in historic searches. This is because it breaks the core idea of
+        the versioned Splitgill system.
+
+        :param db_name: the name of the datadb to remove the records from
+        :param record_ids: a list of str record IDs to redact
+        :param redaction_id: an ID for the redaction, so it's traceable
+        :return: the number of records deleted
+        """
+        # add the record IDs to the redaction database
+        self.redaction_database.add_ids(db_name, record_ids, redaction_id)
+        # delete from the data db and return the deleted count
+        return self.dbs[db_name].delete(record_ids)
+
     def add_to_mongo(self, view_name: str):
         """
         Add the queued changes in the given view to MongoDB.
@@ -255,6 +289,7 @@ class DataImporter:
             view.close()
         for db in self.dbs.values():
             db.close()
+        self.redaction_database.close()
 
 
 class EMuStatus:
