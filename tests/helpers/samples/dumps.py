@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import Optional, Tuple
 from uuid import uuid4
 
 
@@ -54,3 +54,31 @@ def create_eaudit(irn_to_delete: str, table_to_delete_from: str) -> dict:
         "AudTable": table_to_delete_from,
         "AudKey": irn_to_delete,
     }
+
+
+def read_emu_extract(text: str) -> Tuple[str, dict]:
+    data = {}
+    for line in text.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+
+        # the format is <field>:<index>=<value>
+        field, value = line.split("=", 1)
+        field = field.split(":", 1)[0]
+
+        existing = data.get(field)
+        if existing is None:
+            # the value isn't in the data dict, add it
+            data[field] = value
+        else:
+            if isinstance(existing, tuple):
+                # there is an existing set of values in the data dict, add
+                # the new value in a new tuple
+                data[field] = (*existing, value)
+            else:
+                # there is an existing value (just one) in the data dict,
+                # add the new value in a new tuple
+                data[field] = (existing, value)
+
+    return data["irn"], data

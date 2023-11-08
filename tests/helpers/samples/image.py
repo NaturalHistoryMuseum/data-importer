@@ -1,4 +1,4 @@
-from tests.helpers.samples.utils import read_emu_extract
+from tests.helpers.samples.dumps import read_emu_extract
 
 # this is taken from emultimedia.export.20230510.gz
 raw_data = f"""

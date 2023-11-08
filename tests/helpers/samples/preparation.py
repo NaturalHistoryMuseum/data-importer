@@ -1,5 +1,5 @@
+from tests.helpers.samples.dumps import read_emu_extract
 from tests.helpers.samples.specimen import SAMPLE_SPECIMEN_ID
-from tests.helpers.samples.utils import read_emu_extract
 
 # this is taken from ecatalogue.export.20231008.gz but with the EntPreSpecimenRef field
 # replaced with a single reference to the SAMPLE_SPECIMEN_ID
