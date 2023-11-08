@@ -15,10 +15,6 @@ NOT_SPECIMEN = FilterResult(False, "3D scan is not a specimen")
 VALID_PUBLISHERS = {"sketchfab", "morphosource"}
 
 
-# 3709063 is a sketchfab one
-# emultimedia.export.20230316.gz is a morphosource one
-
-
 class ThreeDView(View):
     """
     View for 3D records.
