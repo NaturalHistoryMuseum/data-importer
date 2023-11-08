@@ -140,17 +140,16 @@ class DataDB(DB):
     SourceRecord will be serialised for storage by msgpack.
     """
 
-    def __init__(self, path: Path):
+    @staticmethod
+    def get_unpacker() -> msgpack.Unpacker:
         """
-        :param path: the path to the database
+        Creates a new msgpack Unpacker object and returns it. This unpacker uses
+        use_list=False which is faster and more importantly, required, as we assume
+        list-like data structures are stored as tuples in this lib.
+
+        :return: a new Unpacker object
         """
-        super().__init__(path)
-        # record data is stored in msgpack format, these are reusable packer and
-        # unpacker objects
-        self._packer = msgpack.Packer()
-        # use_list=False is important as this ensures all list like data structures are
-        # recreated as tuples when the data is deserialised
-        self._unpacker = msgpack.Unpacker(use_list=False)
+        return msgpack.Unpacker(use_list=False)
 
     def __iter__(self) -> Iterable[SourceRecord]:
         """
@@ -158,8 +157,7 @@ class DataDB(DB):
 
         :return: yields VersionedRecord objects
         """
-        # cache so that we don't have to look it up on each iteration
-        unpacker = self._unpacker
+        unpacker = self.get_unpacker()
         # read 1000 records worth of raw data at a time
         # TODO: check 1000 - could be larger?
         # TODO: use a bytearray?
@@ -177,7 +175,7 @@ class DataDB(DB):
         :param records: a list of records
         """
         # cache the pack method as we're going to be using it a lot
-        pack = self._packer.pack
+        pack = msgpack.Packer().pack
 
         with self.db.write_batch(transaction=True) as wb:
             for record in records:
@@ -198,8 +196,9 @@ class DataDB(DB):
         packed_record_data = self.db.get(record_id.encode("utf-8"))
         if packed_record_data is None:
             return None
-        self._unpacker.feed(packed_record_data)
-        return SourceRecord(*next(self._unpacker))
+        unpacker = self.get_unpacker()
+        unpacker.feed(packed_record_data)
+        return SourceRecord(*next(unpacker))
 
     def get_records(self, record_ids: Iterable[str]) -> Iterable[SourceRecord]:
         """
@@ -214,8 +213,7 @@ class DataDB(DB):
         #       worth investigating implementing a sort merge, similar to how SQL joins
         #       work, if the record_ids parameter is sorted.
 
-        # cache so that we don't have to look these up on each iteration
-        unpacker = self._unpacker
+        unpacker = self.get_unpacker()
         get = self.db.get
 
         # read 1000 records worth of raw data at a time

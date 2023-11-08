@@ -4,6 +4,7 @@ from itertools import chain
 from pathlib import Path
 from typing import Optional
 
+import msgpack
 import pytest
 from freezegun import freeze_time
 from splitgill.utils import partition, now, to_timestamp
@@ -138,6 +139,52 @@ class TestDataDB:
             records[9],
             records[35],
         ]
+
+    def test_get_records_with_interrupt(self, tmp_path: Path):
+        # this test covers off an obscure bug which has been fixed so shouldn't be an
+        # issue any more but there's no harm in having it here just in case! The issue
+        # arose because the unpacker object in the DataDB was being reused by multiple
+        # functions which were generators. The way the msgpack Unpacker object works is
+        # that you feed in a bunch of bytes data and then iterate over it to read out
+        # the Python objects represented. If the generator feeds 1000 objects worth of
+        # raw data into the shared unpacker object and then only reads the first 5
+        # objects out then the unpacker still has 995 objects ready to be read. So when
+        # another function comes along and feeds more data and starts reading objects
+        # out of the shared unpacker it gets the remaining 995 objects the previous
+        # function added to the unpacker. This has been fixed by not using a shared
+        # unpacker (we used a shared one for performance but really it was premature
+        # optimisation and created a hard to find bug which bamboozled me for the best
+        # part of a day!).
+
+        # create a bunch of records and add them to the database
+        db = DataDB(tmp_path / "database")
+        records = [SourceRecord(str(i), {"a": "banana"}, "test") for i in range(40)]
+        db.put_many(records)
+
+        # now request the first 10 ids but only read out the first 5 records
+        ids = list(map(str, range(10)))
+        count = 0
+        for expected_id, record in zip(ids, db.get_records(ids)):
+            count += 1
+            assert record.id == expected_id
+            if count == 5:
+                break
+
+        # now get record 35 and check the id is correct
+        just_35 = db.get_record("35")
+        assert just_35.id == "35"
+        # now read record 38 using get_records and check the id is correct
+        just_38 = list(db.get_records(["38"]))
+        assert len(just_38) == 1
+        assert just_38[0].id == "38"
+
+    def test_get_unpacker_unpacks_list_like_objects_as_tuples(self, tmp_path: Path):
+        # goes in a list
+        packed_list_raw = msgpack.packb([1, 2, 3, 4])
+        unpacker = DataDB.get_unpacker()
+        unpacker.feed(packed_list_raw)
+        # comes out a tuple
+        assert unpacker.unpack() == (1, 2, 3, 4)
 
     def test_contains(self, tmp_path: Path):
         db = DataDB(tmp_path / "database")
