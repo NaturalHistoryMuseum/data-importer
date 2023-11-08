@@ -4,6 +4,7 @@ dumps_path: '/usr/src/app/docker/emu/'
 specimen_id: 'specimen'
 artefact_id: 'artefact'
 indexlot_id: 'indexlot'
+preparation_id: 'preparation'
 iiif_base_url: 'http://will.not.work.com/media'
 
 elasticsearch:

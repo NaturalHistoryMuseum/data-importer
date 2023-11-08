@@ -31,6 +31,7 @@ class Config:
     specimen_id: str
     artefact_id: str
     indexlot_id: str
+    preparation_id: str
     iiif_base_url: str
     mongo_config: MongoConfig
     es_config: ElasticsearchConfig
