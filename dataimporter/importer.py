@@ -100,7 +100,7 @@ class DataImporter:
         )
         specimen_taxonomy = TaxonomyLink(
             self.links_path / "specimen_taxonomy",
-            indexlot_view,
+            specimen_view,
             taxonomy_view,
             "CardParasiteRef",
         )
