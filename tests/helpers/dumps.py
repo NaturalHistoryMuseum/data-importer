@@ -23,7 +23,8 @@ def create_dump(root: Path, table: str, dump_date: date, *records: dict) -> Path
     if table == "eaudit":
         export_part = "deleted-export"
 
-    # form the path
+    # form the path (and make sure it exists!)
+    root.mkdir(exist_ok=True, parents=True)
     dump = root / f"{table}.{export_part}.{dump_date.strftime('%Y%m%d')}.gz"
 
     with gzip.open(dump, "wt", encoding="utf-8") as f:
