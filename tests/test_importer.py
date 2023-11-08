@@ -12,7 +12,7 @@ from dataimporter.emu.dumps import FIRST_VERSION
 from dataimporter.importer import DataImporter, EMuStatus
 from dataimporter.model import SourceRecord
 from tests.helpers.dumps import create_dump
-from tests.helpers.samples.dumps import (
+from tests.helpers.dumps import (
     create_ecatalogue,
     EcatalogueType,
     create_emultimedia,

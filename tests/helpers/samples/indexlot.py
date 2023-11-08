@@ -1,4 +1,4 @@
-from tests.helpers.samples.dumps import read_emu_extract
+from tests.helpers.dumps import read_emu_extract
 from tests.helpers.samples.image import SAMPLE_IMAGE_ID
 
 # this is taken from ecatalogue.export.20231008.gz but with the MulMultiMediaRefs

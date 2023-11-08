@@ -1,4 +1,4 @@
-from tests.helpers.samples.dumps import read_emu_extract
+from tests.helpers.dumps import read_emu_extract
 
 # this is taken from etaxonomy.export.20210930.gz
 raw_data = f"""

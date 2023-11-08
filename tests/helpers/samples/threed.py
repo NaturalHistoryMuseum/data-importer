@@ -1,4 +1,4 @@
-from tests.helpers.samples.dumps import read_emu_extract
+from tests.helpers.dumps import read_emu_extract
 
 # this is taken from emultimedia.export.20211117.gz
 sketchfab_raw_data = """
