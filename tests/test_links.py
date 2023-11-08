@@ -2,7 +2,12 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from dataimporter.dbs import DataDB
-from dataimporter.links import MediaLink, TaxonomyLink, GBIFLink
+from dataimporter.links import (
+    MediaLink,
+    TaxonomyLink,
+    GBIFLink,
+    PreparationSpecimenLink,
+)
 from dataimporter.model import SourceRecord
 from dataimporter.view import View
 
@@ -480,3 +485,182 @@ class TestGBIFLink:
         gbif_link.clear_from_foreign()
 
         assert gbif_link.gbif_id_map.size() == 0
+
+
+class TestPreparationSpecimenLink:
+    def test_update_from_base(self, tmp_path: Path):
+        base_view = View(tmp_path / "base_view", DataDB(tmp_path / "base_data"))
+        specimen_view = View(
+            tmp_path / "specimen_view", DataDB(tmp_path / "specimen_view")
+        )
+        prep_link = PreparationSpecimenLink(
+            tmp_path / "prep_spec_link", base_view, specimen_view
+        )
+
+        base_records = [
+            SourceRecord(
+                "p1", {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: "s1"}, "base"
+            ),
+            # this scenario is not expected, but sensible to check for it given EMu can
+            # do anything at any time
+            SourceRecord(
+                "p2",
+                {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: ("s2", "s3")},
+                "base",
+            ),
+            SourceRecord("p3", {"not_the_field": "s4"}, "base"),
+            SourceRecord(
+                "p4", {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: "s1"}, "base"
+            ),
+        ]
+
+        prep_link.update_from_base(base_records)
+
+        assert prep_link.id_map.get_one("p1") == "s1"
+        assert prep_link.id_map.get_one("p2") == "s2"
+        assert prep_link.id_map.get_one("p3") is None
+        assert prep_link.id_map.get_one("p4") == "s1"
+
+    def test_update_from_foreign(self, tmp_path: Path):
+        base_view = View(tmp_path / "base_view", DataDB(tmp_path / "base_data"))
+        specimen_view = View(
+            tmp_path / "specimen_view", DataDB(tmp_path / "specimen_view")
+        )
+        prep_link = PreparationSpecimenLink(
+            tmp_path / "prep_spec_link", base_view, specimen_view
+        )
+
+        base_records = [
+            SourceRecord(
+                "p1", {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: "s1"}, "base"
+            ),
+            # this scenario is not expected, but sensible to check for it given EMu can
+            # do anything at any time
+            SourceRecord(
+                "p2",
+                {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: ("s2", "s3")},
+                "base",
+            ),
+            SourceRecord("p3", {"not_the_field": "s4"}, "base"),
+            SourceRecord(
+                "p4", {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: "s1"}, "base"
+            ),
+        ]
+        base_view.db.put_many(base_records)
+        prep_link.update_from_base(base_records)
+
+        specimen_records = [
+            SourceRecord("s1", {"x": "1"}, "specimen"),
+            SourceRecord("s2", {"x": "2"}, "specimen"),
+            SourceRecord("s3", {"x": "3"}, "specimen"),
+            SourceRecord("s4", {"x": "4"}, "specimen"),
+        ]
+
+        # replace the queue method on the base view with a mock
+        base_view.queue = MagicMock()
+
+        prep_link.update_from_foreign(specimen_records)
+
+        queued_base_records = base_view.queue.call_args.args[0]
+        assert len(queued_base_records) == 3
+        # p1
+        assert base_records[0] in queued_base_records
+        # p2
+        assert base_records[3] in queued_base_records
+        # p4
+        assert base_records[3] in queued_base_records
+
+    def test_transform_missing(self, tmp_path: Path):
+        base_view = View(tmp_path / "base_view", DataDB(tmp_path / "base_data"))
+        specimen_view = View(
+            tmp_path / "specimen_view", DataDB(tmp_path / "specimen_view")
+        )
+        prep_link = PreparationSpecimenLink(
+            tmp_path / "prep_spec_link", base_view, specimen_view
+        )
+
+        base_record = SourceRecord(
+            "p1", {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: "s1"}, "base"
+        )
+        prep_link.update_from_base([base_record])
+        data = {"beans": "always"}
+        prep_link.transform(base_record, data)
+
+        assert data == {"beans": "always"}
+
+    def test_transform(self, tmp_path: Path):
+        base_view = View(tmp_path / "base_view", DataDB(tmp_path / "base_data"))
+        specimen_view = View(
+            tmp_path / "specimen_view", DataDB(tmp_path / "specimen_view")
+        )
+        prep_link = PreparationSpecimenLink(
+            tmp_path / "prep_spec_link", base_view, specimen_view
+        )
+
+        base_record = SourceRecord(
+            "p1", {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: "s1"}, "base"
+        )
+        prep_link.update_from_base([base_record])
+
+        mapped_field_data = {
+            field: f"{field} data"
+            for field in PreparationSpecimenLink.MAPPED_SPECIMEN_FIELDS
+        }
+        # set one of the fields to None
+        mapped_none_test_field = PreparationSpecimenLink.MAPPED_SPECIMEN_FIELDS[0]
+        mapped_field_data[mapped_none_test_field] = None
+        specimen_record = SourceRecord(
+            "s1",
+            {
+                "occurrenceID": "5",
+                "_id": "8",
+                "an_addition_field": "some value which shouldn't be copied over",
+                **mapped_field_data,
+            },
+            "specimen",
+        )
+        specimen_view.db.put_many([specimen_record])
+
+        data = {"x": "3", "z": "9"}
+        prep_link.transform(base_record, data)
+
+        assert mapped_none_test_field not in data
+        del mapped_field_data[mapped_none_test_field]
+        assert data == {
+            "x": "3",
+            "z": "9",
+            "associatedOccurrences": "Voucher: 5",
+            "specimenID": "8",
+            **mapped_field_data,
+        }
+
+    def test_clear_from_base(self, tmp_path: Path):
+        base_view = View(tmp_path / "base_view", DataDB(tmp_path / "base_data"))
+        specimen_view = View(
+            tmp_path / "specimen_view", DataDB(tmp_path / "specimen_view")
+        )
+        prep_link = PreparationSpecimenLink(
+            tmp_path / "prep_spec_link", base_view, specimen_view
+        )
+
+        base_records = [
+            SourceRecord(
+                "p1", {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: "s1"}, "base"
+            ),
+            SourceRecord(
+                "p2",
+                {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: ("s2", "s3")},
+                "base",
+            ),
+            SourceRecord("p3", {"not_the_field": "s4"}, "base"),
+            SourceRecord(
+                "p4", {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: "s1"}, "base"
+            ),
+        ]
+        base_view.db.put_many(base_records)
+        prep_link.update_from_base(base_records)
+        assert prep_link.id_map.size() > 0
+
+        prep_link.clear_from_base()
+
+        assert prep_link.id_map.size() == 0

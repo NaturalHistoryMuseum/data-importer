@@ -291,3 +291,110 @@ class GBIFLink(ViewLink):
         Clears out the gbif (foreign) ID to occurrence ID map.
         """
         self.gbif_id_map.clear()
+
+
+class PreparationSpecimenLink(ViewLink):
+    """
+    A ViewLink representing the link between a preparation record and the specimen
+    voucher record it was created from.
+
+    The mapping is one-to-one with exactly one ID sourced from the base prep record.
+    When transforming the base record using the linked specimen record, we copy some
+    fields from the specimen record over to the base prep record, essentially for
+    searching convenience. The full list of fields that are copied is below.
+    """
+
+    # the EMu field on the prep records which links to the specimen voucher record
+    SPECIMEN_ID_REF_FIELD = "EntPreSpecimenRef"
+    # the Portal fields which are copied from the specimen to the prep data dict
+    # TODO: missing CollEventDateVisitedFrom, CollEventName_tab, and kinda ColSite
+    MAPPED_SPECIMEN_FIELDS = [
+        "barcode",
+        "scientificName",
+        "order",
+        "identifiedBy",
+        # this is a ColSite substitute which uses sumPreciseLocation
+        "locality",
+        "decimalLatitude",
+        "decimalLongitude",
+    ]
+
+    def __init__(self, path: Path, prep_view: View, specimen_view: View):
+        """
+        :param path: the path to store the ViewLink data in
+        :param prep_view: the preparation view
+        :param specimen_view: the specimen view
+        """
+        super().__init__(path.name, prep_view, specimen_view)
+        self.path = path
+        # a one-to-one index from prep id -> specimen id
+        self.id_map = Index(path / "id_map")
+
+    def update_from_base(self, prep_records: List[SourceRecord]):
+        """
+        Extracts the linked specimen ID from each of the given prep records and adds
+        them to the ID map.
+
+        :param prep_records: the changed prep records
+        """
+        self.id_map.put_one_to_one(
+            (prep_record.id, specimen_id)
+            for prep_record in prep_records
+            if (
+                specimen_id := prep_record.get_first_value(
+                    PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD
+                )
+            )
+        )
+
+    def update_from_foreign(self, specimen_records: List[SourceRecord]):
+        """
+        Propagate the changes in the given specimen records to the base prep records
+        linked to them.
+
+        :param specimen_records: the updated specimen records
+        """
+        base_ids = {
+            base_id
+            for specimen_record in specimen_records
+            for base_id in self.id_map.reverse_get(specimen_record.id)
+        }
+
+        if base_ids:
+            base_records = list(self.base_view.db.get_records(base_ids))
+            if base_records:
+                # if there are associated base records, queue changes to them on the
+                # base view
+                self.base_view.queue(base_records)
+
+    def transform(self, prep_record: SourceRecord, data: dict):
+        """
+        Transform the given prep record's data with data from the linked voucher
+        specimen, if one exists.
+
+        :param prep_record: the prep record
+        :param data: the data dict to update
+        """
+        specimen_id = prep_record.get_first_value(
+            PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD
+        )
+        if specimen_id:
+            specimen = self.foreign_view.get_and_transform(specimen_id)
+            if specimen is not None:
+                # from DwC
+                data[
+                    "associatedOccurrences"
+                ] = f"Voucher: {specimen.pop('occurrenceID')}"
+                # not from DwC
+                data["specimenID"] = specimen.pop("_id")
+                data.update(
+                    (field, value)
+                    for field in PreparationSpecimenLink.MAPPED_SPECIMEN_FIELDS
+                    if (value := specimen.get(field)) is not None
+                )
+
+    def clear_from_base(self):
+        """
+        Clears out the ID map.
+        """
+        self.id_map.clear()

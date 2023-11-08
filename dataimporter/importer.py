@@ -20,10 +20,16 @@ from dataimporter.emu.views.artefact import ArtefactView
 from dataimporter.emu.views.image import ImageView
 from dataimporter.emu.views.indexlot import IndexLotView
 from dataimporter.emu.views.mss import MSSView
+from dataimporter.emu.views.preparation import PreparationView
 from dataimporter.emu.views.specimen import SpecimenView
 from dataimporter.emu.views.taxonomy import TaxonomyView
 from dataimporter.ext.gbif import GBIFView, get_changed_records
-from dataimporter.links import MediaLink, TaxonomyLink, GBIFLink
+from dataimporter.links import (
+    MediaLink,
+    TaxonomyLink,
+    GBIFLink,
+    PreparationSpecimenLink,
+)
 from dataimporter.model import SourceRecord
 from dataimporter.view import View, ViewLink
 
@@ -76,6 +82,7 @@ class DataImporter:
         artefact_view = ArtefactView(self.views_path / "artefact", ecatalogue_db)
         indexlot_view = IndexLotView(self.views_path / "indexlot", ecatalogue_db)
         specimen_view = SpecimenView(self.views_path / "specimen", ecatalogue_db)
+        prep_view = PreparationView(self.views_path / "preparation", ecatalogue_db)
 
         # CREATE THE VIEW LINKS
         # first artefact links
@@ -108,6 +115,11 @@ class DataImporter:
             self.links_path / "specimen_gbif", specimen_view, gbif_view
         )
 
+        # next preparation view
+        preparation_specimen = PreparationSpecimenLink(
+            self.links_path / "preparation_specimen", prep_view, specimen_view
+        )
+
         # SETUP STATE
         # store all the dbs, view, and links in dicts for easy access via their names
         self.dbs: Dict[str, DataDB] = {
@@ -123,6 +135,7 @@ class DataImporter:
                 artefact_view,
                 indexlot_view,
                 specimen_view,
+                prep_view,
             ]
         }
         self.links: Dict[str, ViewLink] = {
@@ -134,6 +147,7 @@ class DataImporter:
                 specimen_images,
                 specimen_taxonomy,
                 specimen_gbif,
+                preparation_specimen,
             ]
         }
 
@@ -146,12 +160,13 @@ class DataImporter:
             "indexlot": SplitgillDatabase(config.indexlot_id, self.client),
             "artefact": SplitgillDatabase(config.artefact_id, self.client),
             "mss": SplitgillDatabase("mss", self.client),
+            "preparation": SplitgillDatabase(config.preparation_id, self.client),
         }
 
         # a database for each data db's redacted IDs to be stored in
         self.redaction_database = RedactionDB(config.data_path / "redactions")
 
-    def _queue_changes(self, records: Iterable[SourceRecord], db_name: str):
+    def queue_changes(self, records: Iterable[SourceRecord], db_name: str):
         """
         Update the records in the data DB with the given name. The views based on the DB
         that is being updated will also be updated.
@@ -197,7 +212,7 @@ class DataImporter:
                 # record refers to a potentially different table from which it is
                 # deleting a record
                 if dump.table != "eaudit":
-                    self._queue_changes(dump.read(), dump.table)
+                    self.queue_changes(dump.read(), dump.table)
                 else:
                     # wrap the dump stream in a filter to only allow through records we
                     # want to process
@@ -211,7 +226,7 @@ class DataImporter:
                     ):
                         # convert the raw audit records into delete records as we queue
                         # them
-                        self._queue_changes(
+                        self.queue_changes(
                             map(convert_eaudit_to_delete, records), table
                         )
             # we've handled all the dumps from this date, update the last date stored on
@@ -223,7 +238,7 @@ class DataImporter:
         Retrieve the latest GBIF records, check which ones have changed compared to the
         ones stored in the gbif data DB, and then queue them into the GBIF view.
         """
-        self._queue_changes(
+        self.queue_changes(
             get_changed_records(
                 self.dbs["gbif"], self.config.gbif_username, self.config.gbif_password
             ),

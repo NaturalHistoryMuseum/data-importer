@@ -1,116 +1,56 @@
-import gzip
-import shutil
-from itertools import count
-from pathlib import Path
-from typing import List, Dict
-
-ECATALOGUE_ARTEFACT_SAMPLE_DUMP = (
-    Path(__file__).parent / "emu" / "ecatalogue_artefact_53_sample.gz"
-)
-ECATALOGUE_INDEXLOT_SAMPLE_DUMP = (
-    Path(__file__).parent / "emu" / "ecatalogue_indexlot_2000_sample.gz"
-)
-ECATALOGUE_SPECIMEN_SAMPLE_DUMP = (
-    Path(__file__).parent / "emu" / "ecatalogue_specimen_10000_sample.gz"
-)
-
-EMULTIMEDIA_ARTEFACT_SAMPLE_DUMP = (
-    Path(__file__).parent / "emu" / "emultimedia_artefact_565_sample.gz"
-)
-EMULTIMEDIA_INDEXLOT_SAMPLE_DUMP = (
-    Path(__file__).parent / "emu" / "emultimedia_indexlot_406_sample.gz"
-)
-EMULTIMEDIA_SPECIMEN_SAMPLE_DUMP = (
-    Path(__file__).parent / "emu" / "emultimedia_specimen_11271_sample.gz"
-)
-
-ETAXONOMY_ARTEFACT_SAMPLE_DUMP = (
-    Path(__file__).parent / "emu" / "etaxonomy_artefact_1_sample.gz"
-)
-ETAXONOMY_INDEXLOT_SAMPLE_DUMP = (
-    Path(__file__).parent / "emu" / "etaxonomy_indexlot_1880_sample.gz"
-)
-ETAXONOMY_SPECIMEN_SAMPLE_DUMP = (
-    Path(__file__).parent / "emu" / "etaxonomy_specimen_1_sample.gz"
-)
+from enum import Enum
+from typing import Optional
+from uuid import uuid4
 
 
-def create_ecatalogue_dump(
-    path: Path,
-    date: str,
-    include_artefacts: bool = True,
-    include_indexlots: bool = True,
-    include_specimens: bool = True,
-):
-    dump_file = path / f"ecatalogue.export.{date}.gz"
-    dumps = []
-    if include_artefacts:
-        dumps.append(ECATALOGUE_ARTEFACT_SAMPLE_DUMP)
-    if include_indexlots:
-        dumps.append(ECATALOGUE_INDEXLOT_SAMPLE_DUMP)
-    if include_specimens:
-        dumps.append(ECATALOGUE_SPECIMEN_SAMPLE_DUMP)
-
-    with dump_file.open("wb") as g:
-        for dump in dumps:
-            with dump.open("rb") as f:
-                shutil.copyfileobj(f, g)
+class EcatalogueType(Enum):
+    specimen = "Specimen"
+    indexlot = "Index Lot"
+    artefact = "Artefact"
+    preparation = "Preparation"
 
 
-def create_emultimedia_dump(
-    path: Path,
-    date: str,
-    include_artefacts: bool = True,
-    include_indexlots: bool = True,
-    include_specimens: bool = True,
-):
-    dump_file = path / f"emultimedia.export.{date}.gz"
-    dumps = []
-    if include_artefacts:
-        dumps.append(EMULTIMEDIA_ARTEFACT_SAMPLE_DUMP)
-    if include_indexlots:
-        dumps.append(EMULTIMEDIA_INDEXLOT_SAMPLE_DUMP)
-    if include_specimens:
-        dumps.append(EMULTIMEDIA_SPECIMEN_SAMPLE_DUMP)
-
-    with dump_file.open("wb") as g:
-        for dump in dumps:
-            with dump.open("rb") as f:
-                shutil.copyfileobj(f, g)
+def create_ecatalogue(
+    irn: str, ecatalogue_type: EcatalogueType, guid: Optional[str] = None, **extras
+) -> dict:
+    base = {
+        "irn": irn,
+        "ColRecordType": ecatalogue_type.value,
+        "AdmPublishWebNoPasswordFlag": "Y",
+        "AdmGUIDPreferredValue": guid if guid is not None else str(uuid4()),
+        "ColDepartment": "Entomology",
+    }
+    if ecatalogue_type == EcatalogueType.preparation:
+        base["ColSubDepartment"] = "Molecular Collections"
+    base.update(extras)
+    return base
 
 
-def create_etaxonomy_dump(
-    path: Path,
-    date: str,
-    include_artefacts: bool = True,
-    include_indexlots: bool = True,
-    include_specimens: bool = True,
-):
-    dump_file = path / f"etaxonomy.export.{date}.gz"
-    dumps = []
-    if include_artefacts:
-        dumps.append(ETAXONOMY_ARTEFACT_SAMPLE_DUMP)
-    if include_indexlots:
-        dumps.append(ETAXONOMY_INDEXLOT_SAMPLE_DUMP)
-    if include_specimens:
-        dumps.append(ETAXONOMY_SPECIMEN_SAMPLE_DUMP)
-
-    with dump_file.open("wb") as g:
-        for dump in dumps:
-            with dump.open("rb") as f:
-                shutil.copyfileobj(f, g)
+def create_emultimedia(irn: str, guid: Optional[str] = None, **extras):
+    return {
+        "irn": irn,
+        "MulMimeType": "image",
+        "AdmGUIDPreferredValue": guid if guid is not None else str(uuid4()),
+        "AdmPublishWebNoPasswordFlag": "Y",
+        # image doesn't need this, but MSS does so might as well include it
+        "DocIdentifier": "banana.jpg",
+        **extras,
+    }
 
 
-def create_eaudit_dump(path: Path, irns_to_delete: Dict[str, List[str]], date: str):
-    dump_file = path / f"eaudit.deleted-export.{date}.gz"
+def create_etaxonomy(irn: str, **extras):
+    return {
+        "irn": irn,
+        "AdmPublishWebNoPasswordFlag": "Y",
+        **extras,
+    }
 
-    irn_generator = count(1)
 
-    with gzip.GzipFile(dump_file, "wb") as g:
-        for table, irns in irns_to_delete.items():
-            for irn in irns:
-                g.write(f"irn:1={next(irn_generator)}\n".encode("utf-8"))
-                g.write(f"AudOperation:1=delete\n".encode("utf-8"))
-                g.write(f"AudTable:1={table}\n".encode("utf-8"))
-                g.write(f"AudKey:1={irn}\n".encode("utf-8"))
-                g.write("###\n".encode("utf-8"))
+def create_eaudit(irn_to_delete: str, table_to_delete_from: str) -> dict:
+    return {
+        # doesn't matter what the irn of this record is so just always set it to -1
+        "irn": "-1",
+        "AudOperation": "delete",
+        "AudTable": table_to_delete_from,
+        "AudKey": irn_to_delete,
+    }
