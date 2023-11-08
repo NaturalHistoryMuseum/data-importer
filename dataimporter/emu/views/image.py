@@ -1,6 +1,11 @@
 from pathlib import Path
 
-from dataimporter.emu.views.utils import NO_PUBLISH, is_web_published
+from dataimporter.emu.views.utils import (
+    NO_PUBLISH,
+    is_web_published,
+    is_valid_guid,
+    INVALID_GUID,
+)
 from dataimporter.emu.views.utils import emu_date
 from dataimporter.model import SourceRecord
 from dataimporter.view import FilterResult, View, SUCCESS_RESULT
@@ -35,6 +40,9 @@ class ImageView(View):
         """
         if record.get_first_value("MulMimeType") != "image":
             return MULTIMEDIA_NOT_IMAGE
+
+        if not is_valid_guid(record):
+            return INVALID_GUID
 
         if not is_web_published(record):
             return NO_PUBLISH

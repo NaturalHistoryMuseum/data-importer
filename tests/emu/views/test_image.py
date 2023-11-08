@@ -5,7 +5,7 @@ import pytest
 
 from dataimporter.dbs import DataDB
 from dataimporter.emu.views.image import ImageView, MULTIMEDIA_NOT_IMAGE
-from dataimporter.emu.views.utils import NO_PUBLISH
+from dataimporter.emu.views.utils import NO_PUBLISH, INVALID_GUID
 from dataimporter.model import SourceRecord
 from dataimporter.view import FilterResult, SUCCESS_RESULT
 from tests.helpers.samples.image import SAMPLE_IMAGE_DATA, SAMPLE_IMAGE_ID
@@ -24,6 +24,7 @@ def image_view(tmp_path: Path) -> ImageView:
 
 is_member_scenarios: List[Tuple[dict, FilterResult]] = [
     ({"MulMimeType": "Document"}, MULTIMEDIA_NOT_IMAGE),
+    ({"AdmGUIDPreferredValue": "not a valid guid!"}, INVALID_GUID),
     ({"AdmPublishWebNoPasswordFlag": "n"}, NO_PUBLISH),
     ({}, SUCCESS_RESULT),
 ]
