@@ -2,7 +2,12 @@ from itertools import zip_longest
 
 from fastnumbers import try_int
 
-from dataimporter.emu.views.utils import NO_PUBLISH, is_web_published
+from dataimporter.emu.views.utils import (
+    NO_PUBLISH,
+    is_web_published,
+    is_valid_guid,
+    INVALID_GUID,
+)
 from dataimporter.model import SourceRecord
 from dataimporter.view import View, FilterResult, SUCCESS_RESULT
 
@@ -27,6 +32,9 @@ class MSSView(View):
         """
         if record.get_first_value("MulMimeType") != "image":
             return MULTIMEDIA_NOT_IMAGE
+
+        if not is_valid_guid(record):
+            return INVALID_GUID
 
         if not is_web_published(record):
             return NO_PUBLISH

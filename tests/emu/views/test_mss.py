@@ -9,7 +9,7 @@ from dataimporter.emu.views.mss import (
     MULTIMEDIA_NOT_IMAGE,
     MULTIMEDIA_NO_IDENTIFIER,
 )
-from dataimporter.emu.views.utils import NO_PUBLISH
+from dataimporter.emu.views.utils import NO_PUBLISH, INVALID_GUID
 from dataimporter.model import SourceRecord
 from dataimporter.view import FilterResult, SUCCESS_RESULT
 from tests.helpers.samples.image import SAMPLE_IMAGE_DATA, SAMPLE_IMAGE_ID
@@ -24,6 +24,7 @@ def mss_view(tmp_path: Path) -> MSSView:
 
 is_member_scenarios: List[Tuple[dict, FilterResult]] = [
     ({"MulMimeType": "Document"}, MULTIMEDIA_NOT_IMAGE),
+    ({"AdmGUIDPreferredValue": "not a valid guid!"}, INVALID_GUID),
     ({"AdmPublishWebNoPasswordFlag": "n"}, NO_PUBLISH),
     ({"DocIdentifier": None}, MULTIMEDIA_NO_IDENTIFIER),
     ({}, SUCCESS_RESULT),
