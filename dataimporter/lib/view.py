@@ -409,10 +409,6 @@ class ManyToOneViewLink(ViewLink, abc.ABC):
         if foreign_id:
             return self.foreign_view.get_and_transform(foreign_id)
 
-    @abc.abstractmethod
-    def transform(self, base_record: SourceRecord, data: dict):
-        ...
-
     def clear_from_base(self):
         """
         Clears out the ID map.
