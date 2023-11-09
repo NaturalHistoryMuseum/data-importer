@@ -5,7 +5,7 @@ from typing import List
 
 from dataimporter.lib.dbs import Index
 from dataimporter.lib.model import SourceRecord
-from dataimporter.lib.view import View, ViewLink, ManyToOneLink
+from dataimporter.lib.view import View, ViewLink, ManyToOneViewLink
 
 
 class MediaLink(ViewLink):
@@ -106,7 +106,7 @@ class MediaLink(ViewLink):
         self.id_map.clear()
 
 
-class TaxonomyLink(ManyToOneLink):
+class TaxonomyLink(ManyToOneViewLink):
     """
     A ViewLink representing the connection between ecatalogue records and etaxonomy
     records. This is used for all ecatalogue derivative views and their links to
@@ -236,7 +236,7 @@ class GBIFLink(ViewLink):
         self.gbif_id_map.clear()
 
 
-class PreparationSpecimenLink(ManyToOneLink):
+class PreparationSpecimenLink(ManyToOneViewLink):
     """
     A ViewLink representing the link between a preparation record and the specimen
     voucher record it was created from.

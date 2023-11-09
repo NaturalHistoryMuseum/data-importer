@@ -13,7 +13,7 @@ from dataimporter.lib.view import (
     SUCCESS_RESULT,
     View,
     ViewLink,
-    ManyToOneLink,
+    ManyToOneViewLink,
 )
 
 
@@ -333,7 +333,7 @@ class TestViewLink:
 
 
 class TestOneToOneLink:
-    class ConcreteManyToOneLink(ManyToOneLink):
+    class ConcreteManyToOneViewLink(ManyToOneViewLink):
         def transform(self, base_record: SourceRecord, data: dict):
             pass
 
@@ -341,7 +341,7 @@ class TestOneToOneLink:
         field = "link_ref"
         base_view = View(tmp_path / "bview", DataDB(tmp_path / "bdata"))
         foreign_view = View(tmp_path / "fview", DataDB(tmp_path / "fdata"))
-        link = TestOneToOneLink.ConcreteManyToOneLink(
+        link = TestOneToOneLink.ConcreteManyToOneViewLink(
             tmp_path / "1to1link", base_view, foreign_view, field
         )
 
@@ -364,7 +364,7 @@ class TestOneToOneLink:
         field = "link_ref"
         base_view = View(tmp_path / "bview", DataDB(tmp_path / "bdata"))
         foreign_view = View(tmp_path / "fview", DataDB(tmp_path / "fdata"))
-        link = TestOneToOneLink.ConcreteManyToOneLink(
+        link = TestOneToOneLink.ConcreteManyToOneViewLink(
             tmp_path / "1to1link", base_view, foreign_view, field
         )
 
@@ -403,7 +403,7 @@ class TestOneToOneLink:
         field = "link_ref"
         base_view = View(tmp_path / "bview", DataDB(tmp_path / "bdata"))
         foreign_view = View(tmp_path / "fview", DataDB(tmp_path / "fdata"))
-        link = TestOneToOneLink.ConcreteManyToOneLink(
+        link = TestOneToOneLink.ConcreteManyToOneViewLink(
             tmp_path / "1to1link", base_view, foreign_view, field
         )
 
@@ -423,7 +423,7 @@ class TestOneToOneLink:
         field = "link_ref"
         base_view = View(tmp_path / "bview", DataDB(tmp_path / "bdata"))
         foreign_view = View(tmp_path / "fview", DataDB(tmp_path / "fdata"))
-        link = TestOneToOneLink.ConcreteManyToOneLink(
+        link = TestOneToOneLink.ConcreteManyToOneViewLink(
             tmp_path / "1to1link", base_view, foreign_view, field
         )
 

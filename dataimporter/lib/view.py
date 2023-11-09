@@ -348,7 +348,7 @@ class ViewLink(abc.ABC):
         pass
 
 
-class ManyToOneLink(ViewLink, abc.ABC):
+class ManyToOneViewLink(ViewLink, abc.ABC):
     """
     Represents a many-to-one link between two views.
 
