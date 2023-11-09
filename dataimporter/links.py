@@ -1,84 +1,11 @@
-import abc
 from itertools import chain
 from operator import itemgetter
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 from dataimporter.dbs import Index
 from dataimporter.model import SourceRecord
-from dataimporter.view import View, ViewLink
-
-
-class ManyToOneLink(ViewLink, abc.ABC):
-    """
-    Represents a many-to-one link between two views.
-
-    Base records have a link to at most one foreign record, but many foreign records can
-    link back to the same base record.
-    """
-
-    def __init__(self, path: Path, base_view: View, foreign_view: View, field: str):
-        """
-        :param path: the root path where the ID map database will be stored
-        :param base_view: the base view
-        :param foreign_view: the foreign view
-        :param field: field on base records which contains the linked foreign record ID
-        """
-        super().__init__(path.name, base_view, foreign_view)
-        self.path = path
-        self.field = field
-        # a many-to-one index from base id -> foreign id
-        self.id_map = Index(path / "id_map")
-
-    def update_from_base(self, base_records: List[SourceRecord]):
-        """
-        Extracts the linked foreign ID from each of the given records and adds them to
-        the ID map.
-
-        :param base_records: the changed base records
-        """
-        self.id_map.put_many(
-            (base_record.id, foreign_id)
-            for base_record in base_records
-            if (foreign_id := base_record.get_first_value(self.field))
-        )
-
-    def update_from_foreign(self, foreign_records: List[SourceRecord]):
-        """
-        Propagate the changes in the given foreign records to the base records linked to
-        them.
-
-        :param foreign_records: the updated foreign records
-        """
-        # do a reverse lookup to find the potentially many base IDs associated with each
-        # updated foreign ID, and store them in a set
-        base_ids = {
-            base_id
-            for foreign_record in foreign_records
-            for base_id in self.id_map.get_keys(foreign_record.id)
-        }
-
-        if base_ids:
-            base_records = list(self.base_view.db.get_records(base_ids))
-            if base_records:
-                # if there are associated base records, queue changes to them on the
-                # base view
-                self.base_view.queue(base_records)
-
-    def get_foreign_record_data(self, base_record: SourceRecord) -> Optional[dict]:
-        foreign_id = base_record.get_first_value(self.field)
-        if foreign_id:
-            return self.foreign_view.get_and_transform(foreign_id)
-
-    @abc.abstractmethod
-    def transform(self, base_record: SourceRecord, data: dict):
-        ...
-
-    def clear_from_base(self):
-        """
-        Clears out the ID map.
-        """
-        self.id_map.clear()
+from dataimporter.view import View, ViewLink, ManyToOneLink
 
 
 class MediaLink(ViewLink):
