@@ -226,68 +226,72 @@ class TestDataDB:
 
 
 class TestIndex:
-    def test_put_one_to_one_and_gets(self, tmp_path: Path):
+    def test_put_many_and_gets(self, tmp_path: Path):
         db = Index(tmp_path / "database")
 
-        db.put_one_to_one([("a", "1"), ("b", "2"), ("c", "3"), ("e", "2")])
+        db.put_many([("a", "1"), ("b", "2"), ("c", "3"), ("e", "2")])
 
-        assert list(db.get("a")) == ["1"]
-        assert list(db.get("b")) == ["2"]
-        assert list(db.get("c")) == ["3"]
-        assert list(db.get("d")) == []
-        assert list(db.get("e")) == ["2"]
+        assert list(db.get_values("a")) == ["1"]
+        assert list(db.get_values("b")) == ["2"]
+        assert list(db.get_values("c")) == ["3"]
+        assert list(db.get_values("d")) == []
+        assert list(db.get_values("e")) == ["2"]
 
-        assert db.get_one("a") == "1"
-        assert db.get_one("b") == "2"
-        assert db.get_one("c") == "3"
-        assert db.get_one("d") is None
-        assert db.get_one("e") == "2"
+        assert db.get_value("a") == "1"
+        assert db.get_value("b") == "2"
+        assert db.get_value("c") == "3"
+        assert db.get_value("d") is None
+        assert db.get_value("e") == "2"
 
-        assert list(db.reverse_get("1")) == ["a"]
-        assert list(db.reverse_get("2")) == ["b", "e"]
-        assert list(db.reverse_get("3")) == ["c"]
-        assert list(db.reverse_get("4")) == []
+        assert list(db.get_keys("1")) == ["a"]
+        assert list(db.get_keys("2")) == ["b", "e"]
+        assert list(db.get_keys("3")) == ["c"]
+        assert list(db.get_keys("4")) == []
 
-        assert db.reverse_get_one("1") == "a"
-        assert db.reverse_get_one("2") == "b"
-        assert db.reverse_get_one("3") == "c"
-        assert db.reverse_get_one("4") is None
+        assert db.get_key("1") == "a"
+        assert db.get_key("2") == "b"
+        assert db.get_key("3") == "c"
+        assert db.get_key("4") is None
 
-    def test_put_one_to_many_and_gets(self, tmp_path: Path):
+    def test_put_multiple_values_gets(self, tmp_path: Path):
         db = Index(tmp_path / "database")
 
-        db.put_one_to_many([("a", ("1", "2", "3")), ("b", ("4", "2")), ("c", ("3",))])
+        db.put_multiple_values(
+            [("a", ("1", "2", "3")), ("b", ("4", "2")), ("c", ("3",))]
+        )
 
-        assert list(db.get("a")) == ["1", "2", "3"]
-        assert list(db.get("b")) == ["2", "4"]
-        assert list(db.get("c")) == ["3"]
-        assert list(db.get("d")) == []
+        assert list(db.get_values("a")) == ["1", "2", "3"]
+        assert list(db.get_values("b")) == ["2", "4"]
+        assert list(db.get_values("c")) == ["3"]
+        assert list(db.get_values("d")) == []
 
-        assert db.get_one("a") == "1"
-        assert db.get_one("b") == "2"
-        assert db.get_one("c") == "3"
-        assert db.get_one("d") is None
+        assert db.get_value("a") == "1"
+        assert db.get_value("b") == "2"
+        assert db.get_value("c") == "3"
+        assert db.get_value("d") is None
 
-        assert list(db.reverse_get("1")) == ["a"]
-        assert list(db.reverse_get("2")) == ["a", "b"]
-        assert list(db.reverse_get("3")) == ["a", "c"]
-        assert list(db.reverse_get("4")) == ["b"]
-        assert list(db.reverse_get("5")) == []
+        assert list(db.get_keys("1")) == ["a"]
+        assert list(db.get_keys("2")) == ["a", "b"]
+        assert list(db.get_keys("3")) == ["a", "c"]
+        assert list(db.get_keys("4")) == ["b"]
+        assert list(db.get_keys("5")) == []
 
-        assert db.reverse_get_one("1") == "a"
-        assert db.reverse_get_one("2") == "a"
-        assert db.reverse_get_one("3") == "a"
-        assert db.reverse_get_one("4") == "b"
-        assert db.reverse_get_one("5") is None
+        assert db.get_key("1") == "a"
+        assert db.get_key("2") == "a"
+        assert db.get_key("3") == "a"
+        assert db.get_key("4") == "b"
+        assert db.get_key("5") is None
 
-    def test_put_one_to_many_empty_iterables(self, tmp_path: Path):
+    def test_put_many_empty_iterables(self, tmp_path: Path):
         db = Index(tmp_path / "database")
 
-        db.put_one_to_many([("a", tuple()), ("b", ("4", "2")), ("c", iter(tuple()))])
+        db.put_multiple_values(
+            [("a", tuple()), ("b", ("4", "2")), ("c", iter(tuple()))]
+        )
 
-        assert list(db.get("a")) == []
-        assert list(db.get("b")) == ["2", "4"]
-        assert list(db.get("c")) == []
+        assert list(db.get_values("a")) == []
+        assert list(db.get_values("b")) == ["2", "4"]
+        assert list(db.get_values("c")) == []
 
 
 class TestChangeQueue:

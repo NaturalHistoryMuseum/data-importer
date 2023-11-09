@@ -7,6 +7,7 @@ from dataimporter.links import (
     TaxonomyLink,
     GBIFLink,
     PreparationSpecimenLink,
+    ManyToOneLink,
 )
 from dataimporter.model import SourceRecord
 from dataimporter.view import View
@@ -29,16 +30,16 @@ class TestMediaLink:
 
         media_link.update_from_base(base_records)
 
-        assert list(media_link.id_map.get("b1")) == ["m1", "m2"]
-        assert list(media_link.id_map.get("b2")) == ["m3"]
-        assert list(media_link.id_map.get("b3")) == ["m4"]
-        assert list(media_link.id_map.get("b4")) == ["m2"]
-        assert list(media_link.id_map.get("b5")) == ["m2", "m3"]
+        assert list(media_link.id_map.get_values("b1")) == ["m1", "m2"]
+        assert list(media_link.id_map.get_values("b2")) == ["m3"]
+        assert list(media_link.id_map.get_values("b3")) == ["m4"]
+        assert list(media_link.id_map.get_values("b4")) == ["m2"]
+        assert list(media_link.id_map.get_values("b5")) == ["m2", "m3"]
 
-        assert list(media_link.id_map.reverse_get("m1")) == ["b1"]
-        assert list(media_link.id_map.reverse_get("m2")) == ["b1", "b4", "b5"]
-        assert list(media_link.id_map.reverse_get("m3")) == ["b2", "b5"]
-        assert list(media_link.id_map.reverse_get("m4")) == ["b3"]
+        assert list(media_link.id_map.get_keys("m1")) == ["b1"]
+        assert list(media_link.id_map.get_keys("m2")) == ["b1", "b4", "b5"]
+        assert list(media_link.id_map.get_keys("m3")) == ["b2", "b5"]
+        assert list(media_link.id_map.get_keys("m4")) == ["b3"]
 
     def test_update_from_foreign(self, tmp_path: Path):
         base_view = View(tmp_path / "base_view", DataDB(tmp_path / "base_data"))
@@ -221,72 +222,6 @@ class TestMediaLink:
 
 
 class TestTaxonomyLink:
-    def test_update_from_base(self, tmp_path: Path):
-        field = "taxonomy_ids"
-
-        base_view = View(tmp_path / "base_view", DataDB(tmp_path / "base_data"))
-        taxonomy_view = View(tmp_path / "taxon_view", DataDB(tmp_path / "taxon_view"))
-        taxonomy_link = TaxonomyLink(
-            tmp_path / "taxonomy_link", base_view, taxonomy_view, field
-        )
-
-        base_records = [
-            SourceRecord("b1", {field: "t1"}, "base"),
-            # this scenario is not expected, but sensible to check for it given EMu can
-            # do anything at any time
-            SourceRecord("b2", {field: ("t2", "t3")}, "base"),
-            SourceRecord("b3", {"not_the_field": "t4"}, "base"),
-            SourceRecord("b4", {field: "t1"}, "base"),
-        ]
-
-        taxonomy_link.update_from_base(base_records)
-
-        assert taxonomy_link.id_map.get_one("b1") == "t1"
-        assert taxonomy_link.id_map.get_one("b2") == "t2"
-        assert taxonomy_link.id_map.get_one("b3") is None
-        assert taxonomy_link.id_map.get_one("b4") == "t1"
-
-    def test_update_from_foreign(self, tmp_path: Path):
-        field = "taxonomy_ids"
-
-        base_view = View(tmp_path / "base_view", DataDB(tmp_path / "base_data"))
-        taxonomy_view = View(tmp_path / "taxon_view", DataDB(tmp_path / "taxon_view"))
-        taxonomy_link = TaxonomyLink(
-            tmp_path / "taxonomy_link", base_view, taxonomy_view, field
-        )
-
-        base_records = [
-            SourceRecord("b1", {field: "t1"}, "base"),
-            # this scenario is not expected, but sensible to check for it given EMu can
-            # do anything at any time
-            SourceRecord("b2", {field: ("t2", "t3")}, "base"),
-            SourceRecord("b3", {"not_the_field": "t4"}, "base"),
-            SourceRecord("b4", {field: "t1"}, "base"),
-        ]
-        base_view.db.put_many(base_records)
-        taxonomy_link.update_from_base(base_records)
-
-        taxonomy_records = [
-            SourceRecord("t1", {"x": "1"}, "taxon"),
-            SourceRecord("t2", {"x": "2"}, "taxon"),
-            SourceRecord("t3", {"x": "2"}, "taxon"),
-            SourceRecord("t4", {"x": "2"}, "taxon"),
-        ]
-
-        # replace the queue method on the base view with a mock
-        base_view.queue = MagicMock()
-
-        taxonomy_link.update_from_foreign(taxonomy_records)
-
-        queued_base_records = base_view.queue.call_args.args[0]
-        assert len(queued_base_records) == 3
-        # b1
-        assert base_records[0] in queued_base_records
-        # b2
-        assert base_records[3] in queued_base_records
-        # b4
-        assert base_records[3] in queued_base_records
-
     def test_transform_missing(self, tmp_path: Path):
         field = "taxonomy_ids"
 
@@ -323,28 +258,6 @@ class TestTaxonomyLink:
 
         assert data == {"x": "3", "y": "7", "z": "8"}
 
-    def test_clear_from_base(self, tmp_path: Path):
-        field = "taxonomy_ids"
-        base_view = View(tmp_path / "base_view", DataDB(tmp_path / "base_data"))
-        taxonomy_view = View(tmp_path / "taxon_view", DataDB(tmp_path / "taxon_view"))
-        taxonomy_link = TaxonomyLink(
-            tmp_path / "taxonomy_link", base_view, taxonomy_view, field
-        )
-
-        base_records = [
-            SourceRecord("b1", {field: "t1"}, "base"),
-            SourceRecord("b2", {field: ("t2", "t3")}, "base"),
-            SourceRecord("b3", {"not_the_field": "t4"}, "base"),
-            SourceRecord("b4", {field: "t1"}, "base"),
-        ]
-        base_view.db.put_many(base_records)
-        taxonomy_link.update_from_base(base_records)
-        assert taxonomy_link.id_map.size() > 0
-
-        taxonomy_link.clear_from_base()
-
-        assert taxonomy_link.id_map.size() == 0
-
 
 class TestGBIFLink:
     def test_update_from_base(self, tmp_path: Path):
@@ -362,9 +275,9 @@ class TestGBIFLink:
 
         gbif_link.update_from_base(base_records)
 
-        assert gbif_link.base_id_map.get_one("b1") == "guid1"
-        assert gbif_link.base_id_map.get_one("b2") == "guid2"
-        assert gbif_link.base_id_map.get_one("b3") is None
+        assert gbif_link.base_id_map.get_value("b1") == "guid1"
+        assert gbif_link.base_id_map.get_value("b2") == "guid2"
+        assert gbif_link.base_id_map.get_value("b3") is None
 
     def test_update_from_foreign(self, tmp_path: Path):
         base_view = View(tmp_path / "base_view", DataDB(tmp_path / "base_data"))
@@ -399,9 +312,9 @@ class TestGBIFLink:
         # b2
         assert base_records[1] in queued_base_records
 
-        assert gbif_link.gbif_id_map.get_one("g1") == "guid2"
-        assert gbif_link.gbif_id_map.get_one("g2") == "guid3"
-        assert gbif_link.gbif_id_map.get_one("g3") == "guid1"
+        assert gbif_link.gbif_id_map.get_value("g1") == "guid2"
+        assert gbif_link.gbif_id_map.get_value("g2") == "guid3"
+        assert gbif_link.gbif_id_map.get_value("g3") == "guid1"
 
     def test_transform_missing(self, tmp_path: Path):
         base_view = View(tmp_path / "base_view", DataDB(tmp_path / "base_data"))
@@ -488,88 +401,6 @@ class TestGBIFLink:
 
 
 class TestPreparationSpecimenLink:
-    def test_update_from_base(self, tmp_path: Path):
-        base_view = View(tmp_path / "base_view", DataDB(tmp_path / "base_data"))
-        specimen_view = View(
-            tmp_path / "specimen_view", DataDB(tmp_path / "specimen_view")
-        )
-        prep_link = PreparationSpecimenLink(
-            tmp_path / "prep_spec_link", base_view, specimen_view
-        )
-
-        base_records = [
-            SourceRecord(
-                "p1", {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: "s1"}, "base"
-            ),
-            # this scenario is not expected, but sensible to check for it given EMu can
-            # do anything at any time
-            SourceRecord(
-                "p2",
-                {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: ("s2", "s3")},
-                "base",
-            ),
-            SourceRecord("p3", {"not_the_field": "s4"}, "base"),
-            SourceRecord(
-                "p4", {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: "s1"}, "base"
-            ),
-        ]
-
-        prep_link.update_from_base(base_records)
-
-        assert prep_link.id_map.get_one("p1") == "s1"
-        assert prep_link.id_map.get_one("p2") == "s2"
-        assert prep_link.id_map.get_one("p3") is None
-        assert prep_link.id_map.get_one("p4") == "s1"
-
-    def test_update_from_foreign(self, tmp_path: Path):
-        base_view = View(tmp_path / "base_view", DataDB(tmp_path / "base_data"))
-        specimen_view = View(
-            tmp_path / "specimen_view", DataDB(tmp_path / "specimen_view")
-        )
-        prep_link = PreparationSpecimenLink(
-            tmp_path / "prep_spec_link", base_view, specimen_view
-        )
-
-        base_records = [
-            SourceRecord(
-                "p1", {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: "s1"}, "base"
-            ),
-            # this scenario is not expected, but sensible to check for it given EMu can
-            # do anything at any time
-            SourceRecord(
-                "p2",
-                {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: ("s2", "s3")},
-                "base",
-            ),
-            SourceRecord("p3", {"not_the_field": "s4"}, "base"),
-            SourceRecord(
-                "p4", {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: "s1"}, "base"
-            ),
-        ]
-        base_view.db.put_many(base_records)
-        prep_link.update_from_base(base_records)
-
-        specimen_records = [
-            SourceRecord("s1", {"x": "1"}, "specimen"),
-            SourceRecord("s2", {"x": "2"}, "specimen"),
-            SourceRecord("s3", {"x": "3"}, "specimen"),
-            SourceRecord("s4", {"x": "4"}, "specimen"),
-        ]
-
-        # replace the queue method on the base view with a mock
-        base_view.queue = MagicMock()
-
-        prep_link.update_from_foreign(specimen_records)
-
-        queued_base_records = base_view.queue.call_args.args[0]
-        assert len(queued_base_records) == 3
-        # p1
-        assert base_records[0] in queued_base_records
-        # p2
-        assert base_records[3] in queued_base_records
-        # p4
-        assert base_records[3] in queued_base_records
-
     def test_transform_missing(self, tmp_path: Path):
         base_view = View(tmp_path / "base_view", DataDB(tmp_path / "base_data"))
         specimen_view = View(
@@ -634,33 +465,113 @@ class TestPreparationSpecimenLink:
             **mapped_field_data,
         }
 
-    def test_clear_from_base(self, tmp_path: Path):
-        base_view = View(tmp_path / "base_view", DataDB(tmp_path / "base_data"))
-        specimen_view = View(
-            tmp_path / "specimen_view", DataDB(tmp_path / "specimen_view")
-        )
-        prep_link = PreparationSpecimenLink(
-            tmp_path / "prep_spec_link", base_view, specimen_view
+
+class TestOneToOneLink:
+    class ConcreteManyToOneLink(ManyToOneLink):
+        def transform(self, base_record: SourceRecord, data: dict):
+            pass
+
+    def test_update_from_base(self, tmp_path: Path):
+        field = "link_ref"
+        base_view = View(tmp_path / "bview", DataDB(tmp_path / "bdata"))
+        foreign_view = View(tmp_path / "fview", DataDB(tmp_path / "fdata"))
+        link = TestOneToOneLink.ConcreteManyToOneLink(
+            tmp_path / "1to1link", base_view, foreign_view, field
         )
 
         base_records = [
-            SourceRecord(
-                "p1", {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: "s1"}, "base"
-            ),
-            SourceRecord(
-                "p2",
-                {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: ("s2", "s3")},
-                "base",
-            ),
-            SourceRecord("p3", {"not_the_field": "s4"}, "base"),
-            SourceRecord(
-                "p4", {PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD: "s1"}, "base"
-            ),
+            SourceRecord("b1", {field: "f1"}, "base"),
+            # this scenario is not expected, but sensible to check for
+            SourceRecord("b2", {field: ("f2", "f3")}, "base"),
+            SourceRecord("b3", {"not_the_field": "f4"}, "base"),
+            SourceRecord("b4", {field: "f1"}, "base"),
+        ]
+
+        link.update_from_base(base_records)
+
+        assert link.id_map.get_value("b1") == "f1"
+        assert link.id_map.get_value("b2") == "f2"
+        assert link.id_map.get_value("b3") is None
+        assert link.id_map.get_value("b4") == "f1"
+
+    def test_update_from_foreign(self, tmp_path: Path):
+        field = "link_ref"
+        base_view = View(tmp_path / "bview", DataDB(tmp_path / "bdata"))
+        foreign_view = View(tmp_path / "fview", DataDB(tmp_path / "fdata"))
+        link = TestOneToOneLink.ConcreteManyToOneLink(
+            tmp_path / "1to1link", base_view, foreign_view, field
+        )
+
+        base_records = [
+            SourceRecord("b1", {field: "f1"}, "base"),
+            # this scenario is not expected, but sensible to check for
+            SourceRecord("b2", {field: ("f2", "f3")}, "base"),
+            SourceRecord("b3", {"not_the_field": "f4"}, "base"),
+            SourceRecord("b4", {field: "f1"}, "base"),
         ]
         base_view.db.put_many(base_records)
-        prep_link.update_from_base(base_records)
-        assert prep_link.id_map.size() > 0
+        link.update_from_base(base_records)
 
-        prep_link.clear_from_base()
+        foreign_records = [
+            SourceRecord("f1", {"x": "1"}, "foreign"),
+            SourceRecord("f2", {"x": "2"}, "foreign"),
+            SourceRecord("f3", {"x": "3"}, "foreign"),
+            SourceRecord("f4", {"x": "4"}, "foreign"),
+        ]
 
-        assert prep_link.id_map.size() == 0
+        # replace the queue method on the base view with a mock
+        base_view.queue = MagicMock()
+
+        link.update_from_foreign(foreign_records)
+
+        queued_base_records = base_view.queue.call_args.args[0]
+        assert len(queued_base_records) == 3
+        # b1
+        assert base_records[0] in queued_base_records
+        # b2
+        assert base_records[3] in queued_base_records
+        # b4
+        assert base_records[3] in queued_base_records
+
+    def test_get_foreign_record_data(self, tmp_path: Path):
+        field = "link_ref"
+        base_view = View(tmp_path / "bview", DataDB(tmp_path / "bdata"))
+        foreign_view = View(tmp_path / "fview", DataDB(tmp_path / "fdata"))
+        link = TestOneToOneLink.ConcreteManyToOneLink(
+            tmp_path / "1to1link", base_view, foreign_view, field
+        )
+
+        base_record = SourceRecord("b1", {field: "f1"}, "base")
+        link.update_from_base([base_record])
+
+        # no foreign record in the foreign data db so None
+        assert link.get_foreign_record_data(base_record) is None
+
+        foreign_record = SourceRecord("f1", {"x": "1"}, "foreign")
+        foreign_view.db.put_many([foreign_record])
+
+        # there's now a record in the foreign data db so we get a response
+        assert link.get_foreign_record_data(base_record) == {"x": "1"}
+
+    def test_clear_from_base(self, tmp_path: Path):
+        field = "link_ref"
+        base_view = View(tmp_path / "bview", DataDB(tmp_path / "bdata"))
+        foreign_view = View(tmp_path / "fview", DataDB(tmp_path / "fdata"))
+        link = TestOneToOneLink.ConcreteManyToOneLink(
+            tmp_path / "1to1link", base_view, foreign_view, field
+        )
+
+        base_records = [
+            SourceRecord("b1", {field: "f1"}, "base"),
+            # this scenario is not expected, but sensible to check for
+            SourceRecord("b2", {field: ("f2", "f3")}, "base"),
+            SourceRecord("b3", {"not_the_field": "f4"}, "base"),
+            SourceRecord("b4", {field: "f1"}, "base"),
+        ]
+        base_view.db.put_many(base_records)
+        link.update_from_base(base_records)
+        assert link.id_map.size() > 0
+
+        link.clear_from_base()
+
+        assert link.id_map.size() == 0

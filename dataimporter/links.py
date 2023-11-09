@@ -1,11 +1,84 @@
+import abc
 from itertools import chain
 from operator import itemgetter
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from dataimporter.dbs import Index
 from dataimporter.model import SourceRecord
 from dataimporter.view import View, ViewLink
+
+
+class ManyToOneLink(ViewLink, abc.ABC):
+    """
+    Represents a many-to-one link between two views.
+
+    Base records have a link to at most one foreign record, but many foreign records can
+    link back to the same base record.
+    """
+
+    def __init__(self, path: Path, base_view: View, foreign_view: View, field: str):
+        """
+        :param path: the root path where the ID map database will be stored
+        :param base_view: the base view
+        :param foreign_view: the foreign view
+        :param field: field on base records which contains the linked foreign record ID
+        """
+        super().__init__(path.name, base_view, foreign_view)
+        self.path = path
+        self.field = field
+        # a many-to-one index from base id -> foreign id
+        self.id_map = Index(path / "id_map")
+
+    def update_from_base(self, base_records: List[SourceRecord]):
+        """
+        Extracts the linked foreign ID from each of the given records and adds them to
+        the ID map.
+
+        :param base_records: the changed base records
+        """
+        self.id_map.put_many(
+            (base_record.id, foreign_id)
+            for base_record in base_records
+            if (foreign_id := base_record.get_first_value(self.field))
+        )
+
+    def update_from_foreign(self, foreign_records: List[SourceRecord]):
+        """
+        Propagate the changes in the given foreign records to the base records linked to
+        them.
+
+        :param foreign_records: the updated foreign records
+        """
+        # do a reverse lookup to find the potentially many base IDs associated with each
+        # updated foreign ID, and store them in a set
+        base_ids = {
+            base_id
+            for foreign_record in foreign_records
+            for base_id in self.id_map.get_keys(foreign_record.id)
+        }
+
+        if base_ids:
+            base_records = list(self.base_view.db.get_records(base_ids))
+            if base_records:
+                # if there are associated base records, queue changes to them on the
+                # base view
+                self.base_view.queue(base_records)
+
+    def get_foreign_record_data(self, base_record: SourceRecord) -> Optional[dict]:
+        foreign_id = base_record.get_first_value(self.field)
+        if foreign_id:
+            return self.foreign_view.get_and_transform(foreign_id)
+
+    @abc.abstractmethod
+    def transform(self, base_record: SourceRecord, data: dict):
+        ...
+
+    def clear_from_base(self):
+        """
+        Clears out the ID map.
+        """
+        self.id_map.clear()
 
 
 class MediaLink(ViewLink):
@@ -47,7 +120,7 @@ class MediaLink(ViewLink):
 
         :param base_records: the updated base records
         """
-        self.id_map.put_one_to_many(
+        self.id_map.put_multiple_values(
             (record.id, record.iter_all_values(MediaLink.MEDIA_ID_REF_FIELD))
             for record in base_records
         )
@@ -64,7 +137,7 @@ class MediaLink(ViewLink):
         base_ids = {
             base_id
             for media_record in media_records
-            for base_id in self.id_map.reverse_get(media_record.id)
+            for base_id in self.id_map.get_keys(media_record.id)
         }
 
         if base_ids:
@@ -106,7 +179,7 @@ class MediaLink(ViewLink):
         self.id_map.clear()
 
 
-class TaxonomyLink(ViewLink):
+class TaxonomyLink(ManyToOneLink):
     """
     A ViewLink representing the connection between ecatalogue records and etaxonomy
     records. This is used for all ecatalogue derivative views and their links to
@@ -119,55 +192,6 @@ class TaxonomyLink(ViewLink):
     are merged.
     """
 
-    def __init__(self, path: Path, base_view: View, taxonomy_view: View, field: str):
-        """
-        :param path: the storage path for the ID map database
-        :param base_view: the base view
-        :param taxonomy_view: the taxonomy view
-        :param field: the field on base records which contains the linked taxonomy
-                      record ID
-        """
-        super().__init__(path.name, base_view, taxonomy_view)
-        self.path = path
-        self.field = field
-        # a one-to-one index from base id -> taxonomy id
-        self.id_map = Index(path / "id_map")
-
-    def update_from_base(self, base_records: List[SourceRecord]):
-        """
-        Extracts the linked taxonomy ID from each of the given records and adds them to
-        the ID map.
-
-        :param base_records: the changed base records
-        """
-        self.id_map.put_one_to_one(
-            (base_record.id, taxonomy_id)
-            for base_record in base_records
-            if (taxonomy_id := base_record.get_first_value(self.field))
-        )
-
-    def update_from_foreign(self, taxonomy_records: List[SourceRecord]):
-        """
-        Propagate the changes in the given taxonomy records to the base records linked
-        to them.
-
-        :param taxonomy_records: the updated taxonomy records
-        """
-        # do a reverse lookup to find the potentially many base IDs associated with each
-        # updated taxonomy ID, and store them in a set
-        base_ids = {
-            base_id
-            for taxonomy_record in taxonomy_records
-            for base_id in self.id_map.reverse_get(taxonomy_record.id)
-        }
-
-        if base_ids:
-            base_records = list(self.base_view.db.get_records(base_ids))
-            if base_records:
-                # if there are associated base records, queue changes to them on the
-                # base view
-                self.base_view.queue(base_records)
-
     def transform(self, base_record: SourceRecord, data: dict):
         """
         Updates the data with the taxonomy data from the linked to record (if there is
@@ -177,19 +201,11 @@ class TaxonomyLink(ViewLink):
         :param base_record: the base record
         :param data: the transformed data from the base record
         """
-        taxonomy_id = base_record.get_first_value(self.field)
-        if taxonomy_id:
-            taxonomy = self.foreign_view.get_and_transform(taxonomy_id)
-            if taxonomy is not None:
-                data.update(
-                    (key, value) for key, value in taxonomy.items() if key not in data
-                )
-
-    def clear_from_base(self):
-        """
-        Clears out the ID map.
-        """
-        self.id_map.clear()
+        taxonomy_data = self.get_foreign_record_data(base_record)
+        if taxonomy_data is not None:
+            data.update(
+                (key, value) for key, value in taxonomy_data.items() if key not in data
+            )
 
 
 class GBIFLink(ViewLink):
@@ -226,7 +242,7 @@ class GBIFLink(ViewLink):
 
         :param base_records: the changed base records
         """
-        self.base_id_map.put_one_to_one(
+        self.base_id_map.put_many(
             (base_record.id, occurrence_id)
             for base_record in base_records
             if (occurrence_id := base_record.get_first_value(GBIFLink.EMU_GUID_FIELD))
@@ -251,12 +267,12 @@ class GBIFLink(ViewLink):
         }
         if updates:
             # update the GBIF ID -> occurrence ID map
-            self.gbif_id_map.put_one_to_one(updates.items())
+            self.gbif_id_map.put_many(updates.items())
             # use the map we made above to map the occurrence IDs back to specimen IDs
             base_ids = {
                 base_id
                 for occurrence_id in updates.values()
-                for base_id in self.base_id_map.reverse_get(occurrence_id)
+                for base_id in self.base_id_map.get_keys(occurrence_id)
             }
             # propagate the GBIF record changes to the specimen record view queue
             if base_ids:
@@ -274,7 +290,7 @@ class GBIFLink(ViewLink):
         """
         occurrence_id = base_record.get_first_value("AdmGUIDPreferredValue")
         if occurrence_id:
-            gbif_id = self.gbif_id_map.reverse_get_one(occurrence_id)
+            gbif_id = self.gbif_id_map.get_key(occurrence_id)
             if gbif_id:
                 gbif_data = self.foreign_view.get_and_transform(gbif_id)
                 if gbif_data:
@@ -293,7 +309,7 @@ class GBIFLink(ViewLink):
         self.gbif_id_map.clear()
 
 
-class PreparationSpecimenLink(ViewLink):
+class PreparationSpecimenLink(ManyToOneLink):
     """
     A ViewLink representing the link between a preparation record and the specimen
     voucher record it was created from.
@@ -325,47 +341,12 @@ class PreparationSpecimenLink(ViewLink):
         :param prep_view: the preparation view
         :param specimen_view: the specimen view
         """
-        super().__init__(path.name, prep_view, specimen_view)
-        self.path = path
-        # a one-to-one index from prep id -> specimen id
-        self.id_map = Index(path / "id_map")
-
-    def update_from_base(self, prep_records: List[SourceRecord]):
-        """
-        Extracts the linked specimen ID from each of the given prep records and adds
-        them to the ID map.
-
-        :param prep_records: the changed prep records
-        """
-        self.id_map.put_one_to_one(
-            (prep_record.id, specimen_id)
-            for prep_record in prep_records
-            if (
-                specimen_id := prep_record.get_first_value(
-                    PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD
-                )
-            )
+        super().__init__(
+            path,
+            prep_view,
+            specimen_view,
+            PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD,
         )
-
-    def update_from_foreign(self, specimen_records: List[SourceRecord]):
-        """
-        Propagate the changes in the given specimen records to the base prep records
-        linked to them.
-
-        :param specimen_records: the updated specimen records
-        """
-        base_ids = {
-            base_id
-            for specimen_record in specimen_records
-            for base_id in self.id_map.reverse_get(specimen_record.id)
-        }
-
-        if base_ids:
-            base_records = list(self.base_view.db.get_records(base_ids))
-            if base_records:
-                # if there are associated base records, queue changes to them on the
-                # base view
-                self.base_view.queue(base_records)
 
     def transform(self, prep_record: SourceRecord, data: dict):
         """
@@ -375,26 +356,16 @@ class PreparationSpecimenLink(ViewLink):
         :param prep_record: the prep record
         :param data: the data dict to update
         """
-        specimen_id = prep_record.get_first_value(
-            PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD
-        )
-        if specimen_id:
-            specimen = self.foreign_view.get_and_transform(specimen_id)
-            if specimen is not None:
-                # from DwC
-                data[
-                    "associatedOccurrences"
-                ] = f"Voucher: {specimen.pop('occurrenceID')}"
-                # not from DwC
-                data["specimenID"] = specimen.pop("_id")
-                data.update(
-                    (field, value)
-                    for field in PreparationSpecimenLink.MAPPED_SPECIMEN_FIELDS
-                    if (value := specimen.get(field)) is not None
-                )
-
-    def clear_from_base(self):
-        """
-        Clears out the ID map.
-        """
-        self.id_map.clear()
+        specimen_data = self.get_foreign_record_data(prep_record)
+        if specimen_data is not None:
+            # from DwC
+            data[
+                "associatedOccurrences"
+            ] = f"Voucher: {specimen_data.pop('occurrenceID')}"
+            # not from DwC
+            data["specimenID"] = specimen_data.pop("_id")
+            data.update(
+                (field, value)
+                for field in PreparationSpecimenLink.MAPPED_SPECIMEN_FIELDS
+                if (value := specimen_data.get(field)) is not None
+            )

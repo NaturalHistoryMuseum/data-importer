@@ -258,37 +258,39 @@ class DataDB(DB):
 
 class Index(DB):
     """
-    A general purpose index mapping keys to values.
+    A general purpose many-to-many index mapping keys to values.
 
-    This supports both one-to-one and one-to-many relationships. Key and value mappings
-    are stored both ways to enable lookup via the key or the value.
+    This supports many-to-many relationships and therefore supports all the other kinds
+    too: one-to-many, many-to-one and one-to-one relationships. Key and value mappings
+    are stored both ways to enable lookups from eithe end of the relationship (i.e. via
+    the key or the value).
     """
 
-    def put_one_to_many(self, keys_and_values: Iterable[Tuple[str, Iterable[str]]]):
-        """
-        Put the key -> values into the index. All data is written in one transaction. If
-        a key is passed with an empty values iterable, it is ignored.
-
-        :param keys_and_values: tuples containing a single str key and an iterable of
-                                potentially many str values
-        """
-        with self.db.write_batch(transaction=True) as wb:
-            for key, values in keys_and_values:
-                for value in values:
-                    wb.put(f"k.{key}.{value}".encode("utf-8"), b"")
-                    wb.put(f"v.{value}.{key}".encode("utf-8"), b"")
-
-    def put_one_to_one(self, keys_and_values: Iterable[Tuple[str, str]]):
+    def put_many(self, keys_and_values: Iterable[Tuple[str, str]]):
         """
         Put the key -> value pairs into the index. All data is written in one
         transaction.
 
         :param keys_and_values: tuples containing a single str key and a single value
         """
-        # just wrap the single str into a 1-tuple
-        self.put_one_to_many((key, (value,)) for key, value in keys_and_values)
+        with self.db.write_batch(transaction=True) as wb:
+            for key, value in keys_and_values:
+                wb.put(f"k.{key}.{value}".encode("utf-8"), b"")
+                wb.put(f"v.{value}.{key}".encode("utf-8"), b"")
 
-    def get(self, key: str) -> Iterable[str]:
+    def put_multiple_values(self, keys_and_values: Iterable[Tuple[str, Iterable[str]]]):
+        """
+        Put the key -> values pairs into the index. All data is written in one
+        transaction. If the iterable value is empty, the key isn't written.
+
+        :param keys_and_values: tuples containing a single str key and multiple values
+                                in an iterable
+        """
+        self.put_many(
+            (key, value) for key, values in keys_and_values for value in values
+        )
+
+    def get_values(self, key: str) -> Iterable[str]:
         """
         Get the values associated with the given key and yield them all.
 
@@ -300,7 +302,7 @@ class Index(DB):
         for raw_key in self.keys(prefix=prefix):
             yield raw_key[prefix_length:].decode("utf-8")
 
-    def get_one(self, key: str) -> Optional[str]:
+    def get_value(self, key: str) -> Optional[str]:
         """
         Get the first value associated with the given key, or None if the key doesn't
         exist in this index.
@@ -308,9 +310,9 @@ class Index(DB):
         :param key: the str key
         :return: the associated value or None
         """
-        return next(iter(self.get(key)), None)
+        return next(iter(self.get_values(key)), None)
 
-    def reverse_get(self, value: str) -> Iterable[str]:
+    def get_keys(self, value: str) -> Iterable[str]:
         """
         Get the keys associated with the given value and yield them all.
 
@@ -322,7 +324,7 @@ class Index(DB):
         for raw_key in self.keys(prefix=prefix):
             yield raw_key[prefix_length:].decode("utf-8")
 
-    def reverse_get_one(self, value: str) -> Optional[str]:
+    def get_key(self, value: str) -> Optional[str]:
         """
         Get the first key associated with the given value, or None if the value doesn't
         exist in this index.
@@ -330,7 +332,7 @@ class Index(DB):
         :param value: the str value
         :return: the associated key or None
         """
-        return next(iter(self.reverse_get(value)), None)
+        return next(iter(self.get_keys(value)), None)
 
 
 class ChangeQueue(DB):
