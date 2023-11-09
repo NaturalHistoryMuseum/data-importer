@@ -9,7 +9,7 @@ import pytest
 from freezegun import freeze_time
 from splitgill.utils import partition, now, to_timestamp
 
-from dataimporter.dbs import (
+from dataimporter.lib.dbs import (
     DB,
     DataDB,
     Index,
@@ -19,7 +19,7 @@ from dataimporter.dbs import (
     MAX_INT,
     RedactionDB,
 )
-from dataimporter.model import SourceRecord
+from dataimporter.lib.model import SourceRecord
 
 
 def test_int_to_sortable_str():

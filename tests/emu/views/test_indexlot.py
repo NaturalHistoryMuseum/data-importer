@@ -3,7 +3,7 @@ from typing import List, Tuple
 
 import pytest
 
-from dataimporter.dbs import DataDB
+from dataimporter.lib.dbs import DataDB
 from dataimporter.emu.views.indexlot import IndexLotView
 from dataimporter.emu.views.utils import (
     INVALID_TYPE,
@@ -12,8 +12,8 @@ from dataimporter.emu.views.utils import (
     INVALID_STATUS,
     INVALID_DEPARTMENT,
 )
-from dataimporter.model import SourceRecord
-from dataimporter.view import FilterResult, SUCCESS_RESULT
+from dataimporter.lib.model import SourceRecord
+from dataimporter.lib.view import FilterResult, SUCCESS_RESULT
 from tests.helpers.samples.indexlot import SAMPLE_INDEXLOT_ID, SAMPLE_INDEXLOT_DATA
 
 

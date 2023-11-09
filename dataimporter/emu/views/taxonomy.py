@@ -1,7 +1,7 @@
 from dataimporter.emu.views.utils import NO_PUBLISH, is_web_published
 from dataimporter.emu.views.utils import emu_date
-from dataimporter.model import SourceRecord
-from dataimporter.view import View, FilterResult, SUCCESS_RESULT
+from dataimporter.lib.model import SourceRecord
+from dataimporter.lib.view import View, FilterResult, SUCCESS_RESULT
 
 
 class TaxonomyView(View):

@@ -5,8 +5,8 @@ from typing import Optional
 from ciso8601 import parse_datetime
 from dateutil import tz
 
-from dataimporter.model import SourceRecord
-from dataimporter.view import FilterResult
+from dataimporter.lib.model import SourceRecord
+from dataimporter.lib.view import FilterResult
 
 DISALLOWED_STATUSES = {
     "DELETE",

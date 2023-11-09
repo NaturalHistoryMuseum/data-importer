@@ -11,7 +11,7 @@ from dataimporter.emu.dumps import (
     EMU_TABLES,
     convert_eaudit_to_delete,
 )
-from dataimporter.model import SourceRecord
+from dataimporter.lib.model import SourceRecord
 from tests.helpers.dumps import create_dump
 
 

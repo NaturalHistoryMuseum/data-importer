@@ -8,7 +8,7 @@ from cytoolz.itertoolz import partition_all
 from fastnumbers import check_int
 from splitgill.utils import parse_to_timestamp, now
 
-from dataimporter.model import SourceRecord
+from dataimporter.lib.model import SourceRecord
 
 # the maximum integer we can represent as a sortable string is 78 digits
 MAX_INT = int("9" * 78)

@@ -1,16 +1,15 @@
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from dataimporter.dbs import DataDB
+from dataimporter.lib.dbs import DataDB
 from dataimporter.links import (
     MediaLink,
     TaxonomyLink,
     GBIFLink,
     PreparationSpecimenLink,
-    ManyToOneLink,
 )
-from dataimporter.model import SourceRecord
-from dataimporter.view import View
+from dataimporter.lib.model import SourceRecord
+from dataimporter.lib.view import View
 
 
 class TestMediaLink:

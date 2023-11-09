@@ -8,8 +8,8 @@ from dataimporter.emu.views.utils import (
     is_valid_guid,
     INVALID_GUID,
 )
-from dataimporter.model import SourceRecord
-from dataimporter.view import View, FilterResult, SUCCESS_RESULT
+from dataimporter.lib.model import SourceRecord
+from dataimporter.lib.view import View, FilterResult, SUCCESS_RESULT
 
 MULTIMEDIA_NOT_IMAGE = FilterResult(False, "Multimedia not an image")
 MULTIMEDIA_NO_IDENTIFIER = FilterResult(False, "Image had no identifier")

@@ -8,9 +8,9 @@ from zipfile import ZipFile
 import requests
 from requests.auth import HTTPBasicAuth
 
-from dataimporter.dbs import DataDB
-from dataimporter.model import SourceRecord
-from dataimporter.view import View
+from dataimporter.lib.dbs import DataDB
+from dataimporter.lib.model import SourceRecord
+from dataimporter.lib.view import View
 
 
 class GBIFView(View):

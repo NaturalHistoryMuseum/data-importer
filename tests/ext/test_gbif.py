@@ -7,7 +7,7 @@ import pytest
 import responses
 from responses import matchers
 
-from dataimporter.dbs import DataDB
+from dataimporter.lib.dbs import DataDB
 from dataimporter.ext.gbif import (
     GBIFView,
     get_download_url,
@@ -16,7 +16,7 @@ from dataimporter.ext.gbif import (
     get_changed_records,
     request_download,
 )
-from dataimporter.model import SourceRecord
+from dataimporter.lib.model import SourceRecord
 from tests.helpers.samples.gbif import (
     SAMPLE_GBIF_RECORD_ID,
     SAMPLE_GBIF_RECORD_DATA,

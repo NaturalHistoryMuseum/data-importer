@@ -3,9 +3,9 @@ from operator import itemgetter
 from pathlib import Path
 from typing import List
 
-from dataimporter.dbs import Index
-from dataimporter.model import SourceRecord
-from dataimporter.view import View, ViewLink, ManyToOneLink
+from dataimporter.lib.dbs import Index
+from dataimporter.lib.model import SourceRecord
+from dataimporter.lib.view import View, ViewLink, ManyToOneLink
 
 
 class MediaLink(ViewLink):

@@ -8,8 +8,8 @@ from splitgill.manager import SplitgillClient, SplitgillDatabase
 from splitgill.model import Record
 from splitgill.utils import partition
 
-from dataimporter.config import Config
-from dataimporter.dbs import DataDB, RedactionDB
+from dataimporter.lib.config import Config
+from dataimporter.lib.dbs import DataDB, RedactionDB
 from dataimporter.emu.dumps import (
     find_emu_dumps,
     is_valid_eaudit_record,
@@ -30,8 +30,8 @@ from dataimporter.links import (
     GBIFLink,
     PreparationSpecimenLink,
 )
-from dataimporter.model import SourceRecord
-from dataimporter.view import View, ViewLink
+from dataimporter.lib.model import SourceRecord
+from dataimporter.lib.view import View, ViewLink
 
 
 class DataImporter:

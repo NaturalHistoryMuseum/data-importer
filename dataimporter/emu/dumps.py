@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Iterable, Any, Optional, Set
 from typing import List
 
-from dataimporter.model import SourceRecord, Data
+from dataimporter.lib.model import SourceRecord, Data
 
 EMU_ID_FIELD = "irn"
 # this is arbitrary-ish, but it's the day before the first good full dumps we have

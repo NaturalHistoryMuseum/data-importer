@@ -5,8 +5,8 @@ from dataimporter.emu.views.utils import (
     INVALID_GUID,
 )
 from dataimporter.emu.views.utils import emu_date
-from dataimporter.model import SourceRecord
-from dataimporter.view import FilterResult, View, SUCCESS_RESULT
+from dataimporter.lib.model import SourceRecord
+from dataimporter.lib.view import FilterResult, View, SUCCESS_RESULT
 
 MULTIMEDIA_NOT_URL = FilterResult(False, "Multimedia not a URL")
 INVALID_PUBLISHER = FilterResult(False, "Invalid 3D publisher")

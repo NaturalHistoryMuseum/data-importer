@@ -3,7 +3,7 @@ from typing import List, Tuple
 
 import pytest
 
-from dataimporter.dbs import DataDB
+from dataimporter.lib.dbs import DataDB
 from dataimporter.emu.views.threed import (
     ThreeDView,
     MULTIMEDIA_NOT_URL,
@@ -11,8 +11,8 @@ from dataimporter.emu.views.threed import (
     NOT_SPECIMEN,
 )
 from dataimporter.emu.views.utils import NO_PUBLISH, INVALID_GUID
-from dataimporter.model import SourceRecord
-from dataimporter.view import FilterResult, SUCCESS_RESULT
+from dataimporter.lib.model import SourceRecord
+from dataimporter.lib.view import FilterResult, SUCCESS_RESULT
 from tests.helpers.samples.threed import (
     SF_SAMPLE_3D_ID,
     SF_SAMPLE_3D_DATA,

@@ -5,7 +5,7 @@ import pytest
 from elasticsearch import Elasticsearch
 from pymongo import MongoClient
 
-from dataimporter.config import (
+from dataimporter.lib.config import (
     ElasticsearchConfig,
     MongoConfig,
     Config,

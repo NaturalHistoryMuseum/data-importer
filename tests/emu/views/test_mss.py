@@ -3,15 +3,15 @@ from typing import List, Tuple
 
 import pytest
 
-from dataimporter.dbs import DataDB
+from dataimporter.lib.dbs import DataDB
 from dataimporter.emu.views.mss import (
     MSSView,
     MULTIMEDIA_NOT_IMAGE,
     MULTIMEDIA_NO_IDENTIFIER,
 )
 from dataimporter.emu.views.utils import NO_PUBLISH, INVALID_GUID
-from dataimporter.model import SourceRecord
-from dataimporter.view import FilterResult, SUCCESS_RESULT
+from dataimporter.lib.model import SourceRecord
+from dataimporter.lib.view import FilterResult, SUCCESS_RESULT
 from tests.helpers.samples.image import SAMPLE_IMAGE_DATA, SAMPLE_IMAGE_ID
 
 

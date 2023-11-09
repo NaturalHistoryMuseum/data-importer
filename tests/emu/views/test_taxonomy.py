@@ -3,11 +3,11 @@ from typing import List, Tuple
 
 import pytest
 
-from dataimporter.dbs import DataDB
+from dataimporter.lib.dbs import DataDB
 from dataimporter.emu.views.taxonomy import TaxonomyView
 from dataimporter.emu.views.utils import NO_PUBLISH
-from dataimporter.model import SourceRecord
-from dataimporter.view import FilterResult, SUCCESS_RESULT
+from dataimporter.lib.model import SourceRecord
+from dataimporter.lib.view import FilterResult, SUCCESS_RESULT
 from tests.helpers.samples.taxonomy import SAMPLE_TAXONOMY_DATA, SAMPLE_TAXONOMY_ID
 
 

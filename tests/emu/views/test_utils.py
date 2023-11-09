@@ -6,7 +6,7 @@ from dataimporter.emu.views.utils import (
     emu_date,
     translate_collection_code,
 )
-from dataimporter.model import SourceRecord
+from dataimporter.lib.model import SourceRecord
 
 
 def create_record(**data) -> SourceRecord:

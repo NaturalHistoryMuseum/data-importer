@@ -6,9 +6,9 @@ import pytest
 from freezegun import freeze_time
 from splitgill.utils import now
 
-from dataimporter.dbs import DataDB
-from dataimporter.model import SourceRecord
-from dataimporter.view import (
+from dataimporter.lib.dbs import DataDB
+from dataimporter.lib.model import SourceRecord
+from dataimporter.lib.view import (
     FilterResult,
     SUCCESS_RESULT,
     View,

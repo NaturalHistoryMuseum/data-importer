@@ -7,8 +7,8 @@ from typing import Iterable, Optional, List, Set, Any
 from cytoolz.itertoolz import partition_all
 from splitgill.utils import now, partition
 
-from dataimporter.dbs import ChangeQueue, EmbargoQueue, DataDB, Index
-from dataimporter.model import SourceRecord
+from dataimporter.lib.dbs import ChangeQueue, EmbargoQueue, DataDB, Index
+from dataimporter.lib.model import SourceRecord
 
 
 @dataclass

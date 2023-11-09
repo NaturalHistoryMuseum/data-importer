@@ -1,4 +1,4 @@
-from dataimporter.model import SourceRecord
+from dataimporter.lib.model import SourceRecord
 
 
 class TestRecord:

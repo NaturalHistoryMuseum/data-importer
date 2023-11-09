@@ -10,8 +10,8 @@ from dataimporter.emu.views.utils import (
     INVALID_GUID,
 )
 from dataimporter.emu.views.utils import emu_date
-from dataimporter.model import SourceRecord
-from dataimporter.view import View, FilterResult, SUCCESS_RESULT
+from dataimporter.lib.model import SourceRecord
+from dataimporter.lib.view import View, FilterResult, SUCCESS_RESULT
 
 INVALID_SUBDEPARTMENT = FilterResult(False, "Invalid subdepartment")
 

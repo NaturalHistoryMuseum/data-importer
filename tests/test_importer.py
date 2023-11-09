@@ -7,10 +7,10 @@ from elasticsearch_dsl import Search
 from freezegun import freeze_time
 from splitgill.utils import to_timestamp
 
-from dataimporter.config import Config, MongoConfig, ElasticsearchConfig
+from dataimporter.lib.config import Config, MongoConfig, ElasticsearchConfig
 from dataimporter.emu.dumps import FIRST_VERSION
 from dataimporter.importer import DataImporter, EMuStatus
-from dataimporter.model import SourceRecord
+from dataimporter.lib.model import SourceRecord
 from tests.helpers.dumps import create_dump
 from tests.helpers.dumps import (
     create_ecatalogue,

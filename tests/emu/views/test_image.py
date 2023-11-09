@@ -3,11 +3,11 @@ from typing import List, Tuple
 
 import pytest
 
-from dataimporter.dbs import DataDB
+from dataimporter.lib.dbs import DataDB
 from dataimporter.emu.views.image import ImageView, MULTIMEDIA_NOT_IMAGE
 from dataimporter.emu.views.utils import NO_PUBLISH, INVALID_GUID
-from dataimporter.model import SourceRecord
-from dataimporter.view import FilterResult, SUCCESS_RESULT
+from dataimporter.lib.model import SourceRecord
+from dataimporter.lib.view import FilterResult, SUCCESS_RESULT
 from tests.helpers.samples.image import SAMPLE_IMAGE_DATA, SAMPLE_IMAGE_ID
 
 FAKE_IIIF_BASE = "https://not.a.real.domain.com/media"
