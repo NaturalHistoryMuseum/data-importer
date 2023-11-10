@@ -414,3 +414,79 @@ class ManyToOneViewLink(ViewLink, abc.ABC):
         Clears out the ID map.
         """
         self.id_map.clear()
+
+
+class ManyToManyViewLink(ViewLink, abc.ABC):
+    """
+    Represents a many-to-many link between two views.
+
+    Base records have a link to many foreign records and many foreign records can link
+    back to the same base record.
+    """
+
+    def __init__(self, path: Path, base_view: View, foreign_view: View, field: str):
+        """
+        :param path: the root path where the ID map database will be stored
+        :param base_view: the base view
+        :param foreign_view: the foreign view
+        :param field: field on base records which contains the linked foreign record ID
+        """
+        super().__init__(path.name, base_view, foreign_view)
+        self.path = path
+        self.field = field
+        # a many-to-many index from base id -> foreign id
+        self.id_map = Index(path / "id_map")
+
+    def update_from_base(self, base_records: List[SourceRecord]):
+        """
+        Update the ID map with the IDs of each base record provided along with the IDs
+        of the foreign records that are linked to each base record. This is a many-to-
+        many mapping as multiple foreign IDs can be present on each base record.
+
+        :param base_records: the updated base records
+        """
+        self.id_map.put_multiple_values(
+            (record.id, record.iter_all_values(self.field)) for record in base_records
+        )
+
+    def update_from_foreign(self, foreign_records: List[SourceRecord]):
+        """
+        Propagate the changes in the given foreign records to the base records linked to
+        them.
+
+        :param foreign_records: the updated foreign records
+        """
+        # do a reverse lookup to find the potentially many base IDs associated with each
+        # updated foreign ID, and store them in a set
+        base_ids = {
+            base_id
+            for foreign_record in foreign_records
+            for base_id in self.id_map.get_keys(foreign_record.id)
+        }
+
+        if base_ids:
+            base_records = list(self.base_view.db.get_records(base_ids))
+            if base_records:
+                # if there are associated base records, queue changes to them on the
+                # base view
+                self.base_view.queue(base_records)
+
+    def get_foreign_record_data(self, base_record: SourceRecord) -> List[dict]:
+        """
+        Returns a list of transformed foreign records which are linked to the given base
+        record. If no records are linked, an empty list is returned.
+
+        :param base_record: the base record
+        :return: a list of the transformed foreign data
+        """
+        return list(
+            self.foreign_view.find_and_transform(
+                base_record.iter_all_values(self.field)
+            )
+        )
+
+    def clear_from_base(self):
+        """
+        Clears out the ID map.
+        """
+        self.id_map.clear()

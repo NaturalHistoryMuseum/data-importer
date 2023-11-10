@@ -14,6 +14,7 @@ from dataimporter.lib.view import (
     View,
     ViewLink,
     ManyToOneViewLink,
+    ManyToManyViewLink,
 )
 
 
@@ -441,3 +442,134 @@ class TestOneToOneLink:
         link.clear_from_base()
 
         assert link.id_map.size() == 0
+
+
+class TestManyToManyLink:
+    class ConcreteManyToManyViewLink(ManyToManyViewLink):
+        def transform(self, base_record: SourceRecord, data: dict):
+            pass
+
+    def test_update_from_base(self, tmp_path: Path):
+        field = "link_ref"
+        base_view = View(tmp_path / "bview", DataDB(tmp_path / "bdata"))
+        foreign_view = View(tmp_path / "fview", DataDB(tmp_path / "fdata"))
+        link = TestManyToManyLink.ConcreteManyToManyViewLink(
+            tmp_path / "link", base_view, foreign_view, field
+        )
+
+        base_records = [
+            SourceRecord("b1", {field: ("f1", "f2")}, "base"),
+            SourceRecord("b2", {field: "f3"}, "base"),
+            SourceRecord("b3", {field: "f4"}, "base"),
+            SourceRecord("b4", {field: "f2"}, "base"),
+            SourceRecord("b5", {field: ("f2", "f3")}, "base"),
+            SourceRecord("b6", {"not the ref field": ("f1", "f4")}, "base"),
+        ]
+
+        link.update_from_base(base_records)
+
+        assert list(link.id_map.get_values("b1")) == ["f1", "f2"]
+        assert list(link.id_map.get_values("b2")) == ["f3"]
+        assert list(link.id_map.get_values("b3")) == ["f4"]
+        assert list(link.id_map.get_values("b4")) == ["f2"]
+        assert list(link.id_map.get_values("b5")) == ["f2", "f3"]
+
+        assert list(link.id_map.get_keys("f1")) == ["b1"]
+        assert list(link.id_map.get_keys("f2")) == ["b1", "b4", "b5"]
+        assert list(link.id_map.get_keys("f3")) == ["b2", "b5"]
+        assert list(link.id_map.get_keys("f4")) == ["b3"]
+
+    def test_update_from_foreign(self, tmp_path: Path):
+        field = "link_ref"
+        base_view = View(tmp_path / "bview", DataDB(tmp_path / "bdata"))
+        foreign_view = View(tmp_path / "fview", DataDB(tmp_path / "fdata"))
+        link = TestManyToManyLink.ConcreteManyToManyViewLink(
+            tmp_path / "link", base_view, foreign_view, field
+        )
+
+        base_records = [
+            SourceRecord("b1", {field: ("f1", "f2")}, "base"),
+            SourceRecord("b2", {field: "f3"}, "base"),
+            SourceRecord("b3", {field: "f4"}, "base"),
+            SourceRecord("b4", {field: "f2"}, "base"),
+            SourceRecord("b5", {field: ("f2", "f3")}, "base"),
+            SourceRecord("b6", {"not the ref field": ("f1", "f4")}, "base"),
+        ]
+        # need these to be in the base database
+        base_view.db.put_many(base_records)
+        link.update_from_base(base_records)
+        foreign_records = [
+            SourceRecord("f1", {"a": "b"}, "foreign"),
+            SourceRecord("f2", {"a": "b"}, "foreign"),
+            # skip f3
+            SourceRecord("f4", {"a": "b"}, "foreign"),
+            SourceRecord("f5", {"a": "b"}, "foreign"),
+        ]
+        # override the queue method on the base view for testing
+        base_view.queue = MagicMock()
+
+        # the thing we're testing
+        link.update_from_foreign(foreign_records)
+
+        queued_base_records = base_view.queue.call_args.args[0]
+        assert len(queued_base_records) == 4
+        # b1
+        assert base_records[0] in queued_base_records
+        # b3
+        assert base_records[2] in queued_base_records
+        # b4
+        assert base_records[3] in queued_base_records
+        # b5
+        assert base_records[4] in queued_base_records
+
+    def test_clear_from_base(self, tmp_path: Path):
+        field = "link_ref"
+        base_view = View(tmp_path / "bview", DataDB(tmp_path / "bdata"))
+        foreign_view = View(tmp_path / "fview", DataDB(tmp_path / "fdata"))
+        link = TestManyToManyLink.ConcreteManyToManyViewLink(
+            tmp_path / "link", base_view, foreign_view, field
+        )
+
+        base_records = [
+            SourceRecord("b1", {field: ("f1", "f2")}, "base"),
+            SourceRecord("b2", {field: "f3"}, "base"),
+            SourceRecord("b3", {field: "f4"}, "base"),
+            SourceRecord("b4", {field: "f2"}, "base"),
+            SourceRecord("b5", {field: ("f2", "f3")}, "base"),
+            SourceRecord("b6", {"not the ref field": ("f1", "f4")}, "base"),
+        ]
+        base_view.db.put_many(base_records)
+        link.update_from_base(base_records)
+        assert link.id_map.size() > 0
+
+        link.clear_from_base()
+
+        assert link.id_map.size() == 0
+
+    def test_get_foreign_record_data(self, tmp_path: Path):
+        field = "link_ref"
+        base_view = View(tmp_path / "bview", DataDB(tmp_path / "bdata"))
+        foreign_view = View(tmp_path / "fview", DataDB(tmp_path / "fdata"))
+        link = TestManyToManyLink.ConcreteManyToManyViewLink(
+            tmp_path / "link", base_view, foreign_view, field
+        )
+
+        base_record = SourceRecord("b1", {field: ("f1", "f2", "f3")}, "base")
+        link.update_from_base([base_record])
+
+        # no foreign record in the foreign data db so None
+        assert link.get_foreign_record_data(base_record) == []
+
+        foreign_records = [
+            SourceRecord("f1", {"x": "1"}, "foreign"),
+            SourceRecord("f2", {"x": "2"}, "foreign"),
+            SourceRecord("f3", {"x": "3"}, "foreign"),
+        ]
+        foreign_view.db.put_many(foreign_records)
+
+        # there's now a record in the foreign data db so we get a response
+        assert link.get_foreign_record_data(base_record) == [
+            {"x": "1"},
+            {"x": "2"},
+            {"x": "3"},
+        ]

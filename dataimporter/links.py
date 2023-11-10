@@ -5,10 +5,10 @@ from typing import List
 
 from dataimporter.lib.dbs import Index
 from dataimporter.lib.model import SourceRecord
-from dataimporter.lib.view import View, ViewLink, ManyToOneViewLink
+from dataimporter.lib.view import View, ViewLink, ManyToOneViewLink, ManyToManyViewLink
 
 
-class MediaLink(ViewLink):
+class MediaLink(ManyToManyViewLink):
     """
     A ViewLink representing the connection between ecatalogue records and emultimedia
     records. This is used for all ecatalogue derivative views and their links to images
@@ -34,45 +34,7 @@ class MediaLink(ViewLink):
         :param base_view: the base view
         :param media_view: the media view
         """
-        super().__init__(path.name, base_view, media_view)
-        self.path = path
-        # a one-to-many index from base id -> media ids
-        self.id_map = Index(path / "id_map")
-
-    def update_from_base(self, base_records: List[SourceRecord]):
-        """
-        Update the ID map with the IDs of each base record provided along with the IDs
-        of the media records that are linked to each base record. This is a one to many
-        mapping as multiple media IDs can be present on each base record.
-
-        :param base_records: the updated base records
-        """
-        self.id_map.put_multiple_values(
-            (record.id, record.iter_all_values(MediaLink.MEDIA_ID_REF_FIELD))
-            for record in base_records
-        )
-
-    def update_from_foreign(self, media_records: List[SourceRecord]):
-        """
-        Propagate the changes in the given media records to the base records linked to
-        them.
-
-        :param media_records: the updated media records
-        """
-        # do a reverse lookup to find the potentially many base IDs associated with each
-        # updated media ID, and store them in a set
-        base_ids = {
-            base_id
-            for media_record in media_records
-            for base_id in self.id_map.get_keys(media_record.id)
-        }
-
-        if base_ids:
-            base_records = list(self.base_view.db.get_records(base_ids))
-            if base_records:
-                # if there are associated base records, queue changes to them on the
-                # base view
-                self.base_view.queue(base_records)
+        super().__init__(path, base_view, media_view, MediaLink.MEDIA_ID_REF_FIELD)
 
     def transform(self, base_record: SourceRecord, data: dict):
         """
@@ -85,11 +47,7 @@ class MediaLink(ViewLink):
         :param data: the data transformed from the base record object view the base
                      view's transform method
         """
-        media = list(
-            self.foreign_view.find_and_transform(
-                base_record.iter_all_values(MediaLink.MEDIA_ID_REF_FIELD)
-            )
-        )
+        media = self.get_foreign_record_data(base_record)
         if media:
             existing_media = data.get(MediaLink.MEDIA_TARGET_FIELD, [])
             # TODO: could we order in a more useful way, e.g. category?
@@ -98,12 +56,6 @@ class MediaLink(ViewLink):
             )
             # TODO: integer?
             data[MediaLink.MEDIA_COUNT_TARGET_FIELD] = len(existing_media) + len(media)
-
-    def clear_from_base(self):
-        """
-        Clears out the ID map.
-        """
-        self.id_map.clear()
 
 
 class TaxonomyLink(ManyToOneViewLink):
