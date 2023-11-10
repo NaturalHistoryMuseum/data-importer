@@ -206,10 +206,6 @@ class DataDB(DB):
         :param record_ids: the record IDs
         :return: yields VersionedRecord objects
         """
-        # TODO: it's probably not worth it, but if this becomes a bottleneck it may be
-        #       worth investigating implementing a sort merge, similar to how SQL joins
-        #       work, if the record_ids parameter is sorted.
-
         unpacker = self.get_unpacker()
         get = self.db.get
 
