@@ -50,11 +50,10 @@ class MediaLink(ManyToManyViewLink):
         media = self.get_foreign_record_data(base_record)
         if media:
             existing_media = data.get(MediaLink.MEDIA_TARGET_FIELD, [])
-            # TODO: could we order in a more useful way, e.g. category?
+            # order by media ID
             data[MediaLink.MEDIA_TARGET_FIELD] = sorted(
                 chain(existing_media, media), key=itemgetter("_id")
             )
-            # TODO: integer?
             data[MediaLink.MEDIA_COUNT_TARGET_FIELD] = len(existing_media) + len(media)
 
 
