@@ -5,6 +5,7 @@ from dataimporter.emu.views.utils import (
     is_valid_guid,
     emu_date,
     translate_collection_code,
+    combine_text,
 )
 from dataimporter.lib.model import SourceRecord
 
@@ -48,3 +49,10 @@ def test_translate_collection_code():
     assert translate_collection_code("banana") is None
     # case sensitive
     assert translate_collection_code("zoology") is None
+
+
+def test_combine_text():
+    assert combine_text(["line 1", "", "line 3"]) == "line 1\nline 3"
+    assert combine_text(["line 1\n", "\n\n\n", "line 3\n\n"]) == "line 1\nline 3"
+    assert combine_text(["", "line 1", "\n", "\n", "line 3", ""]) == "line 1\nline 3"
+    assert combine_text(["line\n1", "line\n2"]) == "line\n1\nline\n2"

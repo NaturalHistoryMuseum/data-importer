@@ -1,6 +1,6 @@
 import re
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, Iterable
 
 from ciso8601 import parse_datetime
 from dateutil import tz
@@ -104,3 +104,17 @@ def translate_collection_code(department: str) -> Optional[str]:
     :return: the short code version of the department, or None if no match is found
     """
     return DEPARTMENT_COLLECTION_CODES.get(department)
+
+
+def combine_text(lines: Iterable[str]) -> Optional[str]:
+    """
+    Combines several lines of text together into a str and returns it. If the text
+    strips down to the empty string, None is returned. Only single \n characters are
+    inserted between lines even if there are multiple new lines between text in the
+    lines parameter.
+
+    :param lines: a number of lines of text in an iterable of strs
+    :return: the combined text or None if no text results after combining
+    """
+    text = "\n".join(filter(None, (line.strip() for line in lines)))
+    return text if text else None
