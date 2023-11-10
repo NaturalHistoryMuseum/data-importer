@@ -4,7 +4,6 @@ from itertools import chain
 from pathlib import Path
 from typing import Iterable, Optional, List, Set, Any
 
-from cytoolz.itertoolz import partition_all
 from splitgill.utils import now, partition
 
 from dataimporter.lib.dbs import ChangeQueue, EmbargoQueue, DataDB, Index
@@ -246,7 +245,7 @@ class View:
             view_link.clear_from_foreign()
 
         # reload from source
-        for chunk in partition_all(5000, self.db):
+        for chunk in partition(self.db, 5000):
             self.queue(chunk)
 
     def close(self):

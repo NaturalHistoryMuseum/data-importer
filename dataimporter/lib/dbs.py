@@ -4,9 +4,8 @@ from typing import Iterable, Optional, Tuple, List, Dict
 
 import msgpack
 import plyvel
-from cytoolz.itertoolz import partition_all
 from fastnumbers import check_int
-from splitgill.utils import parse_to_timestamp, now
+from splitgill.utils import parse_to_timestamp, now, partition
 
 from dataimporter.lib.model import SourceRecord
 
@@ -159,8 +158,7 @@ class DataDB(DB):
         """
         unpacker = self.get_unpacker()
         # read 1000 records worth of raw data at a time
-        # TODO: check 1000 - could be larger?
-        for batch in partition_all(1000, self.values()):
+        for batch in partition(self.values(), 1000):
             unpacker.feed(b"".join(batch))
             yield from (SourceRecord(*params) for params in unpacker)
 
@@ -216,7 +214,7 @@ class DataDB(DB):
         get = self.db.get
 
         # read 1000 records worth of raw data at a time
-        for batch in partition_all(1000, record_ids):
+        for batch in partition(record_ids, 1000):
             data = filter(None, (get(record_id.encode("utf-8")) for record_id in batch))
             unpacker.feed(b"".join(data))
             yield from (SourceRecord(*params) for params in unpacker)
@@ -244,7 +242,7 @@ class DataDB(DB):
         """
         deleted = 0
 
-        for batch in partition_all(1000, record_ids):
+        for batch in partition(record_ids, 1000):
             # check which IDs existed before we run the delete and add that to the total
             deleted += sum(1 for record_id in batch if record_id in self)
 
