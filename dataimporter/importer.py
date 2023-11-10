@@ -98,7 +98,7 @@ class DataImporter:
             self.links_path / "indexlot_taxonomy",
             indexlot_view,
             taxonomy_view,
-            "EntIndIndexLotTaxonNameLocalRef",
+            TaxonomyLink.INDEXLOT_ID_REF_FIELD,
         )
 
         # next specimen links
@@ -109,7 +109,7 @@ class DataImporter:
             self.links_path / "specimen_taxonomy",
             specimen_view,
             taxonomy_view,
-            "CardParasiteRef",
+            TaxonomyLink.CARD_PARASITE_ID_REF_FIELD,
         )
         specimen_gbif = GBIFLink(
             self.links_path / "specimen_gbif", specimen_view, gbif_view

@@ -71,6 +71,9 @@ class TaxonomyLink(ManyToOneViewLink):
     are merged.
     """
 
+    INDEXLOT_ID_REF_FIELD = "EntIndIndexLotTaxonNameLocalRef"
+    CARD_PARASITE_ID_REF_FIELD = "CardParasiteRef"
+
     def transform(self, base_record: SourceRecord, data: dict):
         """
         Updates the data with the taxonomy data from the linked to record (if there is
