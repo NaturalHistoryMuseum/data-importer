@@ -25,7 +25,6 @@ dependencies = [
     "elasticsearch-dsl==8.9.0",
     "pymongo==4.4.1",
     "plyvel==1.5.0",
-    "cytoolz==0.12.2",
     "python-dateutil==2.8.2",
     "fastnumbers==5.0.1",
     "rich==13.5.2",
