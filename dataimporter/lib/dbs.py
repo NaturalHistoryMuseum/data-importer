@@ -160,7 +160,6 @@ class DataDB(DB):
         unpacker = self.get_unpacker()
         # read 1000 records worth of raw data at a time
         # TODO: check 1000 - could be larger?
-        # TODO: use a bytearray?
         for batch in partition_all(1000, self.values()):
             unpacker.feed(b"".join(batch))
             yield from (SourceRecord(*params) for params in unpacker)
