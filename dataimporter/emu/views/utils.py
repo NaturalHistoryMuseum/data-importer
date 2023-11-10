@@ -58,10 +58,8 @@ def is_web_published(record: SourceRecord) -> bool:
     :param record: the record to check
     :return: True if the record can be published on the Portal, False if not
     """
-    # TODO: check if the default should actually be n here, or whether we should do a
-    #       check on == 'y' instead
     return (
-        record.get_first_value("AdmPublishWebNoPasswordFlag", default="").lower() != "n"
+        record.get_first_value("AdmPublishWebNoPasswordFlag", default="").lower() == "y"
     )
 
 

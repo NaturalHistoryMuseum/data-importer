@@ -20,6 +20,8 @@ def test_is_web_published():
     # no
     assert not is_web_published(create_record(AdmPublishWebNoPasswordFlag="n"))
     assert not is_web_published(create_record(AdmPublishWebNoPasswordFlag="N"))
+    assert not is_web_published(create_record(AdmPublishWebNoPasswordFlag=""))
+    assert not is_web_published(create_record(publish="yes"))
 
 
 def test_is_valid_guid():
