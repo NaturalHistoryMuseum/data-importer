@@ -170,7 +170,7 @@ class GBIFLink(ViewLink):
         :param base_record: the base record
         :param data: the transformed data from the base record
         """
-        occurrence_id = base_record.get_first_value("AdmGUIDPreferredValue")
+        occurrence_id = base_record.get_first_value(GBIFLink.EMU_GUID_FIELD)
         if occurrence_id:
             gbif_id = self.gbif_id_map.get_key(occurrence_id)
             if gbif_id:
