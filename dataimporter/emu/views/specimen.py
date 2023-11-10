@@ -277,7 +277,7 @@ class SpecimenView(View):
             "donorName": get_first("PalAcqAccLotDonorFullName"),
             "preparationType": get_first("DarPreparationType"),
             "observedWeight": get_first("DarObservedWeight"),
-            "viceCounty": get_first("sumViceCountry"),
+            "viceCounty": get_first("sumViceCounty"),
             "extractionMethod": get_first("DnaExtractionMethod"),
             "resuspendedIn": get_first("DnaReSuspendedIn"),
             "totalVolume": get_first("DnaTotalVolume"),
