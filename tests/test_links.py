@@ -110,7 +110,7 @@ class TestMediaLink:
         # returns the data as is when transformed, we need to add the _id into the
         # source record's data
         media_records = [
-            SourceRecord("m1", {"a": "b", "_id": "m1"}, "media"),
+            SourceRecord("m1", {"a": "b", "_id": "1"}, "media"),
         ]
         media_view.db.put_many(media_records)
 
@@ -138,9 +138,9 @@ class TestMediaLink:
         # returns the data as is when transformed, we need to add the _id into the
         # source record's data
         media_records = [
-            SourceRecord("m1", {"a": "b", "_id": "m1"}, "media"),
-            SourceRecord("m3", {"a": "c", "_id": "m3"}, "media"),
-            SourceRecord("m4", {"a": "d", "_id": "m4"}, "media"),
+            SourceRecord("m1", {"a": "b", "_id": "1"}, "media"),
+            SourceRecord("m3", {"a": "c", "_id": "3"}, "media"),
+            SourceRecord("m4", {"a": "d", "_id": "4"}, "media"),
         ]
         media_view.db.put_many(media_records)
 
@@ -168,18 +168,18 @@ class TestMediaLink:
         # returns the data as is when transformed, we need to add the _id into the
         # source record's data
         media_records = [
-            SourceRecord("m5", {"a": "b", "_id": "m5"}, "media"),
+            SourceRecord("m5", {"a": "b", "_id": "5"}, "media"),
         ]
         media_view.db.put_many(media_records)
 
         # include two existing media item in the data already, with IDs that surround
         # the above media record to be added
         existing_media_data_m2 = {
-            "_id": "m2",
+            "_id": "2",
             "a": "c",
         }
         existing_media_data_m8 = {
-            "_id": "m8",
+            "_id": "8",
             "a": "b",
         }
         data = {
@@ -198,6 +198,41 @@ class TestMediaLink:
             existing_media_data_m8,
         ]
         assert data[MediaLink.MEDIA_COUNT_TARGET_FIELD] == 3
+
+    def test_transform_media_sort(self, tmp_path: Path):
+        base_view = View(tmp_path / "base_view", DataDB(tmp_path / "base_data"))
+        media_view = View(tmp_path / "media_view", DataDB(tmp_path / "media_view"))
+        media_link = MediaLink(tmp_path / "media_link", base_view, media_view)
+
+        base_record = SourceRecord(
+            "b1", {MediaLink.MEDIA_ID_REF_FIELD: ("m1", "m2", "m3", "m4", "m5")}, "base"
+        )
+        media_link.update_from_base([base_record])
+
+        # because we're not actually using the image view, just a dummy view which
+        # returns the data as is when transformed, we need to add the _id into the
+        # source record's data
+        media_records = [
+            SourceRecord("m1", {"a": "b", "_id": "5"}, "media"),
+            SourceRecord("m2", {"a": "b", "_id": "1"}, "media"),
+            SourceRecord("m3", {"a": "b", "_id": "10"}, "media"),
+            SourceRecord("m4", {"a": "b", "_id": "2"}, "media"),
+            SourceRecord("m5", {"a": "b", "_id": "24"}, "media"),
+        ]
+        media_view.db.put_many(media_records)
+
+        data = {}
+        media_link.transform(base_record, data)
+
+        # check everything is included and in the right order
+        assert data[MediaLink.MEDIA_TARGET_FIELD] == [
+            media_records[1].data,
+            media_records[3].data,
+            media_records[0].data,
+            media_records[2].data,
+            media_records[4].data,
+        ]
+        assert data[MediaLink.MEDIA_COUNT_TARGET_FIELD] == 5
 
     def test_clear_from_base(self, tmp_path: Path):
         base_view = View(tmp_path / "base_view", DataDB(tmp_path / "base_data"))
