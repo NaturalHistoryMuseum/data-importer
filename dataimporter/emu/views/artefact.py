@@ -8,6 +8,7 @@ from dataimporter.emu.views.utils import (
     is_web_published,
     is_valid_guid,
     INVALID_GUID,
+    combine_text,
 )
 from dataimporter.emu.views.utils import emu_date
 from dataimporter.lib.model import SourceRecord
@@ -69,6 +70,8 @@ class ArtefactView(View):
             "artefactName": get_first("PalArtObjectName"),
             # seems to not be populated in any of the current artefact records
             "artefactType": get_first("PalArtType"),
-            "artefactDescription": get_first("PalArtDescription"),
+            "artefactDescription": combine_text(
+                record.iter_all_values("PalArtDescription")
+            ),
             "scientificName": get_first("IdeCurrentScientificName"),
         }
