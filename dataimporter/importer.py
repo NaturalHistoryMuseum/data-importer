@@ -192,10 +192,13 @@ class DataImporter:
             for view in views:
                 view.queue(batch)
 
-    def queue_emu_changes(self):
+    def queue_emu_changes(self, only_one: bool = False):
         """
         Look for new EMu dumps, upsert the records into the appropriate DataDB and then
         queue the changes into the derived views.
+
+        :param only_one: if True, only process the first set of dumps and then return,
+                         otherwise, process them all (default: False)
         """
         last_queued = self.emu_status.get()
         dumps = find_emu_dumps(self.config.dumps_path, after=last_queued)
@@ -232,6 +235,9 @@ class DataImporter:
             # we've handled all the dumps from this date, update the last date stored on
             # disk in case we fail later to avoid redoing work
             self.emu_status.update(dump_date)
+            # stop if necessary
+            if only_one:
+                break
 
     def queue_gbif_changes(self):
         """

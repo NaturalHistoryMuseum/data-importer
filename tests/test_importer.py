@@ -209,6 +209,51 @@ class TestDataImporter:
         assert importer.views["image"].changes.size() == 4
         assert importer.views["mss"].changes.size() == 4
 
+    def test_queue_emu_changes_only_one(self, config: Config):
+        importer = DataImporter(config)
+
+        first_dump_date = date(2023, 10, 3)
+        create_dump(
+            config.dumps_path,
+            "ecatalogue",
+            first_dump_date,
+            create_ecatalogue("1", EcatalogueType.specimen),
+        )
+        create_dump(
+            config.dumps_path, "emultimedia", first_dump_date, create_emultimedia("1")
+        )
+        create_dump(
+            config.dumps_path, "etaxonomy", first_dump_date, create_etaxonomy("1")
+        )
+
+        importer.queue_emu_changes(only_one=True)
+
+        assert importer.emu_status.get() == first_dump_date
+        assert importer.dbs["ecatalogue"].size() == 1
+        assert importer.dbs["emultimedia"].size() == 1
+        assert importer.dbs["etaxonomy"].size() == 1
+
+        second_dump_date = date(2023, 10, 4)
+        create_dump(
+            config.dumps_path,
+            "ecatalogue",
+            second_dump_date,
+            create_ecatalogue("2", EcatalogueType.specimen),
+        )
+        create_dump(
+            config.dumps_path, "emultimedia", second_dump_date, create_emultimedia("2")
+        )
+        create_dump(
+            config.dumps_path, "etaxonomy", second_dump_date, create_etaxonomy("2")
+        )
+
+        importer.queue_emu_changes(only_one=True)
+
+        assert importer.emu_status.get() == second_dump_date
+        assert importer.dbs["ecatalogue"].size() == 2
+        assert importer.dbs["emultimedia"].size() == 2
+        assert importer.dbs["etaxonomy"].size() == 2
+
     def test_queue_gbif_changes(self, config: Config):
         gbif_records = [
             SourceRecord("1", {"x": "1"}, "gbif"),
