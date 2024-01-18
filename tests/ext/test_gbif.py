@@ -15,6 +15,7 @@ from dataimporter.ext.gbif import (
     GBIFDownloadError,
     get_changed_records,
     request_download,
+    GBIFDownload,
 )
 from dataimporter.lib.model import SourceRecord
 from tests.helpers.samples.gbif import (
@@ -56,12 +57,22 @@ class TestGetDownloadURL:
     def test_success(self):
         download_id = "test_download_id"
         download_link = "test_download_link"
+        size = 923
+        total_records = 12
+
         responses.get(
             f"https://api.gbif.org/v1/occurrence/download/{download_id}",
-            json={"status": "SUCCEEDED", "downloadLink": download_link},
+            json={
+                "status": "SUCCEEDED",
+                "downloadLink": download_link,
+                "size": size,
+                "totalRecords": total_records,
+            },
         )
 
-        assert get_download_url(download_id) == download_link
+        assert get_download_url(download_id) == GBIFDownload(
+            download_link, size, total_records
+        )
 
     @responses.activate
     def test_timeout(self):
@@ -80,16 +91,26 @@ class TestGetDownloadURL:
     def test_pending_to_succeeded(self):
         download_id = "test_download_id"
         download_link = "test_download_link"
+        size = 1099
+        total_records = 129
         gbif_api_url = f"https://api.gbif.org/v1/occurrence/download/{download_id}"
 
         # respond with pending twice, then success
         responses.get(gbif_api_url, json={"status": "PENDING"})
         responses.get(gbif_api_url, json={"status": "PENDING"})
         responses.get(
-            gbif_api_url, json={"status": "SUCCEEDED", "downloadLink": download_link}
+            gbif_api_url,
+            json={
+                "status": "SUCCEEDED",
+                "downloadLink": download_link,
+                "size": size,
+                "totalRecords": total_records,
+            },
         )
         with patch("time.sleep") as mock_sleep:
-            assert get_download_url(download_id) == download_link
+            assert get_download_url(download_id) == GBIFDownload(
+                download_link, size, total_records
+            )
             assert mock_sleep.call_count == 2
 
     @responses.activate
@@ -113,14 +134,16 @@ def test_changed_records(
     get_download_url_mock: MagicMock, request_download_mock: MagicMock, tmp_path: Path
 ):
     request_download_mock.return_value = "test_download_id"
-    get_download_url_mock.return_value = "https://gbif.org/test_download_url"
+    get_download_url_mock.return_value = GBIFDownload(
+        "https://gbif.org/test_download_url", 100, 2
+    )
 
     def download_request_callback(request):
         return 200, {"content-type": "application/octet-stream"}, SAMPLE_GBIF_ZIP_BYTES
 
     responses.add_callback(
         responses.GET,
-        get_download_url_mock.return_value,
+        get_download_url_mock.return_value.url,
         callback=download_request_callback,
     )
 

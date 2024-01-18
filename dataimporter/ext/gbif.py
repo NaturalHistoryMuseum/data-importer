@@ -1,13 +1,16 @@
 import csv
 import tempfile
 import time
+from dataclasses import dataclass
 from io import TextIOWrapper
 from typing import Iterable, Dict
 from zipfile import ZipFile
 
 import requests
 from requests.auth import HTTPBasicAuth
+from rich.progress import track, Progress
 
+from dataimporter.cli.utils import console
 from dataimporter.lib.dbs import DataDB
 from dataimporter.lib.model import SourceRecord
 from dataimporter.lib.view import View
@@ -54,8 +57,8 @@ def get_changed_records(
     :return: yields the changed SourceRecord objects
     """
     download_id = request_download(gbif_username, gbif_password)
-    download_url = get_download_url(download_id)
-    with requests.get(download_url, stream=True) as dl_r:
+    download = get_download_url(download_id)
+    with requests.get(download.url, stream=True) as dl_r:
         with tempfile.NamedTemporaryFile() as tmp_file:
             # download the file to disk
             for chunk in dl_r.iter_content(chunk_size=4096):
@@ -141,7 +144,21 @@ class GBIFDownloadError(Exception):
         self.status = status
 
 
-def get_download_url(download_id: str) -> str:
+@dataclass
+class GBIFDownload:
+    """
+    Represents a GBIF download URL and some associated metadata.
+    """
+
+    # this is the URL of the zip itself
+    url: str
+    # the size of the zip in bytes according to GBIF's API
+    zip_size: int
+    # the number of records contained in the zip according to GBIF's API
+    records: int
+
+
+def get_download_url(download_id: str) -> GBIFDownload:
     """
     Wait for the given download to be ready and then return the URL to download the
     file.
@@ -153,7 +170,7 @@ def get_download_url(download_id: str) -> str:
     GBIFDownloadError exception.
 
     :param download_id: the GBIF download ID
-    :return: the download URL
+    :return: a GBIFDownload object
     :raise: GBIFDownloadTimeout if the download is not ready within the timeout
     """
     backoff_in_seconds = 60
@@ -166,7 +183,11 @@ def get_download_url(download_id: str) -> str:
             download_info = r.json()
             status = download_info["status"]
             if status == "SUCCEEDED":
-                return download_info["downloadLink"]
+                return GBIFDownload(
+                    download_info["downloadLink"],
+                    download_info["size"],
+                    download_info["totalRecords"],
+                )
             elif status == "FAILED":
                 raise GBIFDownloadError(status)
             else:
