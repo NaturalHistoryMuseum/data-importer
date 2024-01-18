@@ -199,6 +199,7 @@ class View:
 
         The record embargoes are compared to the current datetime.
         """
+        # TODO: does this need to check redactions?
         # update the change queue with the released embargo ids (in chunks, which is
         # probably unnecessary but better safe than sorry)
         up_to = now()
