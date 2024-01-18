@@ -8,9 +8,7 @@ from zipfile import ZipFile
 
 import requests
 from requests.auth import HTTPBasicAuth
-from rich.progress import track, Progress
 
-from dataimporter.cli.utils import console
 from dataimporter.lib.dbs import DataDB
 from dataimporter.lib.model import SourceRecord
 from dataimporter.lib.view import View
