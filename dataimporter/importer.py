@@ -8,8 +8,6 @@ from splitgill.manager import SplitgillClient, SplitgillDatabase
 from splitgill.model import Record
 from splitgill.utils import partition
 
-from dataimporter.lib.config import Config
-from dataimporter.lib.dbs import DataDB, RedactionDB
 from dataimporter.emu.dumps import (
     find_emu_dumps,
     is_valid_eaudit_record,
@@ -24,14 +22,16 @@ from dataimporter.emu.views.preparation import PreparationView
 from dataimporter.emu.views.specimen import SpecimenView
 from dataimporter.emu.views.taxonomy import TaxonomyView
 from dataimporter.ext.gbif import GBIFView, get_changed_records
+from dataimporter.lib.config import Config
+from dataimporter.lib.dbs import DataDB, RedactionDB
+from dataimporter.lib.model import SourceRecord
+from dataimporter.lib.view import View, ViewLink
 from dataimporter.links import (
     MediaLink,
     TaxonomyLink,
     GBIFLink,
     PreparationSpecimenLink,
 )
-from dataimporter.lib.model import SourceRecord
-from dataimporter.lib.view import View, ViewLink
 
 
 class DataImporter:
@@ -201,24 +201,24 @@ class DataImporter:
                          otherwise, process them all (default: False)
         """
         last_queued = self.emu_status.get()
-        dumps = find_emu_dumps(self.config.dumps_path, after=last_queued)
+        dump_sets = find_emu_dumps(self.config.dumps_path, after=last_queued)
+        if not dump_sets:
+            return
 
-        # this is the order we want to process the tables produced on the same date in
-        dump_queue_order = ["eaudit", "ecatalogue", "emultimedia", "etaxonomy"]
-        # sort the dumps by date first and then the above queue order secondarily
-        dumps.sort(key=lambda d: (d.date, dump_queue_order.index(d.table)))
+        if only_one:
+            dump_sets = dump_sets[:1]
 
-        for dump_date, dump_group in groupby(dumps, lambda d: d.date):
-            for dump in dump_group:
-                # normal tables are immediately processable, but if the dump is from the
-                # eaudit table we need to do some additional work because each audit
-                # record refers to a potentially different table from which it is
-                # deleting a record
+        for dump_set in dump_sets:
+            for dump in dump_set.dumps:
+                # normal tables are immediately processable, but if the dump is from
+                # the eaudit table we need to do some additional work because each
+                # audit record refers to a potentially different table from which it
+                # is deleting a record
                 if dump.table != "eaudit":
                     self.queue_changes(dump.read(), dump.table)
                 else:
-                    # wrap the dump stream in a filter to only allow through records we
-                    # want to process
+                    # wrap the dump stream in a filter to only allow through records
+                    # we want to process
                     filtered_dump = filter(
                         partial(is_valid_eaudit_record, tables=set(self.dbs.keys())),
                         dump.read(),
@@ -227,17 +227,14 @@ class DataImporter:
                     for table, records in groupby(
                         filtered_dump, key=lambda record: record.data["AudTable"]
                     ):
-                        # convert the raw audit records into delete records as we queue
-                        # them
+                        # convert the raw audit records into delete records as we
+                        # queue them
                         self.queue_changes(
                             map(convert_eaudit_to_delete, records), table
                         )
             # we've handled all the dumps from this date, update the last date stored on
             # disk in case we fail later to avoid redoing work
-            self.emu_status.update(dump_date)
-            # stop if necessary
-            if only_one:
-                break
+            self.emu_status.update(dump_set.date)
 
     def queue_gbif_changes(self):
         """

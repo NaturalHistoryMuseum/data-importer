@@ -19,6 +19,23 @@ class TestFindEMuDumps:
     def test_no_files(self, tmp_path: Path):
         assert not find_emu_dumps(tmp_path)
 
+    def test_basic(self, tmp_path: Path):
+        for day in range(10, 15):
+            create_dump(tmp_path, "ecatalogue", date(2020, 3, day))
+            create_dump(tmp_path, "eaudit", date(2020, 3, day))
+            create_dump(tmp_path, "etaxonomy", date(2020, 3, day))
+            create_dump(tmp_path, "emultimedia", date(2020, 3, day))
+
+        dump_sets = find_emu_dumps(tmp_path)
+        assert len(dump_sets) == 5
+        for day, dump_set in zip(range(10, 15), dump_sets):
+            assert dump_set.date == date(2020, 3, day)
+            assert len(dump_set.dumps) == 4
+            assert dump_set.dumps[0].table == "eaudit"
+            assert dump_set.dumps[1].table == "ecatalogue"
+            assert dump_set.dumps[2].table == "emultimedia"
+            assert dump_set.dumps[3].table == "etaxonomy"
+
     def test_after_works(self, tmp_path: Path):
         after = date(2020, 3, 14)
 
@@ -33,8 +50,9 @@ class TestFindEMuDumps:
             create_dump(tmp_path, emu_table, date(2020, 3, 1))
         create_dump(tmp_path, "invalid", date(2020, 3, 2))
 
-        dumps = find_emu_dumps(tmp_path)
-        assert len(dumps) == len(EMU_TABLES)
+        dump_sets = find_emu_dumps(tmp_path)
+        assert len(dump_sets) == 1
+        assert len(dump_sets[0].dumps) == len(EMU_TABLES)
 
 
 class TestEMuDump:

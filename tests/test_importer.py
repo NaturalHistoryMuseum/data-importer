@@ -159,10 +159,10 @@ class TestDataImporter:
 
         importer.queue_emu_changes()
 
-        # these should all be the same
-        assert importer.dbs["ecatalogue"].size() == 4
-        assert importer.dbs["emultimedia"].size() == 3
-        assert importer.dbs["etaxonomy"].size() == 2
+        # these have all lost 1 to reflect the newly deleted records
+        assert importer.dbs["ecatalogue"].size() == 3
+        assert importer.dbs["emultimedia"].size() == 2
+        assert importer.dbs["etaxonomy"].size() == 1
         # 1 indexlot delete + specimen update because of the taxonomy delete
         assert importer.views["specimen"].changes.size() == 2
         # 1 indexlot delete
@@ -194,14 +194,14 @@ class TestDataImporter:
 
         importer.queue_emu_changes()
 
-        assert importer.dbs["ecatalogue"].size() == 4
+        assert importer.dbs["ecatalogue"].size() == 3
         # there's a new emultimedia record now
         assert importer.dbs["emultimedia"].size() == 4
-        assert importer.dbs["etaxonomy"].size() == 2
+        assert importer.dbs["etaxonomy"].size() == 1
         # an image update on an associated image, so 1
         assert importer.views["specimen"].changes.size() == 1
-        # an image update on an associated image, so 1
-        assert importer.views["indexlot"].changes.size() == 1
+        # image update on an associated image, but the index lot has been deleted so 0
+        assert importer.views["indexlot"].changes.size() == 0
         # an image update on an associated image, so 1
         assert importer.views["artefact"].changes.size() == 1
         # an image update on an associated specimen's image, so 1
@@ -303,7 +303,7 @@ class TestDataImporter:
             importer.add_to_mongo(name)
 
             sg_db = importer.sg_dbs[name]
-            assert sg_db.get_mongo_version() == to_timestamp(
+            assert sg_db.get_committed_version() == to_timestamp(
                 datetime(2023, 10, 20, 11, 4, 31)
             )
             assert sg_db.data_collection.count_documents({}) == 8
@@ -322,14 +322,14 @@ class TestDataImporter:
             assert search_base.count() == 8
             assert (
                 search_base.filter(
-                    "term", **{"parsed.artefactName.k": "3 beans"}
+                    "term", **{"parsed.artefactName.ki": "3 beans"}
                 ).count()
                 == 1
             )
             # this comes from the image
             assert (
                 search_base.filter(
-                    "term", **{"parsed.associatedMedia.title.k": "image 4"}
+                    "term", **{"parsed.associatedMedia.title.ki": "image 4"}
                 ).count()
                 == 1
             )
@@ -377,7 +377,7 @@ class TestDataImporter:
             importer.add_to_mongo(name)
 
             sg_db = importer.sg_dbs[name]
-            assert sg_db.get_mongo_version() == to_timestamp(
+            assert sg_db.get_committed_version() == to_timestamp(
                 datetime(2023, 10, 20, 11, 4, 31)
             )
             assert sg_db.data_collection.count_documents({}) == 8
@@ -394,19 +394,19 @@ class TestDataImporter:
             )
             assert search_base.count() == 8
             assert (
-                search_base.filter("term", **{"parsed.material.k": "3 lemons"}).count()
+                search_base.filter("term", **{"parsed.material.ki": "3 lemons"}).count()
                 == 1
             )
             # this comes from the image
             assert (
                 search_base.filter(
-                    "term", **{"parsed.associatedMedia.title.k": "image 4"}
+                    "term", **{"parsed.associatedMedia.title.ki": "image 4"}
                 ).count()
                 == 1
             )
             # this comes from the taxonomy
             assert (
-                search_base.filter("term", **{"parsed.kingdom.k": "kingdom 4"}).count()
+                search_base.filter("term", **{"parsed.kingdom.ki": "kingdom 4"}).count()
                 == 1
             )
 
@@ -453,7 +453,7 @@ class TestDataImporter:
             importer.add_to_mongo(name)
 
             sg_db = importer.sg_dbs[name]
-            assert sg_db.get_mongo_version() == to_timestamp(
+            assert sg_db.get_committed_version() == to_timestamp(
                 datetime(2023, 10, 20, 11, 4, 31)
             )
             assert sg_db.data_collection.count_documents({}) == 8
@@ -471,20 +471,20 @@ class TestDataImporter:
             assert search_base.count() == 8
             assert (
                 search_base.filter(
-                    "term", **{"parsed.locality.k": "3 Number Road"}
+                    "term", **{"parsed.locality.ki": "3 Number Road"}
                 ).count()
                 == 1
             )
             # this comes from the image
             assert (
                 search_base.filter(
-                    "term", **{"parsed.associatedMedia.title.k": "image 4"}
+                    "term", **{"parsed.associatedMedia.title.ki": "image 4"}
                 ).count()
                 == 1
             )
             # this comes from the taxonomy
             assert (
-                search_base.filter("term", **{"parsed.kingdom.k": "kingdom 4"}).count()
+                search_base.filter("term", **{"parsed.kingdom.ki": "kingdom 4"}).count()
                 == 1
             )
 
@@ -511,7 +511,7 @@ class TestDataImporter:
             importer.add_to_mongo(name)
 
             sg_db = importer.sg_dbs[name]
-            assert sg_db.get_mongo_version() == to_timestamp(
+            assert sg_db.get_committed_version() == to_timestamp(
                 datetime(2023, 10, 20, 11, 4, 31)
             )
             assert sg_db.data_collection.count_documents({}) == 8
@@ -528,7 +528,7 @@ class TestDataImporter:
             )
             assert search_base.count() == 8
             assert (
-                search_base.filter("term", **{"parsed.file.k": "banana-4.jpg"}).count()
+                search_base.filter("term", **{"parsed.file.ki": "banana-4.jpg"}).count()
                 == 1
             )
 
@@ -582,7 +582,7 @@ class TestDataImporter:
             importer.add_to_mongo(name)
 
             sg_db = importer.sg_dbs[name]
-            assert sg_db.get_mongo_version() == to_timestamp(
+            assert sg_db.get_committed_version() == to_timestamp(
                 datetime(2023, 10, 20, 11, 4, 31)
             )
             assert sg_db.data_collection.count_documents({}) == 8
@@ -600,21 +600,21 @@ class TestDataImporter:
             assert search_base.count() == 8
             assert (
                 search_base.filter(
-                    "term", **{"parsed.mediumType.k": "Ethanol (6%)"}
+                    "term", **{"parsed.mediumType.ki": "Ethanol (6%)"}
                 ).count()
                 == 1
             )
             # check a field that should have been copied from the voucher specimen
             assert (
                 search_base.filter(
-                    "term", **{"parsed.barcode.k": "000-00-0-12"}
+                    "term", **{"parsed.barcode.ki": "000-00-0-12"}
                 ).count()
                 == 1
             )
             # check a field that should have been copied from the voucher specimen's
             # taxonomy
             assert (
-                search_base.filter("term", **{"parsed.order.k": "order 11"}).count()
+                search_base.filter("term", **{"parsed.order.ki": "order 11"}).count()
                 == 1
             )
 

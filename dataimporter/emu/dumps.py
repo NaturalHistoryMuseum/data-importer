@@ -1,8 +1,9 @@
 import gzip
 import itertools
 import re
+from collections import defaultdict
 from datetime import date, datetime
-from functools import cached_property
+from functools import cached_property, total_ordering
 from pathlib import Path
 from typing import Iterable, Any, Optional, Set
 from typing import List
@@ -19,18 +20,18 @@ EMU_TABLES = {"eaudit", "ecatalogue", "emultimedia", "etaxonomy"}
 def find_emu_dumps(
     root: Path,
     after: date = FIRST_VERSION,
-) -> List["EMuDump"]:
+) -> List["EMuDumpSet"]:
     """
-    Find all the EMu dumps in the given path and return them as a list of EMuDump
+    Find all the EMu dumps in the given path and return them as a list of EMuDumpSet
     objects.
 
     :param root: the root directory
     :param after: only dumps after this date will be returned, defaults to the day
                   before the first full EMu dump from 30/08/17 (see FIRST_VERSION at the
                   module level)
-    :return: a list of EMuDump objects
+    :return: a list of EMuDumpSet objects
     """
-    dumps = []
+    dumps = defaultdict(list)
     dump_matcher = re.compile(
         r"(?P<table>\w+)\.(?:deleted-)?export\.(?P<date>[0-9]{8})\.gz"
     )
@@ -49,9 +50,11 @@ def find_emu_dumps(
                 # ignore old dumps
                 continue
 
-            dumps.append(EMuDump(path, table, dump_date))
+            dumps[dump_date].append(EMuDump(path, table, dump_date))
 
-    return dumps
+    return sorted(
+        EMuDumpSet(dump_date, dump_group) for dump_date, dump_group in dumps.items()
+    )
 
 
 class EMuDump:
@@ -189,3 +192,33 @@ def convert_eaudit_to_delete(record: SourceRecord) -> SourceRecord:
              record ID in the target table
     """
     return SourceRecord(record.data["AudKey"], {}, record.source)
+
+
+@total_ordering
+class EMuDumpSet:
+    _order = ["eaudit", "ecatalogue", "emultimedia", "etaxonomy"]
+
+    def __init__(self, dump_date: date, dumps: List[EMuDump]):
+        self.date = dump_date
+        self.dumps = sorted(dumps, key=lambda dump: self._order.index(dump.table))
+
+    @property
+    def tables(self) -> List[str]:
+        return [dump.table for dump in self.dumps]
+
+    @property
+    def contains_eaudit(self) -> bool:
+        return any(table for table in self.tables if table == "eaudit")
+
+    def __len__(self) -> int:
+        return len(self.dumps)
+
+    def __lt__(self, other: Any) -> bool:
+        if isinstance(other, EMuDumpSet):
+            return self.date < other.date
+        return NotImplemented
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, EMuDumpSet):
+            return self.date == other.date
+        return NotImplemented
