@@ -256,9 +256,7 @@ class TestView:
 
     def test_flush(self, view: View):
         records = [
-            # use int_to_str to maintain the sort order
-            SourceRecord(i, {"a": i}, "test")
-            for i in sorted(map(str, range(100)))
+            SourceRecord(i, {"a": i}, "test") for i in sorted(map(str, range(100)))
         ]
         records.append(SourceRecord("100", {"NhmSecEmbargoDate": "2025-02-05"}, "test"))
 
@@ -272,7 +270,7 @@ class TestView:
             view.flush()
 
         assert view.count() == 0
-        assert view.embargoes.size() == 0
+        assert view.embargoes.size() == 1
 
     @freeze_time("2024/10/16")
     def test_rebuild(self, view: View):

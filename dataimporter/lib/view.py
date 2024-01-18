@@ -227,10 +227,8 @@ class View:
 
     def flush(self):
         """
-        Remove all expired embargo IDs from the embargo queue and remove all IDs from
-        the main view queue.
+        Remove all IDs from the main view queue.
         """
-        self.embargoes.flush_released(now())
         self.changes.clear()
 
     def rebuild(self):
