@@ -162,24 +162,36 @@ class DataDB(DB):
             unpacker.feed(b"".join(batch))
             yield from (SourceRecord(*params) for params in unpacker)
 
-    def put_many(self, records: List[SourceRecord]):
+    def put_many(self, records: List[SourceRecord]) -> Tuple[int, int]:
         """
         Given a list of records, add them to the database. This is essentially an
-        upsert, new records are inserted, existing records are just overriden.
+        upsert, new records are inserted, existing records are just overriden, deleted
+        records are deleted.
 
         The records are added in one transactional batch.
 
         :param records: a list of records
+        :return: a tuple of updated and deleted counts
         """
         # cache the pack method as we're going to be using it a lot
         pack = msgpack.Packer().pack
 
+        deleted = 0
+        updated = 0
+
         with self.db.write_batch(transaction=True) as wb:
             for record in records:
-                wb.put(
-                    record.id.encode("utf-8"),
-                    pack((record.id, record.data, record.source)),
-                )
+                if record.is_deleted:
+                    wb.delete(record.id.encode("utf-8"))
+                    deleted += 1
+                else:
+                    wb.put(
+                        record.id.encode("utf-8"),
+                        pack((record.id, record.data, record.source)),
+                    )
+                    updated += 1
+
+        return updated, deleted
 
     def get_record(self, record_id: str) -> Optional[SourceRecord]:
         """
