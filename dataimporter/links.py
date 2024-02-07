@@ -1,7 +1,6 @@
 from itertools import chain
-from operator import itemgetter
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from dataimporter.lib.dbs import Index
 from dataimporter.lib.model import SourceRecord
@@ -190,7 +189,7 @@ class GBIFLink(ViewLink):
         self.gbif_id_map.clear()
 
 
-class PreparationSpecimenLink(ManyToOneViewLink):
+class PreparationSpecimenLink(ViewLink):
     """
     A ViewLink representing the link between a preparation record and the specimen
     voucher record it was created from.
@@ -203,6 +202,9 @@ class PreparationSpecimenLink(ManyToOneViewLink):
 
     # the EMu field on the prep records which links to the specimen voucher record
     SPECIMEN_ID_REF_FIELD = "EntPreSpecimenRef"
+    # the EMu field on mammal part prep records which links to the specimen voucher
+    # record
+    PARENT_SPECIMEN_ID_REF_FIELD = "RegRegistrationParentRef"
     # the Portal fields which are copied from the specimen to the prep data dict
     # TODO: missing CollEventDateVisitedFrom, CollEventName_tab, and kinda ColSite
     MAPPED_SPECIMEN_FIELDS = [
@@ -222,12 +224,96 @@ class PreparationSpecimenLink(ManyToOneViewLink):
         :param prep_view: the preparation view
         :param specimen_view: the specimen view
         """
-        super().__init__(
-            path,
-            prep_view,
-            specimen_view,
-            PreparationSpecimenLink.SPECIMEN_ID_REF_FIELD,
+        super().__init__(path.name, prep_view, specimen_view)
+        self.path = path
+        # a many-to-one index from prep id -> specimen id via EntPreSpecimenRef
+        self.prep_id_map = Index(path / "prep_id_map")
+        # a many-to-one index from prep id -> specimen id via RegRegistrationParentRef
+        self.parent_id_map = Index(path / "parent_id_map")
+
+    @staticmethod
+    def _is_mammal_part_prep(record: SourceRecord) -> bool:
+        return (
+            record.get_first_value("ColRecordType", default="").lower()
+            == "mammal group part"
         )
+
+    def update_from_base(self, prep_records: List[SourceRecord]):
+        """
+        Extracts the linked foreign ID from each of the given records and adds them to
+        the ID map.
+
+        :param prep_records: the changed prep records
+        """
+        prep_to_specimen_map = {}
+        prep_to_parent_specimen_map = {}
+
+        for prep_record in prep_records:
+            # first try to get the specimen ID using the prep voucher ref field
+            specimen_id = prep_record.get_first_value(self.SPECIMEN_ID_REF_FIELD)
+            if specimen_id:
+                prep_to_specimen_map[prep_record.id] = specimen_id
+                continue
+
+            # no specimen ID from voucher ref, check to see if the prep is a mammal part
+            if not self._is_mammal_part_prep(prep_record):
+                continue
+
+            # it is a mammal part, try getting the specimen ID using the parent ref
+            parent_id = prep_record.get_first_value(self.PARENT_SPECIMEN_ID_REF_FIELD)
+            if parent_id:
+                prep_to_parent_specimen_map[prep_record.id] = parent_id
+
+        # update the ID maps if needed
+        if prep_to_specimen_map:
+            self.prep_id_map.put_many(prep_to_specimen_map.items())
+        if prep_to_parent_specimen_map:
+            self.parent_id_map.put_many(prep_to_parent_specimen_map.items())
+
+    def update_from_foreign(self, specimen_records: List[SourceRecord]):
+        """
+        Propagate the changes in the given specimen records to the prep records linked
+        to them.
+
+        :param specimen_records: the updated specimen records
+        """
+        # do a reverse lookup to find the potentially many prep IDs associated with each
+        # updated specimen ID, and store them in a set. First, find them using the prep
+        # ID ref field's map
+        prep_ids = {
+            prep_id
+            for specimen_record in specimen_records
+            for prep_id in self.prep_id_map.get_keys(specimen_record.id)
+        }
+        # now add the preps from the parent ref map
+        prep_ids.update(
+            prep_id
+            for specimen_record in specimen_records
+            for prep_id in self.parent_id_map.get_keys(specimen_record.id)
+        )
+
+        if prep_ids:
+            prep_records = list(self.base_view.db.get_records(prep_ids))
+            if prep_records:
+                # if there are associated base records, queue changes to them on the
+                # base view
+                self.base_view.queue(prep_records)
+
+    def get_foreign_record_data(self, prep_record: SourceRecord) -> Optional[dict]:
+        # try with the specimen voucher ref first
+        specimen_id = prep_record.get_first_value(self.SPECIMEN_ID_REF_FIELD)
+        # if we can't find it using the specimen voucher ref, try the mammal parent ref
+        if not specimen_id and self._is_mammal_part_prep(prep_record):
+            specimen_id = prep_record.get_first_value(self.PARENT_SPECIMEN_ID_REF_FIELD)
+        if specimen_id:
+            return self.foreign_view.get_and_transform(specimen_id)
+
+    def clear_from_base(self):
+        """
+        Clears out the ID map.
+        """
+        self.prep_id_map.clear()
+        self.parent_id_map.clear()
 
     def transform(self, prep_record: SourceRecord, data: dict):
         """

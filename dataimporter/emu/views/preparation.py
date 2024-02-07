@@ -13,7 +13,8 @@ from dataimporter.emu.views.utils import emu_date
 from dataimporter.lib.model import SourceRecord
 from dataimporter.lib.view import View, FilterResult, SUCCESS_RESULT
 
-INVALID_SUBDEPARTMENT = FilterResult(False, "Invalid subdepartment")
+INVALID_SUB_DEPARTMENT = FilterResult(False, "Invalid sub-department")
+INVALID_PROJECT = FilterResult(False, "Invalid project")
 
 
 class PreparationView(View):
@@ -26,12 +27,34 @@ class PreparationView(View):
     def is_member(self, record: SourceRecord) -> FilterResult:
         """
         Filters the given record, determining whether it should be included in the
-        preparation resource or not.
+        preparation resource or not. This view member filter checks for one of two kinds
+        of record in order for the record to be included:
+
+            - a preparation record from the Molecular Collections sub-department
+            - a mammal group part record from the LS Mammals sub-department with the
+              DToL project tag
+
+        These two types have slightly different fields but are both preps.
 
         :param record: the record to filter
         :return: a FilterResult object
         """
-        if record.get_first_value("ColRecordType", default="").lower() != "preparation":
+        record_type = record.get_first_value("ColRecordType", default="").lower()
+        sub_department = record.get_first_value("ColSubDepartment", default="").lower()
+
+        if record_type == "preparation":
+            # if the record is a prep, it must be a molecular collections prep
+            if sub_department != "molecular collections":
+                return INVALID_SUB_DEPARTMENT
+        elif record_type == "mammal group part":
+            # if the record is a mammal group part, it must be a mammals record and be
+            # a DToL project record
+            if sub_department != "ls mammals":
+                return INVALID_SUB_DEPARTMENT
+            if record.get_first_value("NhmSecProjectName") != "Darwin Tree of Life":
+                return INVALID_PROJECT
+        else:
+            # any other type is invalid
             return INVALID_TYPE
 
         if not is_web_published(record):
@@ -45,9 +68,6 @@ class PreparationView(View):
 
         if record.get_first_value("ColDepartment") not in DEPARTMENT_COLLECTION_CODES:
             return INVALID_DEPARTMENT
-
-        if record.get_first_value("ColSubDepartment") != "Molecular Collections":
-            return INVALID_SUBDEPARTMENT
 
         return SUCCESS_RESULT
 

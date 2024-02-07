@@ -435,6 +435,9 @@ class TestGBIFLink:
 
 
 class TestPreparationSpecimenLink:
+
+    # TODO: write tests for mammal parent links
+
     def test_transform_missing(self, tmp_path: Path):
         base_view = View(tmp_path / "base_view", DataDB(tmp_path / "base_data"))
         specimen_view = View(

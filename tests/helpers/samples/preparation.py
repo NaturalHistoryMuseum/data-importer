@@ -3,7 +3,7 @@ from tests.helpers.samples.specimen import SAMPLE_SPECIMEN_ID
 
 # this is taken from ecatalogue.export.20231008.gz but with the EntPreSpecimenRef field
 # replaced with a single reference to the SAMPLE_SPECIMEN_ID
-raw_data = f"""
+raw_prep_data = f"""
 rownum=3645
 irn:1=9968955
 SummaryData:1=no Collection Kind for preparation (irn 9968955)
@@ -70,4 +70,78 @@ NhmSecOpenDataPolicyException:1=none
 NhmSecProjectName:1=Darwin Tree of Life
 """
 
-SAMPLE_PREPARATION_ID, SAMPLE_PREPARATION_DATA = read_emu_extract(raw_data)
+SAMPLE_PREPARATION_ID, SAMPLE_PREPARATION_DATA = read_emu_extract(raw_prep_data)
+
+raw_mammal_part_data = f"""
+rownum=7228
+irn:1=10337727
+SummaryData:1=NHMUK ZD 2022.43, Neovison vison Schreber, 1777, tissue sample, Tissue Sample, MUSCLE
+ExtendedData:1=10337727
+ExtendedData:2=
+ExtendedData:3=NHMUK ZD 2022.43, Neovison vison Schreber, 1777, tissue sample, Tissue Sample, MUSCLE
+ColDepartment:1=Zoology
+ColSubDepartment:1=LS Mammals
+ColRecordType:1=Mammal Group Part
+GeneralCatalogueNumber:1=irn: 10337727
+EntIdeQualifiedNameAutomatic:1=Yes
+EntPreContents:1=MUSCLE
+EntPrePreparationMethod:1=Flash Freezing: Dry Ice
+EntPrePreparatorRef:1=408801
+EntPrePreparatorRefLocal:1=408801
+EntPrePreparatorSumDataLocal:1=Inez Januszczak; Natural History Museum; Life Sciences; Januszczak
+EntPreNumber:1=FF06063966
+PalOthNumber:1=
+PalOthNumber:2=FF06063966
+PalOthTypeofNumber:1=Tube barcode
+AcqHistoric:1=No
+PrtType:1=tissue sample
+PrtPreparedByRef:1=408801
+PrtCompleteness:1=MUSCLE
+RegRegistrationParentRef:1={SAMPLE_SPECIMEN_ID}
+RegRegistrationParentRefLocal:1={SAMPLE_SPECIMEN_ID}
+RegRegistrationNumberLocal:1=NHMUK ZD 2022.43
+EntIdeFiledAsQualifiedNameLocal:1=Neovison vison Schreber, 1777
+RegRegParentHigherTaxonLocal:1=Animalia; Chordata; Vertebrata; Mammalia; Carnivora; Caniformia; Mustelidae; Mustelinae
+RegRegParentScientificNameLocal:1=Neovison vison Schreber, 1777
+CatKindOfObject:1=Tissue Sample
+LocIndependentlyMoveable:1=Yes
+AcqLegTransferOfTitle:1=No
+AcqLegPurAgree:1=No
+AcqLegConfirmationOfGift:1=No
+AcqLegDueDilligence:1=No
+AcqLegCollectionImpact:1=No
+NteText0:1=M
+NteText1:1=Purpose of specimen: DNA barcoding only
+NteType:1=Size
+AdmPublishWebNoPasswordFlag:1=Y
+AdmPublishWebNoPassword:1=Yes
+AdmPublishWebPasswordFlag:1=Y
+AdmPublishWebPassword:1=Yes
+AdmGUIDPreferredType:1=UUID4
+AdmGUIDPreferredValue:1=541cb421-2a3f-4699-ad3b-8030f36afffa
+AdmGUIDIsPreferred:1=Yes
+AdmGUIDType:1=UUID4
+AdmGUIDValue:1=541cb421-2a3f-4699-ad3b-8030f36afffa
+AdmInsertedBy:1=Matthew Besley
+AdmDateInserted=2023-05-02
+AdmImportIdentifier:1=02052023_Mammals_Parts_Fix
+AdmTimeInserted=14:55:51.000
+AdmSystemIdentifier:1=mattb1-230502-1455
+AdmModifiedBy:1=Matthew Besley
+AdmDateModified=2023-05-02
+AdmTimeModified=14:55:51.000
+AdmDateRecordModified=2023-05-02
+AdmTimeRecordModified=14:55:51.000
+SecRecordStatus:1=Active
+SecCanDisplay:1=Group Default
+SecCanEdit:1=Group Default
+SecCanDelete:1=Group Default
+SecDepartment:1=Entomology
+SecLookupRoot:1=Entomology
+NhmSecOpenDataPolicyException:1=none
+NhmSecProjectName:1=Darwin Tree of Life
+"""
+
+SAMPLE_MAMMAL_PREPARATION_ID, SAMPLE_MAMMAL_PREPARATION_DATA = read_emu_extract(
+    raw_mammal_part_data
+)
