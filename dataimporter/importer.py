@@ -25,6 +25,7 @@ from dataimporter.ext.gbif import GBIFView, get_changed_records
 from dataimporter.lib.config import Config
 from dataimporter.lib.dbs import DataDB, RedactionDB
 from dataimporter.lib.model import SourceRecord
+from dataimporter.lib.options import DEFAULT_OPTIONS
 from dataimporter.lib.view import View, ViewLink
 from dataimporter.links import (
     MediaLink,
@@ -277,10 +278,17 @@ class DataImporter:
         :param view_name: the name of the view
         """
         view = self.views[view_name]
-        database = self.sg_dbs[view_name]
+        database: SplitgillDatabase = self.sg_dbs[view_name]
         database.add(
-            Record(record.id, view.transform(record)) for record in view.iter_changed()
+            (
+                Record(record.id, view.transform(record))
+                for record in view.iter_changed()
+            ),
+            commit=False,
         )
+        # send the options anyway, even if there's no change to them
+        database.update_options(DEFAULT_OPTIONS, commit=False)
+        database.commit()
 
     def sync_to_elasticsearch(self, sg_name: str, parallel: bool = True):
         """
