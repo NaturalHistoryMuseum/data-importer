@@ -193,13 +193,14 @@ class DataImporter:
             for view in views:
                 view.queue(batch)
 
-    def queue_emu_changes(self, only_one: bool = False):
+    def queue_emu_changes(self, only_one: bool = False) -> List[date]:
         """
         Look for new EMu dumps, upsert the records into the appropriate DataDB and then
         queue the changes into the derived views.
 
         :param only_one: if True, only process the first set of dumps and then return,
                          otherwise, process them all (default: False)
+        :return the dates that were queued
         """
         last_queued = self.emu_status.get()
         dump_sets = find_emu_dumps(self.config.dumps_path, after=last_queued)
@@ -209,6 +210,7 @@ class DataImporter:
         if only_one:
             dump_sets = dump_sets[:1]
 
+        dates_queued = []
         for dump_set in dump_sets:
             for dump in dump_set.dumps:
                 # normal tables are immediately processable, but if the dump is from
@@ -236,6 +238,8 @@ class DataImporter:
             # we've handled all the dumps from this date, update the last date stored on
             # disk in case we fail later to avoid redoing work
             self.emu_status.update(dump_set.date)
+            dates_queued.append(dump_set.date)
+        return dates_queued
 
     def queue_gbif_changes(self):
         """
