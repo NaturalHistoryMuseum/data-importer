@@ -295,6 +295,13 @@ class DataImporter:
         database.update_options(DEFAULT_OPTIONS, commit=False)
         database.commit()
 
+    def flush_queues(self):
+        """
+        Flush all the queues.
+        """
+        for view in self.views.values():
+            view.flush()
+
     def sync_to_elasticsearch(self, sg_name: str, parallel: bool = True):
         """
         Synchronise the given Splitgill database with Elasticsearch.
