@@ -25,6 +25,13 @@ class MongoConfig:
 
 
 @dataclass
+class PortalConfig:
+    url: str
+    dsn: str
+    admin_user: str
+
+
+@dataclass
 class Config:
     data_path: Path
     dumps_path: Path
@@ -35,6 +42,7 @@ class Config:
     iiif_base_url: str
     mongo_config: MongoConfig
     es_config: ElasticsearchConfig
+    portal_config: PortalConfig
     gbif_username: Optional[str] = None
     gbif_password: Optional[str] = None
 
@@ -72,7 +80,13 @@ def load(path: Path) -> Config:
 
         es_config = ElasticsearchConfig(**raw.pop("elasticsearch", {}))
         mongo_config = MongoConfig(**raw.pop("mongo", {}))
-        config = Config(**raw, mongo_config=mongo_config, es_config=es_config)
+        portal_config = PortalConfig(**raw.pop("portal", {}))
+        config = Config(
+            **raw,
+            mongo_config=mongo_config,
+            es_config=es_config,
+            portal_config=portal_config,
+        )
 
         return config
     except Exception as e:
