@@ -1,11 +1,10 @@
-from functools import partial
+import click
+import psycopg
+from click import Parameter, Context
 from functools import partial
 from pathlib import Path
-from typing import Optional, Any
-
-import click
-from click import Parameter, Context
 from rich.console import Console
+from typing import Optional, Any
 
 from dataimporter.lib.config import Config, load, ConfigLoadError
 
@@ -64,3 +63,20 @@ class ConfigType(click.Path):
 with_config = partial(
     click.argument, "config", type=ConfigType(), envvar=CONFIG_ENV_VAR
 )
+
+
+def get_api_key(db_dsn: str, admin_user: str) -> Optional[str]:
+    """
+    Get the API key for the admin user and return it, or None if we can't get the key.
+
+    :param db_dsn: the database datasource name to connect to
+    :param admin_user: the name of the admin user to get the API key for
+    :return: the API key
+    """
+    with psycopg.connect(db_dsn) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "select apikey from public.user where name = %s;", (admin_user,)
+            )
+            row = cursor.fetchone()
+            return None if row is None else row[0]
