@@ -371,6 +371,27 @@ class ChangeQueue(DB):
         """
         yield from (key.decode("utf-8") for key in self.keys())
 
+    def iter_and_delete(self, batch_size: int = 100) -> Iterable[str]:
+        """
+        Iterate over the changed IDs in the queue yielding them in order and deleting
+        them as we go.
+
+        The IDs are deleted in batches (the size controlled by the optional batch_size
+        parameter) to maintain good performance and only deleted after an entire batch
+        has been yielded to the caller (this batching is unseen to the calling
+        function). The smaller the batch_size parameter, the more granular the queue
+        flushing and therefore the less work required if the operations feeding off of
+        this queue are interrupted and then resumed.
+
+        :return: yields the changed int IDs from the queue
+        """
+        for chunk_of_encoded_ids in partition(self.keys(), batch_size):
+            yield from (key.decode("utf-8") for key in chunk_of_encoded_ids)
+            # now that we've yielded the IDs, delete them
+            with self.db.write_batch() as wb:
+                for encoded_id in chunk_of_encoded_ids:
+                    wb.delete(encoded_id)
+
 
 class EmbargoQueue(DB):
     """
