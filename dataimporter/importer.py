@@ -205,7 +205,7 @@ class DataImporter:
         last_queued = self.emu_status.get()
         dump_sets = find_emu_dumps(self.config.dumps_path, after=last_queued)
         if not dump_sets:
-            return
+            return []
 
         if only_one:
             dump_sets = dump_sets[:1]
