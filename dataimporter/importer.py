@@ -275,11 +275,12 @@ class DataImporter:
         # delete from the data db and return the deleted count
         return self.dbs[db_name].delete(record_ids)
 
-    def add_to_mongo(self, view_name: str):
+    def add_to_mongo(self, view_name: str) -> Optional[int]:
         """
         Add the queued changes in the given view to MongoDB.
 
         :param view_name: the name of the view
+        :return: the new version committed, or None if no changes were made
         """
         view = self.views[view_name]
         view.queue_new_releases()
@@ -293,7 +294,7 @@ class DataImporter:
         )
         # send the options anyway, even if there's no change to them
         database.update_options(DEFAULT_OPTIONS, commit=False)
-        database.commit()
+        return database.commit()
 
     def flush_queues(self):
         """
