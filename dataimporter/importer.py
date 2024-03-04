@@ -315,6 +315,23 @@ class DataImporter:
         database = self.sg_dbs[sg_name]
         database.sync(parallel=parallel)
 
+    def force_merge(self, view_name: str) -> dict:
+        """
+        Performs a force merge on the given view name's Elasticsearch indices. This may
+        take a while! This is good for cleaning up deleted documents.
+
+        :param view_name:
+        :return:
+        """
+        database: SplitgillDatabase = self.sg_dbs[view_name]
+        client = self.client.elasticsearch
+        return client.options(request_timeout=None).indices.forcemerge(
+            index=get_index_wildcard(database.name),
+            allow_no_indices=True,
+            wait_for_completion=True,
+            max_num_segments=1,
+        )
+
     def __enter__(self) -> "DataImporter":
         return self
 
