@@ -14,6 +14,9 @@ CONFIG_ENV_VAR = "DIMP_CONFIG"
 # global console for all to use
 console: Console = Console()
 
+# the names of all the views/databases
+VIEW_NAMES = ("specimen", "indexlot", "artefact", "mss", "preparation")
+
 
 class ConfigType(click.Path):
     """
