@@ -1,12 +1,13 @@
+from itertools import groupby
+
 from datetime import date, datetime
 from functools import partial
-from itertools import groupby
 from pathlib import Path
-from typing import Iterable, Dict, List
-
+from splitgill.indexing.index import get_index_wildcard
 from splitgill.manager import SplitgillClient, SplitgillDatabase
 from splitgill.model import Record
 from splitgill.utils import partition
+from typing import Iterable, Dict, List, Optional
 
 from dataimporter.emu.dumps import (
     find_emu_dumps,
