@@ -291,6 +291,7 @@ class DataImporter:
                 for record in view.iter_changed()
             ),
             commit=False,
+            modified_field="modified",
         )
         # send the options anyway, even if there's no change to them
         database.update_options(DEFAULT_OPTIONS, commit=False)
