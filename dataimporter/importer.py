@@ -282,6 +282,7 @@ class DataImporter:
         :param view_name: the name of the view
         """
         view = self.views[view_name]
+        view.queue_new_releases()
         database: SplitgillDatabase = self.sg_dbs[view_name]
         database.add(
             (
