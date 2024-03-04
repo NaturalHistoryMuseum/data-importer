@@ -314,7 +314,7 @@ class DataImporter:
         :return:
         """
         database = self.sg_dbs[sg_name]
-        database.sync(parallel=parallel)
+        database.sync(parallel=parallel, chunk_size=100)
 
     def force_merge(self, view_name: str) -> dict:
         """
