@@ -1,3 +1,6 @@
+import re
+from typing import Optional
+
 from dataimporter.emu.views.utils import (
     NO_PUBLISH,
     DISALLOWED_STATUSES,
@@ -96,7 +99,23 @@ class PreparationView(View):
             "preparationNumber": get_first("EntPreNumber"),
             "preparationType": get_first("EntPrePreparationKind"),
             "mediumType": get_first("EntPreStorageMedium"),
-            "preparationProcess": get_first("EntPrePreparationMethod"),
-            "preparationContents": get_first("EntPreContents"),
+            "preparationProcess": get_preparation_process(record),
+            "preparationContents": get_first("EntPreContents", "PrtType"),
             "preparationDate": get_first("EntPreDate"),
         }
+
+
+def get_preparation_process(record: SourceRecord) -> Optional[str]:
+    """
+    Given a record, returns a value for the preparationProcess field. This value is
+    pulled from the EntPrePreparationMethod EMu field. The value of this field is
+    cleaned to remove the sometimes used prefix "killing agent" which we don't want to
+    nor need to expose on the Portal.
+
+    :return: the string value, or None if there is no EntPrePreparationMethod value
+    """
+    process = record.get_first_value("EntPrePreparationMethod")
+    if not process:
+        return None
+    else:
+        return re.sub("^killing agent:?\s*", "", process, count=1, flags=re.I)
