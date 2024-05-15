@@ -40,4 +40,5 @@ def print_record_data(importer: DataImporter, table: str, record_id: Union[str, 
     record = data_db.get_record(str(record_id))
     if record is None:
         console.print("record not found", style="red")
+        return
     console.print(record.data)
