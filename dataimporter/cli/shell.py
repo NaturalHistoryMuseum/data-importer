@@ -1,6 +1,6 @@
 from typing import Union
 
-from functools import partial
+from functools import partial, update_wrapper
 
 from dataimporter.cli.utils import console
 from dataimporter.importer import DataImporter
@@ -21,16 +21,17 @@ def setup_env(importer: DataImporter) -> dict:
         "pcd": partial(print_record_data, importer, "ecatalogue"),
         "ptd": partial(print_record_data, importer, "etaxonomy"),
         "pmd": partial(print_record_data, importer, "emultimedia"),
+        "pgd": partial(print_record_data, importer, "gbif"),
     }
 
 
 def print_record_data(importer: DataImporter, table: str, record_id: Union[str, int]):
     """
-    A convenience function for printing record data from the given EMu table.
+    A convenience function for printing record data from the given data table.
 
     :param importer: a DataImporter instance
-    :param table: the EMu table to look up the record ID in
-    :param record_id: an EMu record ID (can be int or str, we deal with it)
+    :param table: the table to look up the record ID in
+    :param record_id: a record ID (can be int or str, we deal with it)
     """
     data_db = importer.dbs.get(table)
     if data_db is None:
