@@ -76,8 +76,8 @@ def init(config: Config):
         },
         "preparation": {
             "name": "collection-preparations",
-            "notes": "Preparation records from the Natural History Museum's collection",
-            "title": "Preparations Collection",
+            "notes": "Sample records from the Natural History Museum's collection",
+            "title": "Sample Collection",
             "author": "Natural History Museum",
             "license_id": "cc-zero",
             "dataset_category": "Collections",
@@ -85,8 +85,8 @@ def init(config: Config):
             "resources": [
                 {
                     "id": config.preparation_id,
-                    "name": "Preparations",
-                    "description": "Preparation records",
+                    "name": "Samples",
+                    "description": "Sample records",
                     "format": "csv",
                     "package_id": "collection-preparations",
                     "url": "_datastore_only_resource",
