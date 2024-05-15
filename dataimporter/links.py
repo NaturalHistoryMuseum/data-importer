@@ -208,6 +208,8 @@ class PreparationSpecimenLink(ViewLink):
     # the Portal fields which are copied from the specimen to the prep data dict
     # TODO: missing CollEventDateVisitedFrom, CollEventName_tab, and kinda ColSite
     MAPPED_SPECIMEN_FIELDS = [
+        "associatedMedia",
+        "associatedMediaCount",
         "barcode",
         "scientificName",
         "order",
