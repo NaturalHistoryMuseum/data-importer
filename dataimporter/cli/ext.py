@@ -23,5 +23,5 @@ def gbif(config: Config):
         console.log("Updating specimen data in MongoDB")
         importer.add_to_mongo("specimen")
         console.log("Syncing specimen changes to Elasticsearch")
-        importer.sync_to_elasticsearch("specimen", parallel=True)
+        importer.sync_to_elasticsearch("specimen")
         console.log("Done")
