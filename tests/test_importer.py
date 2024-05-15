@@ -3,13 +3,18 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 import pytest
-from elasticsearch_dsl import Search
 from freezegun import freeze_time
+from splitgill.search import keyword_ci
 from splitgill.utils import to_timestamp
 
-from dataimporter.lib.config import Config, MongoConfig, ElasticsearchConfig
 from dataimporter.emu.dumps import FIRST_VERSION
 from dataimporter.importer import DataImporter, EMuStatus
+from dataimporter.lib.config import (
+    Config,
+    MongoConfig,
+    ElasticsearchConfig,
+    PortalConfig,
+)
 from dataimporter.lib.model import SourceRecord
 from tests.helpers.dumps import create_dump
 from tests.helpers.dumps import (
@@ -25,6 +30,9 @@ from tests.helpers.dumps import (
 def config(tmp_path: Path) -> Config:
     mongo_config = MongoConfig("mongo", 27017)
     elasticsearch_config = ElasticsearchConfig(["http://es:9200"])
+    portal_config = PortalConfig(
+        "http://10.0.11.20", "postgres://ckan:password@db/ckan", "admin"
+    )
     return Config(
         data_path=tmp_path / "data",
         dumps_path=tmp_path / "dumps",
@@ -35,6 +43,7 @@ def config(tmp_path: Path) -> Config:
         iiif_base_url="https://not.a.real.domain.com/media",
         mongo_config=mongo_config,
         es_config=elasticsearch_config,
+        portal_config=portal_config,
         gbif_username=None,
         gbif_password=None,
     )
@@ -302,34 +311,30 @@ class TestDataImporter:
 
             importer.add_to_mongo(name)
 
-            sg_db = importer.sg_dbs[name]
-            assert sg_db.get_committed_version() == to_timestamp(
+            database = importer.sg_dbs[name]
+            assert database.get_committed_version() == to_timestamp(
                 datetime(2023, 10, 20, 11, 4, 31)
             )
-            assert sg_db.data_collection.count_documents({}) == 8
+            assert database.data_collection.count_documents({}) == 8
 
-            # having parallel=True seems to break in testing, maybe it's something to do
-            # with the test setup or something to do with pytest, who knows
-            importer.sync_to_elasticsearch(name, parallel=False)
+            importer.sync_to_elasticsearch(name)
 
-            assert sg_db.get_elasticsearch_version() == to_timestamp(
+            assert database.get_elasticsearch_version() == to_timestamp(
                 datetime(2023, 10, 20, 11, 4, 31)
             )
 
-            search_base = Search(
-                using=config.get_elasticsearch_client(), index=sg_db.latest_index_name
-            )
+            search_base = database.search()
             assert search_base.count() == 8
             assert (
                 search_base.filter(
-                    "term", **{"parsed.artefactName.ki": "3 beans"}
+                    "term", **{keyword_ci("artefactName"): "3 beans"}
                 ).count()
                 == 1
             )
             # this comes from the image
             assert (
                 search_base.filter(
-                    "term", **{"parsed.associatedMedia.title.ki": "image 4"}
+                    "term", **{keyword_ci("associatedMedia.title"): "image 4"}
                 ).count()
                 == 1
             )
@@ -376,37 +381,37 @@ class TestDataImporter:
 
             importer.add_to_mongo(name)
 
-            sg_db = importer.sg_dbs[name]
-            assert sg_db.get_committed_version() == to_timestamp(
+            database = importer.sg_dbs[name]
+            assert database.get_committed_version() == to_timestamp(
                 datetime(2023, 10, 20, 11, 4, 31)
             )
-            assert sg_db.data_collection.count_documents({}) == 8
+            assert database.data_collection.count_documents({}) == 8
 
-            # having parallel=True seems to break in testing, maybe it's something to do
-            # with the test setup or something to do with pytest, who knows
-            importer.sync_to_elasticsearch(name, parallel=False)
+            importer.sync_to_elasticsearch(name)
 
-            assert sg_db.get_elasticsearch_version() == to_timestamp(
+            assert database.get_elasticsearch_version() == to_timestamp(
                 datetime(2023, 10, 20, 11, 4, 31)
             )
-            search_base = Search(
-                using=config.get_elasticsearch_client(), index=sg_db.latest_index_name
-            )
+            search_base = database.search()
             assert search_base.count() == 8
             assert (
-                search_base.filter("term", **{"parsed.material.ki": "3 lemons"}).count()
+                search_base.filter(
+                    "term", **{keyword_ci("material"): "3 lemons"}
+                ).count()
                 == 1
             )
             # this comes from the image
             assert (
                 search_base.filter(
-                    "term", **{"parsed.associatedMedia.title.ki": "image 4"}
+                    "term", **{keyword_ci("associatedMedia.title"): "image 4"}
                 ).count()
                 == 1
             )
             # this comes from the taxonomy
             assert (
-                search_base.filter("term", **{"parsed.kingdom.ki": "kingdom 4"}).count()
+                search_base.filter(
+                    "term", **{keyword_ci("kingdom"): "kingdom 4"}
+                ).count()
                 == 1
             )
 
@@ -452,39 +457,37 @@ class TestDataImporter:
 
             importer.add_to_mongo(name)
 
-            sg_db = importer.sg_dbs[name]
-            assert sg_db.get_committed_version() == to_timestamp(
+            database = importer.sg_dbs[name]
+            assert database.get_committed_version() == to_timestamp(
                 datetime(2023, 10, 20, 11, 4, 31)
             )
-            assert sg_db.data_collection.count_documents({}) == 8
+            assert database.data_collection.count_documents({}) == 8
 
-            # having parallel=True seems to break in testing, maybe it's something to do
-            # with the test setup or something to do with pytest, who knows
-            importer.sync_to_elasticsearch(name, parallel=False)
+            importer.sync_to_elasticsearch(name)
 
-            assert sg_db.get_elasticsearch_version() == to_timestamp(
+            assert database.get_elasticsearch_version() == to_timestamp(
                 datetime(2023, 10, 20, 11, 4, 31)
             )
-            search_base = Search(
-                using=config.get_elasticsearch_client(), index=sg_db.latest_index_name
-            )
+            search_base = database.search()
             assert search_base.count() == 8
             assert (
                 search_base.filter(
-                    "term", **{"parsed.locality.ki": "3 Number Road"}
+                    "term", **{keyword_ci("locality"): "3 Number Road"}
                 ).count()
                 == 1
             )
             # this comes from the image
             assert (
                 search_base.filter(
-                    "term", **{"parsed.associatedMedia.title.ki": "image 4"}
+                    "term", **{keyword_ci("associatedMedia.title"): "image 4"}
                 ).count()
                 == 1
             )
             # this comes from the taxonomy
             assert (
-                search_base.filter("term", **{"parsed.kingdom.ki": "kingdom 4"}).count()
+                search_base.filter(
+                    "term", **{keyword_ci("kingdom"): "kingdom 4"}
+                ).count()
                 == 1
             )
 
@@ -510,25 +513,23 @@ class TestDataImporter:
 
             importer.add_to_mongo(name)
 
-            sg_db = importer.sg_dbs[name]
-            assert sg_db.get_committed_version() == to_timestamp(
+            database = importer.sg_dbs[name]
+            assert database.get_committed_version() == to_timestamp(
                 datetime(2023, 10, 20, 11, 4, 31)
             )
-            assert sg_db.data_collection.count_documents({}) == 8
+            assert database.data_collection.count_documents({}) == 8
 
-            # having parallel=True seems to break in testing, maybe it's something to do
-            # with the test setup or something to do with pytest, who knows
-            importer.sync_to_elasticsearch(name, parallel=False)
+            importer.sync_to_elasticsearch(name)
 
-            assert sg_db.get_elasticsearch_version() == to_timestamp(
+            assert database.get_elasticsearch_version() == to_timestamp(
                 datetime(2023, 10, 20, 11, 4, 31)
             )
-            search_base = Search(
-                using=config.get_elasticsearch_client(), index=sg_db.latest_index_name
-            )
+            search_base = database.search()
             assert search_base.count() == 8
             assert (
-                search_base.filter("term", **{"parsed.file.ki": "banana-4.jpg"}).count()
+                search_base.filter(
+                    "term", **{keyword_ci("file"): "banana-4.jpg"}
+                ).count()
                 == 1
             )
 
@@ -581,40 +582,36 @@ class TestDataImporter:
 
             importer.add_to_mongo(name)
 
-            sg_db = importer.sg_dbs[name]
-            assert sg_db.get_committed_version() == to_timestamp(
+            database = importer.sg_dbs[name]
+            assert database.get_committed_version() == to_timestamp(
                 datetime(2023, 10, 20, 11, 4, 31)
             )
-            assert sg_db.data_collection.count_documents({}) == 8
+            assert database.data_collection.count_documents({}) == 8
 
-            # having parallel=True seems to break in testing, maybe it's something to do
-            # with the test setup or something to do with pytest, who knows
-            importer.sync_to_elasticsearch(name, parallel=False)
+            importer.sync_to_elasticsearch(name)
 
-            assert sg_db.get_elasticsearch_version() == to_timestamp(
+            assert database.get_elasticsearch_version() == to_timestamp(
                 datetime(2023, 10, 20, 11, 4, 31)
             )
-            search_base = Search(
-                using=config.get_elasticsearch_client(), index=sg_db.latest_index_name
-            )
+            search_base = database.search()
             assert search_base.count() == 8
             assert (
                 search_base.filter(
-                    "term", **{"parsed.mediumType.ki": "Ethanol (6%)"}
+                    "term", **{keyword_ci("mediumType"): "Ethanol (6%)"}
                 ).count()
                 == 1
             )
             # check a field that should have been copied from the voucher specimen
             assert (
                 search_base.filter(
-                    "term", **{"parsed.barcode.ki": "000-00-0-12"}
+                    "term", **{keyword_ci("barcode"): "000-00-0-12"}
                 ).count()
                 == 1
             )
             # check a field that should have been copied from the voucher specimen's
             # taxonomy
             assert (
-                search_base.filter("term", **{"parsed.order.ki": "order 11"}).count()
+                search_base.filter("term", **{keyword_ci("order"): "order 11"}).count()
                 == 1
             )
 
