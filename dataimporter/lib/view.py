@@ -225,6 +225,26 @@ class View:
         # iterate over the changed record IDs, yielding the full records
         yield from self.db.get_records(self.changes)
 
+    def iter_all(self) -> Iterable[SourceRecord]:
+        """
+        Iterate over all records in the view, yielding them as SourceRecord objects.
+
+        Only records which are members, aren't deleted, and aren't embargoed are
+        yielded.
+
+        :return: yields SourceRecord objects
+        """
+        embargo_threshold = now()
+        for record in self.db:
+            if (
+                # should we yield deleted records?
+                record.is_deleted
+                or self.embargoes.is_embargoed(record.id, embargo_threshold)
+                or not self.is_member(record)
+            ):
+                continue
+            yield record
+
     def flush(self):
         """
         Remove all IDs from the main view queue.
