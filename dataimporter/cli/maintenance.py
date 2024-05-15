@@ -1,6 +1,7 @@
 import click
 import code
 
+from dataimporter.cli.shell import setup_env
 from dataimporter.cli.utils import with_config, console, VIEW_NAMES
 from dataimporter.importer import DataImporter
 from dataimporter.lib.config import Config
@@ -58,5 +59,4 @@ def shell(config: Config):
     """
     with DataImporter(config) as importer:
         console.print("Starting shell...")
-        env = {"importer": importer}
-        code.interact(local=env)
+        code.interact(local=setup_env(importer))
