@@ -10,6 +10,7 @@ from dataimporter.emu.views.preparation import (
     INVALID_PROJECT,
     get_preparation_process,
     is_on_loan,
+    ON_LOAN,
 )
 from dataimporter.emu.views.utils import (
     NO_PUBLISH,
@@ -48,6 +49,8 @@ mol_prep_is_member_scenarios: List[Tuple[dict, FilterResult]] = [
     ({"ColDepartment": "DDI"}, INVALID_DEPARTMENT),
     ({"ColSubDepartment": "Informatics"}, INVALID_SUB_DEPARTMENT),
     ({"ColSubDepartment": "LS Mammals"}, INVALID_SUB_DEPARTMENT),
+    ({"LocPermanentLocationRef": "3250522"}, ON_LOAN),
+    ({"LocCurrentSummaryData": "ON LOAN"}, ON_LOAN),
     ({}, SUCCESS_RESULT),
 ]
 
@@ -72,6 +75,8 @@ mammal_part_prep_is_member_scenarios: List[Tuple[dict, FilterResult]] = [
     ({"NhmSecProjectName": "Life of Darwin Tree"}, INVALID_PROJECT),
     # this is a check to make sure a prep in LS Mammals doesn't come through
     ({"ColRecordType": "Preparation"}, INVALID_SUB_DEPARTMENT),
+    ({"LocPermanentLocationRef": "3250522"}, ON_LOAN),
+    ({"LocCurrentSummaryData": "ON LOAN"}, ON_LOAN),
     ({}, SUCCESS_RESULT),
 ]
 
