@@ -1,13 +1,12 @@
-from itertools import groupby
-
 from datetime import date, datetime
 from functools import partial
+from itertools import groupby
 from pathlib import Path
-from splitgill.indexing.index import get_index_wildcard
+from typing import Iterable, Dict, List, Optional
+
 from splitgill.manager import SplitgillClient, SplitgillDatabase
 from splitgill.model import Record
 from splitgill.utils import partition
-from typing import Iterable, Dict, List, Optional
 
 from dataimporter.emu.dumps import (
     find_emu_dumps,
@@ -276,24 +275,30 @@ class DataImporter:
         # delete from the data db and return the deleted count
         return self.dbs[db_name].delete(record_ids)
 
-    def add_to_mongo(self, view_name: str) -> Optional[int]:
+    def add_to_mongo(self, view_name: str, everything: bool = False) -> Optional[int]:
         """
         Add the queued changes in the given view to MongoDB.
 
         :param view_name: the name of the view
+        :param everything: whether to add all records to MongoDB even if they haven't
+               changed. Default: False.
         :return: the new version committed, or None if no changes were made
         """
         view = self.views[view_name]
         view.queue_new_releases()
         database: SplitgillDatabase = self.sg_dbs[view_name]
-        database.add(
-            (
+
+        if everything:
+            records = (
+                Record(record.id, view.transform(record)) for record in view.iter_all()
+            )
+        else:
+            records = (
                 Record(record.id, view.transform(record))
                 for record in view.iter_changed()
-            ),
-            commit=False,
-            modified_field="modified",
-        )
+            )
+
+        database.ingest(records, commit=False, modified_field="modified")
         # send the options anyway, even if there's no change to them
         database.update_options(DEFAULT_OPTIONS, commit=False)
         return database.commit()
@@ -305,16 +310,17 @@ class DataImporter:
         for view in self.views.values():
             view.flush()
 
-    def sync_to_elasticsearch(self, sg_name: str, parallel: bool = True):
+    def sync_to_elasticsearch(self, sg_name: str, resync: bool = False):
         """
         Synchronise the given Splitgill database with Elasticsearch.
 
-        :param sg_name:
-        :param parallel:
+        :param sg_name: the name of the Splitgill database to operate on
+        :param resync: whether to resync all records to Elasticsearch evne if they
+               haven't changed
         :return:
         """
         database = self.sg_dbs[sg_name]
-        database.sync(parallel=parallel, chunk_size=100)
+        database.sync(resync=resync)
 
     def force_merge(self, view_name: str) -> dict:
         """
