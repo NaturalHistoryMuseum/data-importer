@@ -18,6 +18,29 @@ from dataimporter.lib.view import View, FilterResult, SUCCESS_RESULT
 
 INVALID_SUB_DEPARTMENT = FilterResult(False, "Invalid sub-department")
 INVALID_PROJECT = FilterResult(False, "Invalid project")
+ON_LOAN = FilterResult(False, "On loan")
+
+# a regex to check if the current location summary string indicates that the item is on
+# loan. This is pretty broad currently as it just looks for a use of the word "loan" but
+# better to be overstrict than loosey goosey
+on_loan_regex = re.compile(r"\bloan\b", re.I)
+
+
+def is_on_loan(record: SourceRecord) -> bool:
+    """
+    Checks if the given record is on loan or not. If it is, returns True.
+
+    :param record: the source record
+    :return: True if it is on loan, False otherwise
+    """
+    return (
+        # this field contains the IRN of the current location and 3250522 is the IRN of
+        # the on loan location.
+        record.get_first_value("LocPermanentLocationRef") == "3250522"
+        or
+        # check if the current location summary matches the on loan regex
+        on_loan_regex.match(record.get_first_value("LocCurrentSummaryData", default=""))
+    )
 
 
 class PreparationView(View):
@@ -71,6 +94,9 @@ class PreparationView(View):
 
         if record.get_first_value("ColDepartment") not in DEPARTMENT_COLLECTION_CODES:
             return INVALID_DEPARTMENT
+
+        if is_on_loan(record):
+            return ON_LOAN
 
         return SUCCESS_RESULT
 
