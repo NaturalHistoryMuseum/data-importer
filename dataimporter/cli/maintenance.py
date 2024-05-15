@@ -59,4 +59,6 @@ def shell(config: Config):
     """
     with DataImporter(config) as importer:
         console.print("Starting shell...")
-        code.interact(local=setup_env(importer))
+        env = setup_env(importer)
+        banner = f"Available variables/functions: {', '.join(env.keys())}"
+        code.interact(banner=banner, local=env)
