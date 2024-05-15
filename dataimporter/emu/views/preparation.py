@@ -146,4 +146,4 @@ def get_preparation_process(record: SourceRecord) -> Optional[str]:
     if not process:
         return None
     else:
-        return re.sub("^killing agent:?\s*", "", process, count=1, flags=re.I)
+        return re.sub(r"^killing agent:?\s*", "", process, count=1, flags=re.I)
