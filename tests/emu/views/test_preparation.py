@@ -8,6 +8,8 @@ from dataimporter.emu.views.preparation import (
     PreparationView,
     INVALID_SUB_DEPARTMENT,
     INVALID_PROJECT,
+    get_preparation_process,
+    is_on_loan,
 )
 from dataimporter.emu.views.utils import (
     NO_PUBLISH,
@@ -127,3 +129,73 @@ def test_make_data_mammal_part(prep_view: PreparationView):
         "preparationContents": "MUSCLE",
         "preparationDate": None,
     }
+
+
+process_cleaning_scenarios = [
+    # these two shouldn't happen but might as well check
+    (None, None),
+    ("", None),
+    ("100% ethanol", "100% ethanol"),
+    # lowercase, all variants
+    ("killing agent: 100% ethanol", "100% ethanol"),
+    ("killing agent:     100% ethanol", "100% ethanol"),
+    ("killing agent 100% ethanol", "100% ethanol"),
+    ("killing agent     100% ethanol", "100% ethanol"),
+    # mixed case, all variants
+    ("kilLing AgenT: 100% ethanol", "100% ethanol"),
+    ("kilLing AgenT:      100% ethanol", "100% ethanol"),
+    ("kilLing AgenT 100% ethanol", "100% ethanol"),
+    ("kilLing AgenT       100% ethanol", "100% ethanol"),
+    # killing agent mentioned more than once
+    ("killing agent: plant killing agent", "plant killing agent"),
+]
+
+
+class TestGetPreparationProcess:
+    def test_missing(self):
+        record = SourceRecord("t1", {"oh": "no!"}, "test")
+        assert get_preparation_process(record) is None
+
+    @pytest.mark.parametrize("value,clean_value", process_cleaning_scenarios)
+    def test_clean(self, value, clean_value):
+        record = SourceRecord("t1", {"EntPrePreparationMethod": value}, "test")
+        assert get_preparation_process(record) == clean_value
+
+
+class TestIsOnLoan:
+    def test_not_on_loan(self):
+        record = SourceRecord("t1", {"some": "data"}, "test")
+        assert not is_on_loan(record)
+
+    def test_on_loan_irn(self):
+        record = SourceRecord("t1", {"LocPermanentLocationRef": "3250522"}, "test")
+        assert is_on_loan(record)
+
+    def test_not_on_loan_summary_empty(self):
+        record = SourceRecord("t1", {"LocCurrentSummaryData": ""}, "test")
+        assert not is_on_loan(record)
+
+    def test_not_on_loan_summary_a_place_in_the_nhm(self):
+        location = "3G (West); B; 048; EGB.5.28; 5; Earth Galleries; South Kensington"
+        record = SourceRecord("t1", {"LocCurrentSummaryData": location}, "test")
+        assert not is_on_loan(record)
+
+    def test_on_loan_summary_on_loan(self):
+        record = SourceRecord("t1", {"LocCurrentSummaryData": "ON LOAN"}, "test")
+        assert is_on_loan(record)
+        record = SourceRecord("t1", {"LocCurrentSummaryData": "on loan"}, "test")
+        assert is_on_loan(record)
+        record = SourceRecord("t1", {"LocCurrentSummaryData": "On Loan"}, "test")
+        assert is_on_loan(record)
+
+    def test_on_loan_summary_exhibition_loan(self):
+        record = SourceRecord(
+            "t1", {"LocCurrentSummaryData": "On Exhibition Loan (see Events)"}, "test"
+        )
+        assert is_on_loan(record)
+
+    def test_on_loan_summary_loose_loan(self):
+        record = SourceRecord(
+            "t1", {"LocCurrentSummaryData": "this is on loan somewhere"}, "test"
+        )
+        assert is_on_loan(record)
