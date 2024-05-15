@@ -47,6 +47,7 @@ class TestConfig:
             MagicMock(),
             MagicMock(),
             MagicMock(),
+            MagicMock(),
         )
 
         assert isinstance(config.data_path, Path)
@@ -63,6 +64,7 @@ class TestConfig:
             MagicMock(),
             MongoConfig(),
             ElasticsearchConfig(),
+            MagicMock(),
         )
         assert isinstance(config.get_elasticsearch_client(), Elasticsearch)
         assert isinstance(config.get_mongo_client(), MongoClient)
@@ -88,6 +90,10 @@ elasticsearch:
 mongo:
   host: test_mongo
   port: 27017
+portal:
+  url: "http://10.0.11.20"
+  dsn: 'postgres://ckan:password@db/ckan'
+  admin_user: "admin"
         """
         config_path = tmp_path / "config.yml"
         config_path.write_text(raw_config)
@@ -102,3 +108,6 @@ mongo:
         assert config.es_config.hosts == ["http://test_es:9200"]
         assert config.mongo_config.host == "test_mongo"
         assert config.mongo_config.port == 27017
+        assert config.portal_config.url == "http://10.0.11.20"
+        assert config.portal_config.dsn == "postgres://ckan:password@db/ckan"
+        assert config.portal_config.admin_user == "admin"
