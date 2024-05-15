@@ -33,14 +33,16 @@ def is_on_loan(record: SourceRecord) -> bool:
     :param record: the source record
     :return: True if it is on loan, False otherwise
     """
-    return (
-        # this field contains the IRN of the current location and 3250522 is the IRN of
-        # the on loan location.
-        record.get_first_value("LocPermanentLocationRef") == "3250522"
-        or
-        # check if the current location summary matches the on loan regex
-        on_loan_regex.match(record.get_first_value("LocCurrentSummaryData", default=""))
-    )
+    # this field contains the IRN of the current location and 3250522 is the IRN of the
+    # "on loan" location
+    if record.get_first_value("LocPermanentLocationRef") == "3250522":
+        return True
+    # check if the current location summary matches the on loan regex
+    if on_loan_regex.search(
+        record.get_first_value("LocCurrentSummaryData", default="")
+    ):
+        return True
+    return False
 
 
 class PreparationView(View):
