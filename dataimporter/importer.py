@@ -327,7 +327,7 @@ class DataImporter:
         database: SplitgillDatabase = self.sg_dbs[view_name]
         client = self.client.elasticsearch
         return client.options(request_timeout=None).indices.forcemerge(
-            index=get_index_wildcard(database.name),
+            index=database.indices.wildcard,
             allow_no_indices=True,
             wait_for_completion=True,
             max_num_segments=1,
