@@ -99,6 +99,18 @@ def get_first_non_person_string(values: Iterable[str]) -> Optional[str]:
     return next(filter(None, map(person_string_remover, values)), None)
 
 
+def get_all_non_person_strings(values: Iterable[str]) -> Optional[Tuple[str, ...]]:
+    """
+    Retrieve all values from the values iterable which are non-None after being passed
+    through the person string remover.
+
+    :param values: the values to filter
+    :return: None if no values are valid, otherwise a tuple of valid strings
+    """
+    names = tuple(filter(None, map(person_string_remover, values)))
+    return None if not names else names
+
+
 def clean_determination_names(values: Iterable[str]) -> Optional[Tuple[str, ...]]:
     """
     Clean the determination names field values. This is a special function which passes
@@ -203,8 +215,8 @@ class SpecimenView(View):
             "catalogNumber": get_first("DarCatalogNumber", "RegRegistrationNumber"),
             "recordNumber": get_first("DarCollectorNumber"),
             "occurrenceID": get_first("AdmGUIDPreferredValue"),
-            "recordedBy": get_first_non_person_string(
-                iter_all_values("DarCollector", "CollEventNameSummaryData")
+            "recordedBy": get_all_non_person_strings(
+                iter_all_values("CollEventFullNameSummaryData")
             ),
             "individualCount": get_individual_count(record),
             "sex": get_first("DarSex"),
