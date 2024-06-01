@@ -340,59 +340,6 @@ class Index(DB):
         return next(iter(self.get_keys(value)), None)
 
 
-class ChangeQueue(DB):
-    """
-    A database that acts as a queue of IDs that have changed.
-    """
-
-    def put_many(self, records: List[SourceRecord]):
-        """
-        Update the queue with the given records. The IDs are added in a transaction.
-
-        :param records: the records that have changed
-        """
-        self.put_many_ids([record.id for record in records])
-
-    def put_many_ids(self, record_ids: List[str]):
-        """
-        Update the queue with the given record IDs. The IDs are added in a transaction.
-
-        :param record_ids: the record IDs that have changed
-        """
-        with self.db.write_batch(transaction=True) as wb:
-            for record_id in record_ids:
-                wb.put(record_id.encode("utf-8"), b"")
-
-    def __iter__(self) -> Iterable[str]:
-        """
-        Yields the IDs one by one.
-
-        :return: yields the changed int IDs from the queue
-        """
-        yield from (key.decode("utf-8") for key in self.keys())
-
-    def iter_and_delete(self, batch_size: int = 100) -> Iterable[str]:
-        """
-        Iterate over the changed IDs in the queue yielding them in order and deleting
-        them as we go.
-
-        The IDs are deleted in batches (the size controlled by the optional batch_size
-        parameter) to maintain good performance and only deleted after an entire batch
-        has been yielded to the caller (this batching is unseen to the calling
-        function). The smaller the batch_size parameter, the more granular the queue
-        flushing and therefore the less work required if the operations feeding off of
-        this queue are interrupted and then resumed.
-
-        :return: yields the changed int IDs from the queue
-        """
-        for chunk_of_encoded_ids in partition(self.keys(), batch_size):
-            yield from (key.decode("utf-8") for key in chunk_of_encoded_ids)
-            # now that we've yielded the IDs, delete them
-            with self.db.write_batch() as wb:
-                for encoded_id in chunk_of_encoded_ids:
-                    wb.delete(encoded_id)
-
-
 class EmbargoQueue(DB):
     """
     A database of record embargo statuses.
@@ -588,3 +535,56 @@ class RedactionDB(DB):
             key.decode("utf-8").split(".")[1]: value.decode("utf-8")
             for key, value in self.items(prefix=f"{db_name}.".encode("utf-8"))
         }
+
+
+class ChangeQueue(DB):
+    """
+    A database that acts as a queue of IDs that have changed.
+    """
+
+    def put_many(self, records: List[SourceRecord]):
+        """
+        Update the queue with the given records. The IDs are added in a transaction.
+
+        :param records: the records that have changed
+        """
+        self.put_many_ids([record.id for record in records])
+
+    def put_many_ids(self, record_ids: List[str]):
+        """
+        Update the queue with the given record IDs. The IDs are added in a transaction.
+
+        :param record_ids: the record IDs that have changed
+        """
+        with self.db.write_batch(transaction=True) as wb:
+            for record_id in record_ids:
+                wb.put(record_id.encode("utf-8"), b"")
+
+    def __iter__(self) -> Iterable[str]:
+        """
+        Yields the IDs one by one.
+
+        :return: yields the changed int IDs from the queue
+        """
+        yield from (key.decode("utf-8") for key in self.keys())
+
+    def iter_and_delete(self, batch_size: int = 100) -> Iterable[str]:
+        """
+        Iterate over the changed IDs in the queue yielding them in order and deleting
+        them as we go.
+
+        The IDs are deleted in batches (the size controlled by the optional batch_size
+        parameter) to maintain good performance and only deleted after an entire batch
+        has been yielded to the caller (this batching is unseen to the calling
+        function). The smaller the batch_size parameter, the more granular the queue
+        flushing and therefore the less work required if the operations feeding off of
+        this queue are interrupted and then resumed.
+
+        :return: yields the changed int IDs from the queue
+        """
+        for chunk_of_encoded_ids in partition(self.keys(), batch_size):
+            yield from (key.decode("utf-8") for key in chunk_of_encoded_ids)
+            # now that we've yielded the IDs, delete them
+            with self.db.write_batch() as wb:
+                for encoded_id in chunk_of_encoded_ids:
+                    wb.delete(encoded_id)
