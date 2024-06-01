@@ -15,29 +15,9 @@ from dataimporter.lib.dbs import (
     Index,
     ChangeQueue,
     EmbargoQueue,
-    int_to_sortable_str,
-    MAX_INT,
     RedactionDB,
 )
 from dataimporter.lib.model import SourceRecord
-
-
-def test_int_to_sortable_str():
-    with pytest.raises(ValueError):
-        assert int_to_sortable_str(20.5)
-
-    with pytest.raises(ValueError):
-        assert int_to_sortable_str(20.0)
-
-    with pytest.raises(ValueError):
-        assert int_to_sortable_str(-1)
-
-    with pytest.raises(ValueError):
-        assert int_to_sortable_str(MAX_INT + 1)
-
-    assert int_to_sortable_str(10) == "2_10"
-    assert int_to_sortable_str(0) == "1_0"
-    assert int_to_sortable_str(MAX_INT - 1) == f"~_{MAX_INT - 1}"
 
 
 class TestDB:

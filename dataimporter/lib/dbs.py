@@ -4,47 +4,9 @@ from typing import Iterable, Optional, Tuple, List, Dict
 
 import msgpack
 import plyvel
-from fastnumbers import check_int
 from splitgill.utils import parse_to_timestamp, now, partition
 
 from dataimporter.lib.model import SourceRecord
-
-# the maximum integer we can represent as a sortable string is 78 digits
-MAX_INT = int("9" * 78)
-
-
-def int_to_sortable_str(number: int) -> str:
-    """
-    Encodes the given number and returns a string that when compared to other strings is
-    alphanumerically orderable. This fixes the standard 1, 2, 20, 21, 3 problem without
-    using zero padding which wastes space and requires a much lower maximum input value.
-    The algorithm used is based on the one presented here:
-    https://www.arangodb.com/2017/09/sorting-number-strings-numerically/ with a couple
-    of tweaks.
-
-    Essentially, we encode the length of the number before the number itself using a
-    single ASCII character. This allows sorting to be done properly as the ASCII
-    character is compared first and then the number next. For example, the number 1 gets
-    the character 1 so is encoded as "1_1", whereas 10 gets the character 2 and is
-    encoded "2_10". Because we are restricted to not use . in keys and for low number
-    convenience, we start at character point 49 which is the character 1 and therefore
-    all numbers less than 1,000,000,000 are encoded with the numbers 1 to 9 which is
-    convenient for users.
-
-    This encoding structure can support a number with a maximum length of 78 digits
-    (ASCII char 1 (49) to ~ (126)).
-
-    This function only works on positive integers. If the input isn't valid, a
-    ValueError is raised.
-
-    :param number: the number to encode, must be positive
-    :return: the encoded number as a str object
-    """
-    if not check_int(number):
-        raise ValueError("Number must be a valid integer")
-    if number < 0 or number > MAX_INT:
-        raise ValueError(f"Number must be positive and no more than {MAX_INT}")
-    return f"{chr(48 + len(str(number)))}_{number}"
 
 
 class DB:
