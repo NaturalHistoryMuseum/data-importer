@@ -15,6 +15,13 @@ EMU_ID_FIELD = "irn"
 FIRST_VERSION = date(2017, 8, 29)
 # the EMu tables we currently use
 EMU_TABLES = {"eaudit", "ecatalogue", "emultimedia", "etaxonomy"}
+# fields to ignore and don't store
+IGNORE_FIELDS = {
+    # really don't need this field, it's just the order of the record in the dump
+    "rownum",
+    # this field contains old pre-EMu data which we just won't ever need so bye bye
+    "AdmOriginalData",
+}
 
 
 def find_emu_dumps(
@@ -135,9 +142,12 @@ class EMuDump:
                     continue
 
                 if line != "###":
-                    # the format is <field>:<index>=<value>
+                    # the format is <field>:<index>=<value> or sometimes <field>=<value>
                     field, value = line.split("=", 1)
                     field = field.split(":", 1)[0]
+
+                    if field in IGNORE_FIELDS:
+                        continue
 
                     if field == EMU_ID_FIELD:
                         emu_id = value
