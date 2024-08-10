@@ -2,11 +2,11 @@ from datetime import date, datetime
 from functools import partial
 from itertools import groupby
 from pathlib import Path
-from typing import Iterable, Dict, List, Optional
+from typing import Iterable, List, Optional
 
 from splitgill.manager import SplitgillClient, SplitgillDatabase
 from splitgill.model import Record
-from splitgill.utils import partition
+from splitgill.utils import partition, now
 
 from dataimporter.emu.dumps import (
     find_emu_dumps,
@@ -17,22 +17,17 @@ from dataimporter.emu.dumps import (
 from dataimporter.emu.views.artefact import ArtefactView
 from dataimporter.emu.views.image import ImageView
 from dataimporter.emu.views.indexlot import IndexLotView
+from dataimporter.emu.views.mammalpart import MammalPartView
 from dataimporter.emu.views.mss import MSSView
 from dataimporter.emu.views.preparation import PreparationView
 from dataimporter.emu.views.specimen import SpecimenView
 from dataimporter.emu.views.taxonomy import TaxonomyView
 from dataimporter.ext.gbif import GBIFView, get_changed_records
 from dataimporter.lib.config import Config
-from dataimporter.lib.dbs import DataDB, RedactionDB
+from dataimporter.lib.dbs import Store
 from dataimporter.lib.model import SourceRecord
 from dataimporter.lib.options import DEFAULT_OPTIONS
-from dataimporter.lib.view import View, ViewLink
-from dataimporter.links import (
-    MediaLink,
-    TaxonomyLink,
-    GBIFLink,
-    PreparationSpecimenLink,
-)
+from dataimporter.lib.view import View
 
 
 class DataImporter:
@@ -56,140 +51,122 @@ class DataImporter:
         # make sure the data path exists
         self.config.data_path.mkdir(exist_ok=True)
         # create all the paths for data storage
-        self.dbs_path = config.data_path / "dbs"
+        self.stores_path = config.data_path / "stores"
         self.views_path = config.data_path / "views"
-        self.links_path = config.data_path / "links"
         # make sure they exist
-        self.dbs_path.mkdir(exist_ok=True)
+        self.stores_path.mkdir(exist_ok=True)
         self.views_path.mkdir(exist_ok=True)
-        self.links_path.mkdir(exist_ok=True)
 
-        # CREATE THE DATABASES
-        # create the data DBs for each EMu table (note, not the eaudit table!)
-        ecatalogue_db = DataDB(self.dbs_path / "ecatalogue")
-        emultimedia_db = DataDB(self.dbs_path / "emultimedia")
-        etaxonomy_db = DataDB(self.dbs_path / "etaxonomy")
+        # create the stores we need (note not eaudit!)
+        ecatalogue_store = Store(self.stores_path / "ecatalogue")
+        emultimedia_store = Store(self.stores_path / "emultimedia")
+        etaxonomy_store = Store(self.stores_path / "etaxonomy")
+        gbif_store = Store(self.stores_path / "gbif")
+        self.stores = [ecatalogue_store, emultimedia_store, etaxonomy_store, gbif_store]
 
-        # create a data DB for GBIF data
-        gbif_db = DataDB(self.dbs_path / "gbif")
-
-        # CREATE THE VIEWS
-        mss_view = MSSView(self.views_path / "mss", emultimedia_db)
+        # create the views we need
+        mss_view = MSSView(self.views_path / "mss", emultimedia_store, "mss")
         image_view = ImageView(
-            self.views_path / "image", emultimedia_db, config.iiif_base_url
+            self.views_path / "image", emultimedia_store, config.iiif_base_url
         )
-        taxonomy_view = TaxonomyView(self.views_path / "taxonomy", etaxonomy_db)
-        gbif_view = GBIFView(self.views_path / "gbif", gbif_db)
-        artefact_view = ArtefactView(self.views_path / "artefact", ecatalogue_db)
-        indexlot_view = IndexLotView(self.views_path / "indexlot", ecatalogue_db)
-        specimen_view = SpecimenView(self.views_path / "specimen", ecatalogue_db)
-        prep_view = PreparationView(self.views_path / "preparation", ecatalogue_db)
-
-        # CREATE THE VIEW LINKS
-        # first artefact links
-        artefact_images = MediaLink(
-            self.links_path / "artefact_image", artefact_view, image_view
+        taxonomy_view = TaxonomyView(self.views_path / "taxonomy", etaxonomy_store)
+        gbif_view = GBIFView(self.views_path / "gbif", gbif_store)
+        artefact_view = ArtefactView(
+            self.views_path / "artefact",
+            ecatalogue_store,
+            image_view,
+            config.artefact_id,
         )
-
-        # next indexlot links
-        indexlot_images = MediaLink(
-            self.links_path / "indexlot_image", indexlot_view, image_view
-        )
-        indexlot_taxonomy = TaxonomyLink(
-            self.links_path / "indexlot_taxonomy",
-            indexlot_view,
+        indexlot_view = IndexLotView(
+            self.views_path / "indexlot",
+            ecatalogue_store,
+            image_view,
             taxonomy_view,
-            TaxonomyLink.INDEXLOT_ID_REF_FIELD,
+            config.indexlot_id,
         )
-
-        # next specimen links
-        specimen_images = MediaLink(
-            self.links_path / "specimen_image", specimen_view, image_view
+        mammal_part_view = MammalPartView(
+            self.views_path / "mammalpart", ecatalogue_store
         )
-        specimen_taxonomy = TaxonomyLink(
-            self.links_path / "specimen_taxonomy",
+        specimen_view = SpecimenView(
+            self.views_path / "specimen",
+            ecatalogue_store,
+            image_view,
+            taxonomy_view,
+            gbif_view,
+            mammal_part_view,
+            config.specimen_id,
+        )
+        prep_view = PreparationView(
+            self.views_path / "preparation",
+            ecatalogue_store,
             specimen_view,
+            config.preparation_id,
+        )
+        self.views = [
+            image_view,
+            mss_view,
             taxonomy_view,
-            TaxonomyLink.CARD_PARASITE_ID_REF_FIELD,
-        )
-        specimen_gbif = GBIFLink(
-            self.links_path / "specimen_gbif", specimen_view, gbif_view
-        )
-
-        # next preparation view
-        preparation_specimen = PreparationSpecimenLink(
-            self.links_path / "preparation_specimen", prep_view, specimen_view
-        )
-
-        # SETUP STATE
-        # store all the dbs, view, and links in dicts for easy access via their names
-        self.dbs: Dict[str, DataDB] = {
-            db.name: db for db in [ecatalogue_db, emultimedia_db, etaxonomy_db, gbif_db]
-        }
-        self.views: Dict[str, View] = {
-            view.name: view
-            for view in [
-                mss_view,
-                image_view,
-                taxonomy_view,
-                gbif_view,
-                artefact_view,
-                indexlot_view,
-                specimen_view,
-                prep_view,
-            ]
-        }
-        self.links: Dict[str, ViewLink] = {
-            link.name: link
-            for link in [
-                artefact_images,
-                indexlot_images,
-                indexlot_taxonomy,
-                specimen_images,
-                specimen_taxonomy,
-                specimen_gbif,
-                preparation_specimen,
-            ]
-        }
+            gbif_view,
+            artefact_view,
+            indexlot_view,
+            specimen_view,
+            prep_view,
+            mammal_part_view,
+        ]
 
         # this is where store the last date we have fully imported from EMu
         self.emu_status = EMuStatus(config.data_path / "emu_last_date.txt")
 
-        # create the Portal side Splitgill databases for ingest and index
-        self.sg_dbs = {
-            "specimen": SplitgillDatabase(config.specimen_id, self.client),
-            "indexlot": SplitgillDatabase(config.indexlot_id, self.client),
-            "artefact": SplitgillDatabase(config.artefact_id, self.client),
-            "mss": SplitgillDatabase("mss", self.client),
-            "preparation": SplitgillDatabase(config.preparation_id, self.client),
-        }
-
-        # a database for each data db's redacted IDs to be stored in
-        self.redaction_database = RedactionDB(config.data_path / "redactions")
-
-    def queue_changes(self, records: Iterable[SourceRecord], db_name: str):
+    def get_store(self, name: str) -> Optional[Store]:
         """
-        Update the records in the data DB with the given name. The views based on the DB
+        Get the store with the given name. If the store doesn't exist, None is returned.
+
+        :param name: the name of the store
+        :return: the Store instance or None
+        """
+        for store in self.stores:
+            if store.name == name:
+                return store
+        return None
+
+    def get_view(self, name: str) -> Optional[View]:
+        """
+        Get the view with the given name. If the view doesn't exist, None is returned.
+
+        :param name: the name of the view
+        :return: the View instance or None
+        """
+        for view in self.views:
+            if view.name == name:
+                return view
+        return None
+
+    def get_splitgill_database(self, view: View) -> SplitgillDatabase:
+        """
+        Returns a new SplitgillDatabase instance for the given view. If the view doesn't
+        have an associated SplitgillDatabase name, then a ValueError is raised.
+
+        :param view: a view
+        :return: a SplitgillDatabase instance
+        """
+        if view.sg_name is None:
+            raise ValueError("View does not have a sg_name")
+        return SplitgillDatabase(view.sg_name, self.client)
+
+    def queue_changes(self, records: Iterable[SourceRecord], store_name: str):
+        """
+        Update the records in the store with the given name. The views based on the DB
         that is being updated will also be updated.
 
         :param records: an iterable of records to queue
-        :param db_name: the name of the database to update
+        :param store_name: the name of the store to update
         """
-        batch_size = 5000
-        db = self.dbs[db_name]
-        # find the views based on the db
-        views = [view for view in self.views.values() if view.db.name == db.name]
+        store = self.get_store(store_name)
+        # find the views based on the store
+        views = [view for view in self.views if view.store.name == store.name]
 
-        # the number of redactions is unlikely to be enormous, so it should be safe to
-        # load the redactions for this db completely into memory
-        redactions = self.redaction_database.get_all_redacted_ids(db_name)
-        if redactions:
-            # if we have redactions on this dataDB, wrap the records iterable with a
-            # generator which filters out any redacted records
-            records = (record for record in records if record.id not in redactions)
-
-        for batch in partition(records, batch_size):
-            db.put_many(batch)
+        for batch in partition(records, 1000):
+            store.put(batch)
             for view in views:
                 view.queue(batch)
 
@@ -210,6 +187,7 @@ class DataImporter:
         if only_one:
             dump_sets = dump_sets[:1]
 
+        store_names = {store.name for store in self.stores if store.name != "gbif"}
         dates_queued = []
         for dump_set in dump_sets:
             for dump in dump_set.dumps:
@@ -223,7 +201,7 @@ class DataImporter:
                     # wrap the dump stream in a filter to only allow through records
                     # we want to process
                     filtered_dump = filter(
-                        partial(is_valid_eaudit_record, tables=set(self.dbs.keys())),
+                        partial(is_valid_eaudit_record, tables=store_names),
                         dump.read(),
                     )
                     # queue the changes to each table's database in turn
@@ -239,6 +217,7 @@ class DataImporter:
             # disk in case we fail later to avoid redoing work
             self.emu_status.update(dump_set.date)
             dates_queued.append(dump_set.date)
+
         return dates_queued
 
     def queue_gbif_changes(self):
@@ -248,13 +227,15 @@ class DataImporter:
         """
         self.queue_changes(
             get_changed_records(
-                self.dbs["gbif"], self.config.gbif_username, self.config.gbif_password
+                self.get_store("gbif"),
+                self.config.gbif_username,
+                self.config.gbif_password,
             ),
             "gbif",
         )
 
     def redact_records(
-        self, db_name: str, record_ids: List[str], redaction_id: str
+        self, store_name: str, record_ids: List[str], redaction_id: str
     ) -> int:
         """
         Deletes the given record IDs from the named DataDB. This doesn't delete any data
@@ -265,15 +246,18 @@ class DataImporter:
         at all, even in historic searches. This is because it breaks the core idea of
         the versioned Splitgill system.
 
-        :param db_name: the name of the datadb to remove the records from
+        :param store_name: the name of the store to remove the records from
         :param record_ids: a list of str record IDs to redact
         :param redaction_id: an ID for the redaction, so it's traceable
         :return: the number of records deleted
         """
-        # add the record IDs to the redaction database
-        self.redaction_database.add_ids(db_name, record_ids, redaction_id)
-        # delete from the data db and return the deleted count
-        return self.dbs[db_name].delete(record_ids)
+        store = self.get_store(store_name)
+        return store.redact(record_ids, redaction_id)
+
+    def release_records(self, up_to: int):
+        # todo: doc
+        for store in self.stores:
+            self.queue_changes(store.release_records(up_to), store.name)
 
     def add_to_mongo(self, view_name: str, everything: bool = False) -> Optional[int]:
         """
@@ -284,42 +268,47 @@ class DataImporter:
                changed. Default: False.
         :return: the new version committed, or None if no changes were made
         """
-        view = self.views[view_name]
-        view.queue_new_releases()
-        database: SplitgillDatabase = self.sg_dbs[view_name]
+        self.release_records(now())
+
+        view = self.get_view(view_name)
+        database = self.get_splitgill_database(view)
 
         if everything:
-            records = (
-                Record(record.id, view.transform(record)) for record in view.iter_all()
-            )
+            changed_records = view.iter_all()
         else:
-            records = (
-                Record(record.id, view.transform(record))
-                for record in view.iter_changed()
-            )
+            changed_records = view.iter_changed()
+        records = (
+            Record(record.id, view.transform(record))
+            if record
+            else Record.delete(record.id)
+            for record in changed_records
+        )
 
         database.ingest(records, commit=False, modified_field="modified")
         # send the options anyway, even if there's no change to them
         database.update_options(DEFAULT_OPTIONS, commit=False)
-        return database.commit()
+        committed = database.commit()
+        # flush the queue as we've handled everything in it now
+        view.flush()
+        return committed
 
     def flush_queues(self):
         """
         Flush all the queues.
         """
-        for view in self.views.values():
+        for view in self.views:
             view.flush()
 
-    def sync_to_elasticsearch(self, sg_name: str, resync: bool = False):
+    def sync_to_elasticsearch(self, view_name: str, resync: bool = False):
         """
         Synchronise the given Splitgill database with Elasticsearch.
 
-        :param sg_name: the name of the Splitgill database to operate on
-        :param resync: whether to resync all records to Elasticsearch evne if they
+        :param view_name: the name of the view the Splitgill database will use
+        :param resync: whether to resync all records to Elasticsearch even if they
                haven't changed
-        :return:
         """
-        database = self.sg_dbs[sg_name]
+        view = self.get_view(view_name)
+        database = self.get_splitgill_database(view)
         database.sync(resync=resync)
 
     def force_merge(self, view_name: str) -> dict:
@@ -330,7 +319,8 @@ class DataImporter:
         :param view_name:
         :return:
         """
-        database: SplitgillDatabase = self.sg_dbs[view_name]
+        view = self.get_view(view_name)
+        database = self.get_splitgill_database(view)
         client = self.client.elasticsearch
         return client.options(request_timeout=None).indices.forcemerge(
             index=database.indices.wildcard,
@@ -349,11 +339,10 @@ class DataImporter:
         """
         Close the views and data DBs down.
         """
-        for view in self.views.values():
+        for view in self.views:
             view.close()
-        for db in self.dbs.values():
-            db.close()
-        self.redaction_database.close()
+        for store in self.stores:
+            store.close()
 
 
 class EMuStatus:

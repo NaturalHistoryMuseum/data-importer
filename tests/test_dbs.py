@@ -1,29 +1,42 @@
-from contextlib import closing
 from datetime import datetime
+
+from freezegun import freeze_time
 from itertools import chain
 from pathlib import Path
-from typing import Optional
 
 import msgpack
 import pytest
-from freezegun import freeze_time
-from splitgill.utils import partition, now, to_timestamp
+from splitgill.utils import partition, parse_to_timestamp, to_timestamp, now
 
 from dataimporter.lib.dbs import (
     DB,
-    DataDB,
     Index,
     ChangeQueue,
-    EmbargoQueue,
-    RedactionDB,
+    Store,
+    make_unpacker,
+    SPLITTER,
+    InvalidRecordID,
 )
 from dataimporter.lib.model import SourceRecord
+
+
+@pytest.fixture
+def store(tmp_path: Path) -> Store:
+    st = Store(tmp_path / "database")
+    yield st
+    st.close()
 
 
 class TestDB:
     def test_name(self, tmp_path: Path):
         db = DB(tmp_path / "database")
         assert db.name == "database"
+
+    def test_empty(self, tmp_path: Path):
+        db = DB(tmp_path / "database")
+        assert db.is_empty()
+        db.put([(b"key", b"value")])
+        assert not db.is_empty()
 
     def test_keys(self, tmp_path: Path):
         db = DB(tmp_path / "database")
@@ -76,40 +89,159 @@ class TestDB:
         assert db.db.closed
 
 
-class TestDataDB:
-    def test_iter_and_put_many(self, tmp_path: Path):
-        db = DataDB(tmp_path / "database")
-        assert not list(db)
+class TestStore:
+    def test_invalid_id(self, store: Store):
+        with pytest.raises(InvalidRecordID):
+            store.put([SourceRecord(f"record-{SPLITTER}-1", {"a": "b"}, "test")])
+
+    def test_iter_and_put_many(self, store: Store):
+        assert not list(store.iter())
 
         records = [
             SourceRecord(i, {"a": "banana"}, "test")
             for i in sorted(map(str, range(5000)))
         ]
 
+        total_inserted = 0
+
         for chunk in partition(records, 541):
-            db.put_many(chunk)
+            result = store.put(chunk)
+            assert result.deleted == 0
+            assert result.redacted == 0
+            assert result.embargoed == 0
+            total_inserted += result.upserted
 
-        assert list(db) == records
+        assert total_inserted == len(records)
+        assert list(store.iter()) == records
 
-    def test_get_record(self, tmp_path: Path):
-        db = DataDB(tmp_path / "database")
+    def test_embargoes(self, store: Store):
+        with freeze_time("2020-01-01"):
+            # check is_embargoed works when no data exists
+            assert not store.is_embargoed("e-1", now())
 
+            first_type = SourceRecord(
+                "e-1", {"a": "banana", "NhmSecEmbargoDate": "2020-05-01"}, "test"
+            )
+            assert store.put([first_type]).embargoed == 1
+            assert store.get_record(first_type.id) is None
+            assert store.is_embargoed(first_type.id, now())
+
+            second_type = SourceRecord(
+                "e-2",
+                {"a": "banana", "NhmSecEmbargoExtensionDate": "2020-05-01"},
+                "test",
+            )
+            assert store.put([second_type]).embargoed == 1
+            assert store.get_record(second_type.id) is None
+            assert store.is_embargoed(second_type.id, now())
+
+            both_type = SourceRecord(
+                "e-3",
+                {
+                    "a": "banana",
+                    "NhmSecEmbargoDate": "2019-12-01",
+                    "NhmSecEmbargoExtensionDate": "2020-05-01",
+                },
+                "test",
+            )
+            assert store.put([both_type]).embargoed == 1
+            assert store.get_record(both_type.id) is None
+            assert store.is_embargoed(both_type.id, now())
+
+            # I assume this shouldn't happen, but anything's possible
+            both_type_reversed = SourceRecord(
+                "e-4",
+                {
+                    "a": "banana",
+                    "NhmSecEmbargoDate": "2020-05-01",
+                    "NhmSecEmbargoExtensionDate": "2019-12-01",
+                },
+                "test",
+            )
+            assert store.put([both_type_reversed]).embargoed == 1
+            assert store.get_record(both_type_reversed.id) is None
+            assert store.is_embargoed(both_type_reversed.id, now())
+
+            expired_embargo = SourceRecord(
+                "e-5",
+                {
+                    "a": "banana",
+                    "NhmSecEmbargoDate": "2019-11-01",
+                    "NhmSecEmbargoExtensionDate": "2019-12-01",
+                },
+                "test",
+            )
+            assert store.put([expired_embargo]).embargoed == 0
+            assert store.get_record(expired_embargo.id) == expired_embargo
+            assert not store.is_embargoed(expired_embargo.id, now())
+
+            assert list(store.iter_embargoed_ids()) == ["e-1", "e-2", "e-3", "e-4"]
+            assert list(store.iter_embargoed_ids(timestamp=now())) == [
+                "e-1",
+                "e-2",
+                "e-3",
+                "e-4",
+            ]
+            assert not list(
+                store.iter_embargoed_ids(timestamp=to_timestamp(datetime(2020, 6, 1)))
+            )
+
+        released = list(store.release_records(to_timestamp(datetime(2021, 1, 1))))
+        assert len(released) == 4
+        assert first_type in released
+        assert second_type in released
+        assert both_type in released
+        assert both_type_reversed in released
+        assert list(store.get_records(["e-1", "e-2", "e-3", "e-4"])) == [
+            first_type,
+            second_type,
+            both_type,
+            both_type_reversed,
+        ]
+
+    def test_redact(self, store: Store):
+        record = SourceRecord("r-1", {"a": "Paru smells! :O"}, "test")
+        assert store.put([record]).upserted == 1
+        assert store.get_record(record.id) == record
+        assert store.get_redaction_id(record.id) is None
+
+        redaction_id = "truly-horrible-content"
+        assert store.redact([record.id], redaction_id) == 1
+        assert store.is_redacted(record.id)
+        assert store.get_record(record.id) is None
+        assert store.get_record(record.id, return_deleted=True) is None
+        assert store.get_redaction_id(record.id) == redaction_id
+        assert store.get_all_redacted_ids() == {record.id: redaction_id}
+        assert not store.has(record.id)
+        assert not list(store.get_records([record.id]))
+        assert not list(store.iter())
+
+        # try and add the record again
+        assert store.put([record]).redacted == 1
+        assert store.is_redacted(record.id)
+        assert store.get_record(record.id) is None
+
+    def test_get_record(self, store: Store):
         records = [SourceRecord(str(i), {"a": "banana"}, "test") for i in range(40)]
 
-        db.put_many(records)
+        assert store.put(records).upserted == 40
 
-        assert db.get_record("41") is None
-        assert db.get_record("23") == records[23]
+        assert store.get_record("41") is None
+        assert store.get_record("23") == records[23]
 
-    def test_get_records(self, tmp_path: Path):
-        db = DataDB(tmp_path / "database")
+        # delete a record
+        to_delete = SourceRecord("4", {}, "test-delete")
+        assert store.put([to_delete]).deleted == 1
+        assert store.get_record("4") is None
+        assert store.get_record("4", return_deleted=True) == to_delete
 
+    def test_get_records(self, store: Store):
         records = [SourceRecord(str(i), {"a": "banana"}, "test") for i in range(40)]
 
-        db.put_many(records)
+        store.put(records)
 
         ids = [6, 10, 3, 50, 8, 9, 9, 35]
-        assert list(db.get_records(map(str, ids))) == [
+        assert list(store.get_records(map(str, ids))) == [
             records[6],
             records[10],
             records[3],
@@ -120,7 +252,18 @@ class TestDataDB:
             records[35],
         ]
 
-    def test_get_records_with_interrupt(self, tmp_path: Path):
+        # let's delete a record
+        to_delete = SourceRecord("3", {}, "test_delete")
+        store.put([to_delete])
+        assert list(store.get_records(["3", "5"], yield_deleted=False)) == [
+            records[5],
+        ]
+        assert list(store.get_records(["3", "5"], yield_deleted=True)) == [
+            to_delete,
+            records[5],
+        ]
+
+    def test_get_records_with_interrupt(self, store: Store):
         # this test covers off an obscure bug which has been fixed so shouldn't be an
         # issue any more but there's no harm in having it here just in case! The issue
         # arose because the unpacker object in the DataDB was being reused by multiple
@@ -137,53 +280,47 @@ class TestDataDB:
         # part of a day!).
 
         # create a bunch of records and add them to the database
-        db = DataDB(tmp_path / "database")
         records = [SourceRecord(str(i), {"a": "banana"}, "test") for i in range(40)]
-        db.put_many(records)
+        store.put(records)
 
         # now request the first 10 ids but only read out the first 5 records
         ids = list(map(str, range(10)))
         count = 0
-        for expected_id, record in zip(ids, db.get_records(ids)):
+        for expected_id, record in zip(ids, store.get_records(ids)):
             count += 1
             assert record.id == expected_id
             if count == 5:
                 break
 
         # now get record 35 and check the id is correct
-        just_35 = db.get_record("35")
+        just_35 = store.get_record("35")
         assert just_35.id == "35"
         # now read record 38 using get_records and check the id is correct
-        just_38 = list(db.get_records(["38"]))
+        just_38 = list(store.get_records(["38"]))
         assert len(just_38) == 1
         assert just_38[0].id == "38"
 
-    def test_get_unpacker_unpacks_list_like_objects_as_tuples(self, tmp_path: Path):
+    def test_get_unpacker_unpacks_list_like_objects_as_tuples(self, store: Store):
         # goes in a list
         packed_list_raw = msgpack.packb([1, 2, 3, 4])
-        unpacker = DataDB.get_unpacker()
+        unpacker = make_unpacker()
         unpacker.feed(packed_list_raw)
         # comes out a tuple
         assert unpacker.unpack() == (1, 2, 3, 4)
 
-    def test_contains(self, tmp_path: Path):
-        db = DataDB(tmp_path / "database")
-
-        db.put_many(
+    def test_has(self, store: Store):
+        store.put(
             [
                 SourceRecord("1", {"a": "4"}, "test"),
                 SourceRecord("43", {"a": "f"}, "test"),
             ]
         )
+        assert store.has("1")
+        assert store.has("43")
+        assert not store.has("4")
 
-        assert "1" in db
-        assert "43" in db
-        assert "4" not in db
-
-    def test_delete(self, tmp_path: Path):
-        db = DataDB(tmp_path / "database")
-
-        db.put_many(
+    def test_delete(self, store: Store):
+        store.put(
             [
                 SourceRecord("1", {"a": "4"}, "test"),
                 SourceRecord("43", {"a": "f"}, "test"),
@@ -192,324 +329,136 @@ class TestDataDB:
             ]
         )
 
-        deleted = db.delete(["1", "4"])
+        deleted = store.delete(["1", "4"], source="testdelete")
         assert deleted == 1
-        assert "1" not in db
-        assert "43" in db
+        assert not store.has("1")
+        assert store.has("43")
 
-        deleted_second_time = db.delete(["1", "43", "600"])
+        deleted_second_time = store.delete(["1", "43", "600"], source="testdelete2")
         assert deleted_second_time == 2
-        assert "1" not in db
-        assert "43" not in db
-        assert "600" not in db
-        assert "34" in db
+        assert not store.has("1")
+        assert not store.has("43")
+        assert not store.has("600")
+        assert store.has("34")
+
+    def test_purge(self, store: Store):
+        store.put(
+            [
+                SourceRecord("1", {"a": "4"}, "test"),
+                SourceRecord("43", {"a": "f"}, "test"),
+                SourceRecord("600", {"a": "v"}, "test"),
+                SourceRecord("34", {"a": "v"}, "test"),
+            ]
+        )
+
+        purged = store.purge(["1", "4"])
+        assert purged == 1
+        assert not store.has("1")
+        assert not store.has("1", allow_deleted=True)
+        assert store.has("43")
+
+    def test_create_index(self, store: Store):
+        records = [
+            SourceRecord("record_01", {"theField": "banana"}, "test"),
+            SourceRecord("record_02", {"theField": "banana"}, "test"),
+            SourceRecord("record_03", {"theField": "orange"}, "test"),
+            SourceRecord("record_04", {"theField": "lemon"}, "test"),
+        ]
+        store.put(records)
+        index = store.create_index("theField")
+        assert list(index.lookup(["banana"])) == ["record_01", "record_02"]
+
+        store.populate_index("theField", clear_first=True)
+        assert list(index.lookup(["banana"])) == ["record_01", "record_02"]
+
+    def test_size(self, store: Store):
+        assert store.size() == 0
+        store.put([SourceRecord("1", {"a": "4"}, "test")])
+        assert store.size() == 1
+        assert store.size(include_deletes=True) == 1
+
+        store.put([SourceRecord("2", {"a": "7"}, "test")])
+        assert store.size() == 2
+        assert store.size(include_deletes=True) == 2
+
+        store.put([SourceRecord("1", {}, "test")])
+        assert store.size() == 1
+        assert store.size(include_deletes=True) == 2
 
 
 class TestIndex:
-    def test_put_many_and_gets(self, tmp_path: Path):
-        db = Index(tmp_path / "database")
-
-        db.put_many([("a", "1"), ("b", "2"), ("c", "3"), ("e", "2")])
-
-        assert list(db.get_values("a")) == ["1"]
-        assert list(db.get_values("b")) == ["2"]
-        assert list(db.get_values("c")) == ["3"]
-        assert list(db.get_values("d")) == []
-        assert list(db.get_values("e")) == ["2"]
-
-        assert db.get_value("a") == "1"
-        assert db.get_value("b") == "2"
-        assert db.get_value("c") == "3"
-        assert db.get_value("d") is None
-        assert db.get_value("e") == "2"
-
-        assert list(db.get_keys("1")) == ["a"]
-        assert list(db.get_keys("2")) == ["b", "e"]
-        assert list(db.get_keys("3")) == ["c"]
-        assert list(db.get_keys("4")) == []
-
-        assert db.get_key("1") == "a"
-        assert db.get_key("2") == "b"
-        assert db.get_key("3") == "c"
-        assert db.get_key("4") is None
-
-    def test_put_multiple_values_gets(self, tmp_path: Path):
-        db = Index(tmp_path / "database")
-
-        db.put_multiple_values(
-            [("a", ("1", "2", "3")), ("b", ("4", "2")), ("c", ("3",))]
-        )
-
-        assert list(db.get_values("a")) == ["1", "2", "3"]
-        assert list(db.get_values("b")) == ["2", "4"]
-        assert list(db.get_values("c")) == ["3"]
-        assert list(db.get_values("d")) == []
-
-        assert db.get_value("a") == "1"
-        assert db.get_value("b") == "2"
-        assert db.get_value("c") == "3"
-        assert db.get_value("d") is None
-
-        assert list(db.get_keys("1")) == ["a"]
-        assert list(db.get_keys("2")) == ["a", "b"]
-        assert list(db.get_keys("3")) == ["a", "c"]
-        assert list(db.get_keys("4")) == ["b"]
-        assert list(db.get_keys("5")) == []
-
-        assert db.get_key("1") == "a"
-        assert db.get_key("2") == "a"
-        assert db.get_key("3") == "a"
-        assert db.get_key("4") == "b"
-        assert db.get_key("5") is None
-
-    def test_put_many_empty_iterables(self, tmp_path: Path):
-        db = Index(tmp_path / "database")
-
-        db.put_multiple_values(
-            [("a", tuple()), ("b", ("4", "2")), ("c", iter(tuple()))]
-        )
-
-        assert list(db.get_values("a")) == []
-        assert list(db.get_values("b")) == ["2", "4"]
-        assert list(db.get_values("c")) == []
-
-
-class TestChangeQueue:
-    def test_put_many_ids_and_iter(self, tmp_path: Path):
-        db = ChangeQueue(tmp_path / "database")
-
-        ids = list(map(str, range(5)))
-
-        db.put_many_ids(ids)
-
-        assert list(db) == ids
-
-    def test_put_many(self, tmp_path: Path):
-        db = ChangeQueue(tmp_path / "database")
-
-        records = [
-            SourceRecord(i, {"a": "x"}, "test") for i in sorted(map(str, range(50)))
+    def test_update_and_lookup(self, tmp_path: Path):
+        index = Index(tmp_path / "index", "theField")
+        updates = [
+            SourceRecord("record_01", {"theField": "banana"}, "test"),
+            SourceRecord("record_02", {"theField": "banana"}, "test"),
+            SourceRecord("record_03", {"theField": "orange"}, "test"),
+            SourceRecord("record_04", {"theField": "lemon"}, "test"),
         ]
 
-        db.put_many(records)
+        index.update(updates, [])
 
-        assert list(db) == [record.id for record in records]
+        assert list(index.lookup(["banana"])) == ["record_01", "record_02"]
+        assert list(index.lookup(["orange"])) == ["record_03"]
+        assert list(index.lookup(["lemon"])) == ["record_04"]
+        assert list(index.lookup(["kiwi"])) == []
 
-    def test_put_duplicate(self, tmp_path: Path):
-        db = ChangeQueue(tmp_path / "database")
-        ids1 = list(map(str, range(5)))
-        ids2 = list(map(str, range(3, 9)))
+    def test_deletes(self, tmp_path: Path):
+        index = Index(tmp_path / "index", "theField")
 
-        db.put_many_ids(ids1)
-        assert list(db) == ids1
-        assert db.size() == len(ids1)
-
-        db.put_many_ids(ids2)
-        crossover = set(chain(ids1, ids2))
-        assert list(db) == sorted(crossover)
-        assert db.size() == len(crossover)
-
-
-class TestEmbargoQueue:
-    put_many_scenarios = [
-        # no embargo
-        (SourceRecord("1", {"arms": "4"}, "test"), None),
-        # a delete
-        (SourceRecord("1", {}, "test"), None),
-        # an embargo using NhmSecEmbargoDate
-        (SourceRecord("1", {"NhmSecEmbargoDate": "2021-01-06"}, "test"), 1609891200000),
-        # an embargo using NhmSecEmbargoExtensionDate
-        (
-            SourceRecord("1", {"NhmSecEmbargoExtensionDate": "2021-01-06"}, "test"),
-            1609891200000,
-        ),
-        # an embargo in both NhmSecEmbargoDate and NhmSecEmbargoExtensionDate (same)
-        (
-            SourceRecord(
-                "1",
-                {
-                    "NhmSecEmbargoDate": "2021-01-06",
-                    "NhmSecEmbargoExtensionDate": "2021-01-06",
-                },
-                "test",
-            ),
-            1609891200000,
-        ),
-        # an embargo in both NhmSecEmbargoDate and NhmSecEmbargoExtensionDate (<)
-        (
-            SourceRecord(
-                "1",
-                {
-                    "NhmSecEmbargoDate": "2021-01-04",
-                    "NhmSecEmbargoExtensionDate": "2021-01-06",
-                },
-                "test",
-            ),
-            1609891200000,
-        ),
-        # an embargo in both NhmSecEmbargoDate and NhmSecEmbargoExtensionDate (>)
-        (
-            SourceRecord(
-                "1",
-                {
-                    "NhmSecEmbargoDate": "2021-01-06",
-                    "NhmSecEmbargoExtensionDate": "2021-01-04",
-                },
-                "test",
-            ),
-            1609891200000,
-        ),
-        # an embargo that is old in NhmSecEmbargoDate but new in
-        # NhmSecEmbargoExtensionDate
-        (
-            SourceRecord(
-                "1",
-                {
-                    "NhmSecEmbargoDate": "2020-05-06",
-                    "NhmSecEmbargoExtensionDate": "2020-05-16",
-                },
-                "test",
-            ),
-            1589587200000,
-        ),
-        # incorrectly formatted embargo dates
-        (
-            SourceRecord(
-                "1",
-                {
-                    # missing day
-                    "NhmSecEmbargoDate": "2021-01",
-                    # bad month
-                    "NhmSecEmbargoExtensionDate": "2021-15-04",
-                },
-                "test",
-            ),
-            None,
-        ),
-    ]
-
-    @freeze_time(datetime(2020, 5, 10))
-    @pytest.mark.parametrize(("record", "embargo_timestamp"), put_many_scenarios)
-    def test_scenarios(
-        self, tmp_path: Path, record: SourceRecord, embargo_timestamp: Optional[int]
-    ):
-        """
-        This test tests put_many as well as iter_ids, __iter__, __contains__,
-        lookup_embargo_date, and is_embargoed.
-        """
-        db = EmbargoQueue(tmp_path / "embargoes")
-
-        embargoed = db.put_many([record])
-
-        if embargo_timestamp is None:
-            assert not embargoed
-            assert list(db.iter_ids()) == []
-            assert list(db.__iter__()) == []
-            assert record.id not in db
-            assert db.lookup_embargo_date(record.id) is None
-            assert not db.is_embargoed(record.id, now())
-        else:
-            assert embargoed == [record]
-            assert list(db.iter_ids()) == [record.id]
-            assert list(db.__iter__()) == [(record.id, embargo_timestamp)]
-            assert record.id in db
-            assert db.lookup_embargo_date(record.id) == embargo_timestamp
-            assert db.is_embargoed(record.id, now())
-
-    def test_iter_released(self, tmp_path: Path):
-        db = EmbargoQueue(tmp_path / "embargoes")
         records = [
-            SourceRecord(str(i), {"NhmSecEmbargoDate": f"2020-10-{i:2}"}, "test")
-            for i in range(5, 15)
+            SourceRecord("record_01", {"theField": "banana"}, "test"),
+            SourceRecord("record_02", {"theField": "banana"}, "test"),
+            SourceRecord("record_03", {"theField": "kiwi"}, "test"),
+            SourceRecord("record_04", {"theField": "banana"}, "test"),
         ]
-        # freeze time to the start of the month so they all get entered into the db
-        with freeze_time(datetime(2020, 10, 1)):
-            db.put_many(records)
 
-        up_to = to_timestamp(datetime(2020, 10, 10))
-        released = list(db.iter_released(up_to))
+        index.update(records, [])
+        assert list(index.lookup(["banana"])) == ["record_01", "record_02", "record_04"]
+        assert list(index.lookup(["kiwi"])) == ["record_03"]
 
-        # ids 5, 6, 7, 8, and 9 should be released
-        assert released == list(map(str, range(5, 10)))
-
-    def test_flush_released(self, tmp_path: Path):
-        db = EmbargoQueue(tmp_path / "embargoes")
-        records = [
-            SourceRecord(str(i), {"NhmSecEmbargoDate": f"2020-10-{i:2}"}, "test")
-            for i in range(5, 15)
-        ]
-        # freeze time to the start of the month so they all get entered into the db
-        with freeze_time(datetime(2020, 10, 1)):
-            db.put_many(records)
-
-        up_to = to_timestamp(datetime(2020, 10, 10))
-        count = db.flush_released(up_to)
-
-        # ids 5, 6, 7, 8, and 9 should have been released and deleted
-        assert count == 5
-        for i in range(5, 15):
-            if i < 10:
-                assert str(i) not in db
-            else:
-                assert str(i) in db
-
-    def test_stats(self, tmp_path: Path):
-        db = EmbargoQueue(tmp_path / "embargoes")
-        records = [
-            SourceRecord(str(i), {"NhmSecEmbargoDate": f"2020-10-{i:2}"}, "test")
-            for i in range(5, 15)
-        ]
-        # freeze time to the start of the month so they all get entered into the db
-        with freeze_time(datetime(2020, 10, 1)):
-            db.put_many(records)
-
-        up_to = to_timestamp(datetime(2020, 10, 10))
-        embargoed, released = db.stats(up_to)
-
-        assert embargoed == 5
-        assert released == 5
+        # delete records 1 and 4
+        deletes = [SourceRecord(f"record_0{i}", {}, "test") for i in [1, 4]]
+        index.update([], deletes)
+        assert list(index.lookup(["banana"])) == ["record_02"]
+        assert list(index.lookup(["kiwi"])) == ["record_03"]
 
 
 @pytest.fixture
-def redaction_db(tmp_path: Path):
-    with closing(RedactionDB(tmp_path / "redactions")) as rdb:
-        yield rdb
+def queue(tmp_path: Path) -> ChangeQueue:
+    cq = ChangeQueue(tmp_path / "cq")
+    yield cq
+    cq.close()
 
 
-class TestRedactionDB:
-    def test_add_ids(self, redaction_db: RedactionDB):
-        redaction_db.add_ids("db_1", ["1", "5", "1040"], "red_1")
-        redaction_db.add_ids("db_1", ["4", "5"], "red_2")
-        redaction_db.add_ids("db_2", ["4003", "4004"], "red_2")
+class TestChangeQueue:
+    def test_put_many_ids_and_iter(self, queue: ChangeQueue):
+        ids = list(map(str, range(5)))
+        queue.put_many_ids(ids)
+        assert list(queue.iter()) == ids
 
-        assert redaction_db.size() == 6
-        assert redaction_db.is_redacted("db_1", "1")
-        assert redaction_db.is_redacted("db_1", "4")
-        assert redaction_db.is_redacted("db_1", "5")
-        assert redaction_db.is_redacted("db_1", "1040")
-        assert not redaction_db.is_redacted("db_1", "3")
+    def test_put_many(self, queue: ChangeQueue):
+        records = [
+            SourceRecord(i, {"a": "x"}, "test") for i in sorted(map(str, range(50)))
+        ]
+        queue.put_many(records)
+        assert list(queue.iter()) == [record.id for record in records]
 
-        assert redaction_db.get_all_redacted_ids("db_1") == {
-            "1": "red_1",
-            "4": "red_2",
-            # this one gets the last value when it's added multiple times
-            "5": "red_2",
-            "1040": "red_1",
-        }
+    def test_put_duplicate(self, queue: ChangeQueue):
+        ids1 = list(map(str, range(5)))
+        ids2 = list(map(str, range(3, 9)))
 
-    def test_is_redacted(self, redaction_db: RedactionDB):
-        redaction_db.add_ids("test", ["50", "7"], "reasons")
+        queue.put_many_ids(ids1)
+        assert list(queue.iter()) == ids1
+        assert queue.size() == len(ids1)
 
-        assert redaction_db.is_redacted("test", "50")
-        assert redaction_db.is_redacted("test", "7")
-        assert not redaction_db.is_redacted("test", "4")
-        assert not redaction_db.is_redacted("test_2", "50")
+        queue.put_many_ids(ids2)
+        crossover = set(chain(ids1, ids2))
+        assert list(queue.iter()) == sorted(crossover)
+        assert queue.size() == len(crossover)
 
-    def test_get_all_redacted_ids(self, redaction_db: RedactionDB):
-        redaction_db.add_ids("test", ["50", "7"], "reasons")
-
-        assert redaction_db.get_all_redacted_ids("test") == {
-            "50": "reasons",
-            "7": "reasons",
-        }
-        assert redaction_db.get_all_redacted_ids("test_2") == {}
+    def test_is_queued(self, queue: ChangeQueue):
+        queue.put_many_ids(["record_01", "record_02"])
+        assert queue.is_queued("record_01")
+        assert queue.is_queued("record_02")
+        assert not queue.is_queued("record_05")

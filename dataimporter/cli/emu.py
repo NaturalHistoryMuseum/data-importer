@@ -21,50 +21,50 @@ def emu_group():
     default=False,
     help="Only process the next available day's worth of EMu exports",
 )
-def auto(config: Config, one: bool = False):
+@click.option(
+    "--delay-sync",
+    is_flag=True,
+    show_default=True,
+    default=False,
+    help="Perform one sync at the end instead of after each dump set",
+)
+def auto(config: Config, one: bool = False, delay_sync: bool = False):
     """
     Processes all the available EMu exports, queuing, ingesting, and indexing one day's
     worth of data at a time ensuring each day's data is represented by a new version.
     """
-    count = 0
-
     with DataImporter(config) as importer:
         while True:
             console.log("Queuing next dump set")
             dates_queued = importer.queue_emu_changes(only_one=True)
-
             if not dates_queued:
                 console.log("No more dumps to import, done")
                 break
 
-            date_queued = dates_queued[0].isoformat()
-            console.log(f"Date queued: {date_queued}")
-
-            if one:
-                console.log("Stopping after one day's data as requested")
-                break
+            console.log(f"Date queued: {dates_queued[0].isoformat()}")
 
             for name in VIEW_NAMES:
                 console.log(f"Adding changes from {name} view to mongo")
                 importer.add_to_mongo(name)
                 console.log(f"Added changes from {name} view to mongo")
 
-            console.log(f"Flushing queues")
-            importer.flush_queues()
-            console.log(f"Flushed queues")
+            if delay_sync:
+                console.log(f"Delaying sync...")
+            else:
+                for name in VIEW_NAMES:
+                    console.log(f"Syncing changes from {name} view to elasticsearch")
+                    importer.sync_to_elasticsearch(name)
+                    console.log(f"Finished with {name}")
 
+            if one:
+                console.log("Stopping after one day's data as requested")
+                break
+
+        if delay_sync:
             for name in VIEW_NAMES:
                 console.log(f"Syncing changes from {name} view to elasticsearch")
                 importer.sync_to_elasticsearch(name)
                 console.log(f"Finished with {name}")
-
-            count += 1
-            if count % 50 == 0:
-                console.log(f"Count is {count}, forcing merges")
-                for name in VIEW_NAMES:
-                    console.log(f"Forcing merge on {name}")
-                    importer.force_merge(name)
-                    console.log(f"Forced merge on {name}")
 
 
 @emu_group.command()
@@ -102,7 +102,7 @@ def queue(amount: str, config: Config):
             amount -= 1
 
 
-@emu_group.command("update-mongo")
+@emu_group.command("ingest")
 @click.argument("view", type=click.Choice(VIEW_NAMES))
 @click.option(
     "--everything",
@@ -114,7 +114,7 @@ def queue(amount: str, config: Config):
     "representation",
 )
 @with_config()
-def update_mongo(view: str, config: Config, everything: bool = False):
+def ingest(view: str, config: Config, everything: bool = False):
     """
     On the given view, updates MongoDB with any queued EMu changes and flushes the
     queues.
@@ -123,12 +123,9 @@ def update_mongo(view: str, config: Config, everything: bool = False):
         console.log(f"Adding changes from {view} view to mongo")
         importer.add_to_mongo(view, everything=everything)
         console.log(f"Added changes from {view} view to mongo")
-        console.log(f"Flushing queues")
-        importer.flush_queues()
-        console.log(f"Flushed queues")
 
 
-@emu_group.command("update-es")
+@emu_group.command("sync")
 @click.argument("view", type=click.Choice(VIEW_NAMES))
 @click.option(
     "--resync",
@@ -139,7 +136,7 @@ def update_mongo(view: str, config: Config, everything: bool = False):
     "the records that have changed.",
 )
 @with_config()
-def update_es(view: str, config: Config, resync: bool = False):
+def sync(view: str, config: Config, resync: bool = False):
     """
     Updates Elasticsearch with the changes in MongoDB for the given view.
     """
@@ -147,3 +144,14 @@ def update_es(view: str, config: Config, resync: bool = False):
         console.log(f"Syncing changes from {view} view to elasticsearch")
         importer.sync_to_elasticsearch(view, resync=resync)
         console.log(f"Finished with {view}")
+
+
+@emu_group.command("get-emu-date")
+@click.argument("amount", type=str)
+@with_config()
+def get_emu_date(config: Config):
+    """
+    Prints the latest date we've imported EMu exports for.
+    """
+    with DataImporter(config) as importer:
+        console.log(importer.emu_status.get())

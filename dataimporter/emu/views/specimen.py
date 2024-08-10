@@ -1,7 +1,11 @@
+from pathlib import Path
 from typing import Optional, Iterable, Tuple
 
 from fastnumbers import try_int
 
+from dataimporter.emu.views.image import ImageView
+from dataimporter.emu.views.mammalpart import MammalPartView
+from dataimporter.emu.views.taxonomy import TaxonomyView
 from dataimporter.emu.views.utils import (
     NO_PUBLISH,
     DISALLOWED_STATUSES,
@@ -13,10 +17,22 @@ from dataimporter.emu.views.utils import (
     is_valid_guid,
     INVALID_GUID,
     translate_collection_code,
+    MEDIA_ID_REF_FIELD,
+    merge,
+    add_associated_media,
 )
 from dataimporter.emu.views.utils import emu_date
+from dataimporter.ext.gbif import GBIFView
+from dataimporter.lib.dbs import Store
 from dataimporter.lib.model import SourceRecord
-from dataimporter.lib.view import View, FilterResult, SUCCESS_RESULT
+from dataimporter.lib.view import (
+    View,
+    FilterResult,
+    SUCCESS_RESULT,
+    strip_empty,
+    make_link,
+    ID,
+)
 
 ALLOWED_TYPES = {
     "specimen",
@@ -38,6 +54,11 @@ BASIS_OF_RECORD_LOOKUP = {
     "Paleontology": "FossilSpecimen",
     "Mineralogy": "Occurrence",
 }
+
+TAXONOMY_ID_REF_FIELD = "CardParasiteRef"
+EMU_GUID_FIELD = "AdmGUIDPreferredValue"
+GBIF_OCCURRENCE_FIELD = "occurrenceID"
+MAMMAL_PARENT_REF_FIELD = "RegRegistrationParentRef"
 
 
 def get_individual_count(record: SourceRecord) -> Optional[str]:
@@ -134,6 +155,26 @@ class SpecimenView(View):
     This view populates the specimen resource on the Data Portal.
     """
 
+    def __init__(
+        self,
+        path: Path,
+        store: Store,
+        image_view: ImageView,
+        taxonomy_view: TaxonomyView,
+        gbif_view: GBIFView,
+        mammal_part_view: MammalPartView,
+        sg_name: str,
+    ):
+        super().__init__(path, store, sg_name)
+        self.image_link = make_link(self, MEDIA_ID_REF_FIELD, image_view, ID)
+        self.taxonomy_link = make_link(self, TAXONOMY_ID_REF_FIELD, taxonomy_view, ID)
+        self.gbif_link = make_link(
+            self, EMU_GUID_FIELD, gbif_view, GBIF_OCCURRENCE_FIELD
+        )
+        self.mammal_part_link = make_link(
+            self, ID, mammal_part_view, MAMMAL_PARENT_REF_FIELD
+        )
+
     def is_member(self, record: SourceRecord) -> FilterResult:
         """
         Filters the given record, determining whether it should be included in the
@@ -159,7 +200,8 @@ class SpecimenView(View):
 
         return SUCCESS_RESULT
 
-    def make_data(self, record: SourceRecord) -> dict:
+    @strip_empty
+    def transform(self, record: SourceRecord) -> dict:
         """
         Converts the record's raw data to a dict which will be the data presented on the
         Data Portal.
@@ -173,7 +215,7 @@ class SpecimenView(View):
         get_first = record.get_first_value
         iter_all_values = record.iter_all_values
 
-        return {
+        data = {
             # record level
             "_id": record.id,
             "modified": emu_date(
@@ -220,6 +262,7 @@ class SpecimenView(View):
             ),
             "individualCount": get_individual_count(record),
             "sex": get_first("DarSex"),
+            # todo: maybe we remove this, only 6 records have a value...
             "preparations": get_first("DarPreparations"),
             # identification
             "typeStatus": get_first("DarTypeStatus", "sumTypeStatus"),
@@ -343,3 +386,20 @@ class SpecimenView(View):
             "determinationFiledAs": get_all("EntIdeFiledAs", clean=False, reduce=False),
             "project": get_all("NhmSecProjectName"),
         }
+
+        # add multimedia links
+        add_associated_media(record, data, self.image_link)
+
+        # add taxonomy data
+        merge(record, data, self.taxonomy_link)
+
+        # add GBIF
+        merge(record, data, self.gbif_link)
+
+        # add mammal part summary
+        mammal_parts = self.mammal_part_link.lookup_and_transform(record)
+        if mammal_parts:
+            # todo: field name
+            data["preparations"] = [part["part"] for part in mammal_parts]
+
+        return data

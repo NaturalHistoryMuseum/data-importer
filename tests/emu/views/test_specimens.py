@@ -1,9 +1,9 @@
-from pathlib import Path
 from typing import List, Tuple, Optional
 
 import pytest
 
-from dataimporter.lib.dbs import DataDB
+from dataimporter.emu.views.image import ImageView
+from dataimporter.emu.views.mammalpart import MammalPartView
 from dataimporter.emu.views.specimen import (
     SpecimenView,
     get_individual_count,
@@ -11,6 +11,7 @@ from dataimporter.emu.views.specimen import (
     get_first_non_person_string,
     clean_determination_names,
 )
+from dataimporter.emu.views.taxonomy import TaxonomyView
 from dataimporter.emu.views.utils import (
     INVALID_TYPE,
     NO_PUBLISH,
@@ -18,16 +19,17 @@ from dataimporter.emu.views.utils import (
     INVALID_STATUS,
     INVALID_DEPARTMENT,
 )
+from dataimporter.ext.gbif import GBIFView
 from dataimporter.lib.model import SourceRecord
 from dataimporter.lib.view import FilterResult, SUCCESS_RESULT
+from tests.helpers.samples.gbif import SAMPLE_GBIF_RECORD_ID, SAMPLE_GBIF_RECORD_DATA
+from tests.helpers.samples.image import SAMPLE_IMAGE_ID, SAMPLE_IMAGE_DATA
+from tests.helpers.samples.mammalpart import (
+    SAMPLE_MAMMAL_PART_DATA,
+    SAMPLE_MAMMAL_PART_ID,
+)
 from tests.helpers.samples.specimen import SAMPLE_SPECIMEN_DATA, SAMPLE_SPECIMEN_ID
-
-
-@pytest.fixture
-def specimen_view(tmp_path: Path) -> SpecimenView:
-    view = SpecimenView(tmp_path / "specimen_view", DataDB(tmp_path / "specimen_data"))
-    yield view
-    view.close()
+from tests.helpers.samples.taxonomy import SAMPLE_TAXONOMY_ID, SAMPLE_TAXONOMY_DATA
 
 
 @pytest.mark.parametrize(
@@ -103,153 +105,151 @@ def test_is_member(overrides: dict, result: FilterResult, specimen_view: Specime
     assert specimen_view.is_member(record) == result
 
 
-def test_transform_deleted(specimen_view: SpecimenView):
-    record = SourceRecord(SAMPLE_SPECIMEN_ID, {}, "test")
-    assert record.is_deleted
-
-    data = specimen_view.transform(record)
-    assert data == {}
-
-
-def test_make_data(specimen_view: SpecimenView):
+def test_transform_no_linked_data(specimen_view: SpecimenView):
     record = SourceRecord(SAMPLE_SPECIMEN_ID, SAMPLE_SPECIMEN_DATA, "test")
 
-    data = specimen_view.make_data(record)
+    data = specimen_view.transform(record)
     assert data == {
         "_id": "2531732",
-        "age": None,
-        "ageType": None,
         "barcode": "013234322",
         "basisOfRecord": "PreservedSpecimen",
-        "bed": None,
         "catalogNumber": "1968.11.11.17-18",
-        "catalogueDescription": None,
-        "chondriteAchondrite": None,
-        "chronostratigraphy": None,
         "class": "Actinopterygii",
-        "clutchSize": None,
         "collectionCode": "ZOO",
-        "collectionKind": None,
-        "collectionName": None,
-        "commodity": None,
         "continent": "Africa",
-        "coordinateUncertaintyInMeters": None,
         "country": "Ethiopia",
         "created": "2003-06-20T09:24:24+00:00",
-        "dateIdentified": None,
-        "dateRegistered": None,
         "day": "16",
         "decimalLatitude": "10.0833333",
         "decimalLongitude": "35.6333333",
-        "depositType": None,
         "determinationFiledAs": ("Yes",),
         "determinationNames": ("Synodontis schall (Bloch & Schneider, 1801)",),
-        "determinationTypes": None,
         "donorName": "Sandhurst Ethiopian Expedition 1968",
-        "earliestAgeOrLowestStage": None,
-        "earliestEonOrLowestEonothem": None,
-        "earliestEpochOrLowestSeries": None,
-        "earliestEraOrLowestErathem": None,
-        "earliestPeriodOrLowestSystem": None,
-        "eventTime": None,
         "expedition": "Sandhurst Ethiopian Expedition 1968",
-        "exsiccata": None,
-        "exsiccataNumber": None,
-        "extractionMethod": None,
         "family": "Mochokidae",
-        "fieldNumber": None,
-        "formation": None,
         "genus": "Synodontis",
-        "geodeticDatum": None,
-        "geologyRegion": None,
-        "georeferenceProtocol": None,
-        "group": None,
-        "habitat": None,
         "higherClassification": "Actinopterygii; Siluriformes; Mochokidae",
         "higherGeography": "Africa; Ethiopia; Benshangul-Gumaz; Metekel",
-        "highestBiostratigraphicZone": None,
-        "hostRock": None,
-        "identificationAsRegistered": None,
-        "identificationDescription": None,
-        "identificationOther": None,
-        "identificationQualifier": None,
-        "identificationVariety": None,
-        "identifiedBy": None,
         "individualCount": "2",
-        "infraspecificEpithet": None,
         "institutionCode": "NHMUK",
-        "island": None,
-        "islandGroup": None,
-        "kindOfCollection": None,
         "kindOfObject": "Spirit",
-        "kingdom": None,
-        "labelLocality": None,
-        "latestAgeOrHighestStage": None,
-        "latestEonOrHighestEonothem": None,
-        "latestEpochOrHighestSeries": None,
-        "latestEraOrHighestErathem": None,
-        "latestPeriodOrHighestSystem": None,
-        "lifeStage": None,
-        "lithostratigraphy": None,
         "locality": "Forward base three, Mouth of Didessa River, Blue Nile Gorge, "
         "Ethiopia, Alt. 900 m",
-        "lowestBiostratigraphicZone": None,
-        "maximumDepthInMeters": None,
-        "maximumElevationInMeters": None,
-        "member": None,
-        "meteoriteClass": None,
-        "meteoriteGroup": None,
-        "meteoriteType": None,
-        "mine": None,
-        "mineralComplex": None,
-        "minimumDepthInMeters": None,
-        "minimumElevationInMeters": None,
-        "miningDistrict": None,
         "modified": "2023-10-18T19:11:01+00:00",
         "month": "9",
-        "nestShape": None,
-        "nestSite": None,
-        "observedWeight": None,
-        "occurrence": None,
         "occurrenceID": "4ffbec35-4397-440b-b781-a18b4d958cef",
         "occurrenceStatus": "present",
         "order": "Siluriformes",
         "otherCatalogNumbers": "NHMUK:ecatalogue:2531732",
-        "partType": None,
-        "petrologySubtype": None,
-        "petrologyType": None,
-        "phylum": None,
-        "plantDescription": None,
-        "populationCode": None,
-        "preparationType": None,
-        "preparations": None,
         "preservative": "IMS 70%",
-        "project": None,
-        "recordNumber": None,
-        "recordedBy": None,
-        "recovery": None,
-        "recoveryDate": None,
-        "recoveryWeight": None,
         "registrationCode": "PI03",
-        "resuspendedIn": None,
-        "samplingProtocol": None,
         "scientificName": "Synodontis schall (Bloch & Schneider, 1801)",
         "scientificNameAuthorship": "Bloch & Schneider, 1801",
-        "setMark": None,
-        "sex": None,
         "specificEpithet": "schall",
         "stateProvince": "Benshangul-Gumaz",
         "subDepartment": "LS Fish",
-        "subgenus": None,
-        "taxonRank": None,
-        "tectonicProvince": None,
-        "texture": None,
-        "totalVolume": None,
-        "typeStatus": None,
         "verbatimLatitude": "10 05 00.000 N",
         "verbatimLongitude": "035 38 00.000 E",
-        "vessel": None,
-        "viceCounty": None,
         "waterBody": "Blue Nile",
         "year": "1968",
+    }
+
+
+def test_transform_with_linked_data(
+    specimen_view: SpecimenView,
+    image_view: ImageView,
+    taxonomy_view: TaxonomyView,
+    mammal_part_view: MammalPartView,
+    gbif_view: GBIFView,
+):
+    record = SourceRecord(SAMPLE_SPECIMEN_ID, SAMPLE_SPECIMEN_DATA, "test")
+
+    # add an image to the image view's store
+    image_record = SourceRecord(SAMPLE_IMAGE_ID, SAMPLE_IMAGE_DATA, "test")
+    image_view.store.put([image_record])
+
+    # add a taxonomy record to the taxonomy view's store
+    taxonomy_record = SourceRecord(SAMPLE_TAXONOMY_ID, SAMPLE_TAXONOMY_DATA, "test")
+    taxonomy_view.store.put([taxonomy_record])
+
+    # add mammal part record to the mammal parts view's store
+    mp_record = SourceRecord(SAMPLE_MAMMAL_PART_ID, SAMPLE_MAMMAL_PART_DATA, "test")
+    mammal_part_view.store.put([mp_record])
+
+    # add gbif record to the gbif view's store
+    issues = (
+        "GEODETIC_DATUM_ASSUMED_WGS84",
+        "INSTITUTION_MATCH_FUZZY",
+        "COLLECTION_MATCH_NONE",
+        "MULTIMEDIA_URI_INVALID",
+    )
+    gbif_record = SourceRecord(
+        "100",
+        {
+            "issue": ";".join(issues),
+            "occurrenceID": SAMPLE_SPECIMEN_DATA["AdmGUIDPreferredValue"],
+        },
+        "test",
+    )
+    gbif_view.store.put([gbif_record])
+
+    data = specimen_view.transform(record)
+    assert data == {
+        "_id": record.id,
+        "barcode": "013234322",
+        "basisOfRecord": "PreservedSpecimen",
+        "catalogNumber": "1968.11.11.17-18",
+        "class": "Actinopterygii",
+        "collectionCode": "ZOO",
+        "continent": "Africa",
+        "country": "Ethiopia",
+        "created": "2003-06-20T09:24:24+00:00",
+        "day": "16",
+        "decimalLatitude": "10.0833333",
+        "decimalLongitude": "35.6333333",
+        "determinationFiledAs": ("Yes",),
+        "determinationNames": ("Synodontis schall (Bloch & Schneider, 1801)",),
+        "donorName": "Sandhurst Ethiopian Expedition 1968",
+        "expedition": "Sandhurst Ethiopian Expedition 1968",
+        "family": "Mochokidae",
+        "genus": "Synodontis",
+        "higherClassification": "Actinopterygii; Siluriformes; Mochokidae",
+        "higherGeography": "Africa; Ethiopia; Benshangul-Gumaz; Metekel",
+        "individualCount": "2",
+        "institutionCode": "NHMUK",
+        "kindOfObject": "Spirit",
+        "locality": "Forward base three, Mouth of Didessa River, Blue Nile Gorge, "
+        "Ethiopia, Alt. 900 m",
+        "modified": "2023-10-18T19:11:01+00:00",
+        "month": "9",
+        "occurrenceID": "4ffbec35-4397-440b-b781-a18b4d958cef",
+        "occurrenceStatus": "present",
+        "order": "Siluriformes",
+        "otherCatalogNumbers": "NHMUK:ecatalogue:2531732",
+        "preservative": "IMS 70%",
+        "registrationCode": "PI03",
+        "scientificName": "Synodontis schall (Bloch & Schneider, 1801)",
+        "scientificNameAuthorship": "Bloch & Schneider, 1801",
+        "specificEpithet": "schall",
+        "stateProvince": "Benshangul-Gumaz",
+        "subDepartment": "LS Fish",
+        "verbatimLatitude": "10 05 00.000 N",
+        "verbatimLongitude": "035 38 00.000 E",
+        "waterBody": "Blue Nile",
+        "year": "1968",
+        # added via the image link
+        "associatedMedia": [image_view.transform(image_record)],
+        "associatedMediaCount": 1,
+        # added via the taxonomy link
+        "currentScientificName": "Microterys colligatus (Walker, 1872)",
+        "phylum": "Arthropoda",
+        "subfamily": "Encyrtinae",
+        "suborder": "Parasitica",
+        "superfamily": "Chalcidoidea",
+        "taxonRank": "Species",
+        # added via the mammal part link
+        "preparations": ["Skull"],
+        # added via the gbif link
+        "gbifID": "100",
+        "gbifIssue": issues,
     }

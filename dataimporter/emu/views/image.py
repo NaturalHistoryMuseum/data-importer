@@ -7,9 +7,9 @@ from dataimporter.emu.views.utils import (
     INVALID_GUID,
 )
 from dataimporter.emu.views.utils import emu_date
+from dataimporter.lib.dbs import Store
 from dataimporter.lib.model import SourceRecord
-from dataimporter.lib.view import FilterResult, View, SUCCESS_RESULT
-from dataimporter.lib.dbs import DataDB
+from dataimporter.lib.view import FilterResult, View, SUCCESS_RESULT, strip_empty
 
 MULTIMEDIA_NOT_IMAGE = FilterResult(False, "Multimedia not an image")
 
@@ -22,13 +22,13 @@ class ImageView(View):
     that go through this view are embedded within other record types.
     """
 
-    def __init__(self, path: Path, db: DataDB, iiif_url_base: str):
+    def __init__(self, path: Path, store: Store, iiif_url_base: str):
         """
         :param path: the root path that all view related data should be stored under
         :param db: the DataDB object that backs this view
         :param iiif_url_base: base URL for the IIIF image URLs created in make_data
         """
-        super().__init__(path, db)
+        super().__init__(path, store)
         self.iiif_url_base = iiif_url_base
 
     def is_member(self, record: SourceRecord) -> FilterResult:
@@ -49,7 +49,8 @@ class ImageView(View):
 
         return SUCCESS_RESULT
 
-    def make_data(self, record: SourceRecord) -> dict:
+    @strip_empty
+    def transform(self, record: SourceRecord) -> dict:
         """
         Converts the record's raw data to a dict which will then be embedded in other
         records and presented on the Data Portal.

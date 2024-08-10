@@ -1,5 +1,3 @@
-from contextlib import closing
-from pathlib import Path
 from typing import List, Tuple
 
 import pytest
@@ -11,7 +9,9 @@ from dataimporter.emu.views.preparation import (
     get_preparation_process,
     is_on_loan,
     ON_LOAN,
+    is_mammal_part_prep,
 )
+from dataimporter.emu.views.specimen import SpecimenView
 from dataimporter.emu.views.utils import (
     NO_PUBLISH,
     INVALID_TYPE,
@@ -19,7 +19,6 @@ from dataimporter.emu.views.utils import (
     INVALID_STATUS,
     INVALID_DEPARTMENT,
 )
-from dataimporter.lib.dbs import DataDB
 from dataimporter.lib.model import SourceRecord
 from dataimporter.lib.view import FilterResult, SUCCESS_RESULT
 from tests.helpers.samples.preparation import (
@@ -28,15 +27,7 @@ from tests.helpers.samples.preparation import (
     SAMPLE_MAMMAL_PREPARATION_ID,
     SAMPLE_MAMMAL_PREPARATION_DATA,
 )
-
-
-@pytest.fixture
-def prep_view(tmp_path: Path) -> PreparationView:
-    with closing(
-        PreparationView(tmp_path / "prep_view", DataDB(tmp_path / "prep_data"))
-    ) as view:
-        yield view
-
+from tests.helpers.samples.specimen import SAMPLE_SPECIMEN_ID, SAMPLE_SPECIMEN_DATA
 
 mol_prep_is_member_scenarios: List[Tuple[dict, FilterResult]] = [
     ({"ColRecordType": "Specimen"}, INVALID_TYPE),
@@ -57,11 +48,11 @@ mol_prep_is_member_scenarios: List[Tuple[dict, FilterResult]] = [
 
 @pytest.mark.parametrize("overrides, result", mol_prep_is_member_scenarios)
 def test_is_member_mol_prep(
-    overrides: dict, result: FilterResult, prep_view: PreparationView
+    overrides: dict, result: FilterResult, preparation_view: PreparationView
 ):
     data = {**SAMPLE_PREPARATION_DATA, **overrides}
     record = SourceRecord(SAMPLE_PREPARATION_ID, data, "test")
-    assert prep_view.is_member(record) == result
+    assert preparation_view.is_member(record) == result
 
 
 mammal_part_prep_is_member_scenarios: List[Tuple[dict, FilterResult]] = [
@@ -83,25 +74,17 @@ mammal_part_prep_is_member_scenarios: List[Tuple[dict, FilterResult]] = [
 
 @pytest.mark.parametrize("overrides, result", mammal_part_prep_is_member_scenarios)
 def test_is_member_mammal_part_prep(
-    overrides: dict, result: FilterResult, prep_view: PreparationView
+    overrides: dict, result: FilterResult, preparation_view: PreparationView
 ):
     data = {**SAMPLE_MAMMAL_PREPARATION_DATA, **overrides}
     record = SourceRecord(SAMPLE_MAMMAL_PREPARATION_ID, data, "test")
-    assert prep_view.is_member(record) == result
+    assert preparation_view.is_member(record) == result
 
 
-def test_transform_deleted(prep_view: PreparationView):
-    record = SourceRecord("an_ID_it_does_not_matter", {}, "test")
-    assert record.is_deleted
-
-    data = prep_view.transform(record)
-    assert data == {}
-
-
-def test_make_data_mol_prep(prep_view: PreparationView):
+def test_transform_mol_prep(preparation_view: PreparationView):
     record = SourceRecord(SAMPLE_PREPARATION_ID, SAMPLE_PREPARATION_DATA, "test")
 
-    data = prep_view.make_data(record)
+    data = preparation_view.transform(record)
     assert data == {
         "_id": record.id,
         "created": "2022-09-12T17:07:51+00:00",
@@ -109,30 +92,163 @@ def test_make_data_mol_prep(prep_view: PreparationView):
         "project": "Darwin Tree of Life",
         "preparationNumber": "C9K02TWP_B2",
         "preparationType": "DNA Extract",
-        "mediumType": None,
-        "preparationProcess": None,
         "preparationContents": "**OTHER_SOMATIC_ANIMAL_TISSUE**",
         "preparationDate": "2022-05-09",
     }
 
 
-def test_make_data_mammal_part(prep_view: PreparationView):
+def test_transform_mammal_part(preparation_view: PreparationView):
     record = SourceRecord(
         SAMPLE_MAMMAL_PREPARATION_ID, SAMPLE_MAMMAL_PREPARATION_DATA, "test"
     )
 
-    data = prep_view.make_data(record)
+    data = preparation_view.transform(record)
     assert data == {
         "_id": record.id,
         "created": "2023-05-02T14:55:51+00:00",
         "modified": "2023-05-02T14:55:51+00:00",
         "project": "Darwin Tree of Life",
         "preparationNumber": "FF06063966",
-        "preparationType": None,
-        "mediumType": None,
         "preparationProcess": "Flash Freezing: Dry Ice",
         "preparationContents": "MUSCLE",
-        "preparationDate": None,
+    }
+
+
+def test_transform_mol_prep_with_voucher_direct(
+    preparation_view: PreparationView, specimen_view: SpecimenView
+):
+    record = SourceRecord(SAMPLE_PREPARATION_ID, SAMPLE_PREPARATION_DATA, "test")
+
+    # add a specimen record to the specimen view's store
+    specimen_record = SourceRecord(SAMPLE_SPECIMEN_ID, SAMPLE_SPECIMEN_DATA, "test")
+    specimen_view.store.put([specimen_record])
+    specimen_occurrence_id = SAMPLE_SPECIMEN_DATA["AdmGUIDPreferredValue"]
+
+    data = preparation_view.transform(record)
+    assert data == {
+        "_id": record.id,
+        "created": "2022-09-12T17:07:51+00:00",
+        "modified": "2022-09-12T17:21:14+00:00",
+        "project": "Darwin Tree of Life",
+        "preparationNumber": "C9K02TWP_B2",
+        "preparationType": "DNA Extract",
+        "preparationContents": "**OTHER_SOMATIC_ANIMAL_TISSUE**",
+        "preparationDate": "2022-05-09",
+        "associatedOccurrences": f"Voucher: {specimen_occurrence_id}",
+        "specimenID": SAMPLE_SPECIMEN_ID,
+        "scientificName": "Synodontis schall (Bloch & Schneider, 1801)",
+        "order": "Siluriformes",
+        "barcode": "013234322",
+        "decimalLatitude": "10.0833333",
+        "decimalLongitude": "35.6333333",
+        "locality": "Forward base three, Mouth of Didessa River, Blue Nile Gorge, Ethiopia, Alt. 900 m",
+    }
+
+
+def test_transform_mol_prep_with_voucher_indirect(
+    preparation_view: PreparationView, specimen_view: SpecimenView
+):
+    # replace the parent ref ID with parentPrep
+    prep_data = SAMPLE_PREPARATION_DATA.copy()
+    prep_data["EntPreSpecimenRef"] = "parentPrep"
+    record = SourceRecord(SAMPLE_PREPARATION_ID, prep_data, "test")
+
+    # add another prep as the parent with parentPrep as the ID
+    parent_prep_record = SourceRecord("parentPrep", SAMPLE_PREPARATION_DATA, "test")
+    preparation_view.store.put([parent_prep_record])
+
+    # add a specimen record to the specimen view's store
+    specimen_record = SourceRecord(SAMPLE_SPECIMEN_ID, SAMPLE_SPECIMEN_DATA, "test")
+    specimen_view.store.put([specimen_record])
+    specimen_occurrence_id = SAMPLE_SPECIMEN_DATA["AdmGUIDPreferredValue"]
+
+    data = preparation_view.transform(record)
+    assert data == {
+        "_id": record.id,
+        "created": "2022-09-12T17:07:51+00:00",
+        "modified": "2022-09-12T17:21:14+00:00",
+        "project": "Darwin Tree of Life",
+        "preparationNumber": "C9K02TWP_B2",
+        "preparationType": "DNA Extract",
+        "preparationContents": "**OTHER_SOMATIC_ANIMAL_TISSUE**",
+        "preparationDate": "2022-05-09",
+        "associatedOccurrences": f"Voucher: {specimen_occurrence_id}",
+        "specimenID": SAMPLE_SPECIMEN_ID,
+        "scientificName": "Synodontis schall (Bloch & Schneider, 1801)",
+        "order": "Siluriformes",
+        "barcode": "013234322",
+        "decimalLatitude": "10.0833333",
+        "decimalLongitude": "35.6333333",
+        "locality": "Forward base three, Mouth of Didessa River, Blue Nile Gorge, Ethiopia, Alt. 900 m",
+    }
+
+
+def test_transform_mammal_part_with_voucher_direct(
+    preparation_view: PreparationView, specimen_view: SpecimenView
+):
+    record = SourceRecord(
+        SAMPLE_MAMMAL_PREPARATION_ID, SAMPLE_MAMMAL_PREPARATION_DATA, "test"
+    )
+
+    # add a specimen record to the specimen view's store
+    specimen_record = SourceRecord(SAMPLE_SPECIMEN_ID, SAMPLE_SPECIMEN_DATA, "test")
+    specimen_view.store.put([specimen_record])
+    specimen_occurrence_id = SAMPLE_SPECIMEN_DATA["AdmGUIDPreferredValue"]
+
+    data = preparation_view.transform(record)
+    assert data == {
+        "_id": record.id,
+        "created": "2023-05-02T14:55:51+00:00",
+        "modified": "2023-05-02T14:55:51+00:00",
+        "project": "Darwin Tree of Life",
+        "preparationNumber": "FF06063966",
+        "preparationProcess": "Flash Freezing: Dry Ice",
+        "preparationContents": "MUSCLE",
+        "associatedOccurrences": f"Voucher: {specimen_occurrence_id}",
+        "specimenID": SAMPLE_SPECIMEN_ID,
+        "scientificName": "Synodontis schall (Bloch & Schneider, 1801)",
+        "order": "Siluriformes",
+        "barcode": "013234322",
+        "decimalLatitude": "10.0833333",
+        "decimalLongitude": "35.6333333",
+        "locality": "Forward base three, Mouth of Didessa River, Blue Nile Gorge, Ethiopia, Alt. 900 m",
+    }
+
+
+def test_transform_mammal_part_with_voucher_indirect(
+    preparation_view: PreparationView, specimen_view: SpecimenView
+):
+    # replace the parent ref ID with parentPrep
+    prep_data = SAMPLE_MAMMAL_PREPARATION_DATA.copy()
+    prep_data["RegRegistrationParentRef"] = "parentPrep"
+    record = SourceRecord(SAMPLE_MAMMAL_PREPARATION_ID, prep_data, "test")
+
+    # add another prep as the parent with parentPrep as the ID
+    parent_prep_record = SourceRecord("parentPrep", SAMPLE_PREPARATION_DATA, "test")
+    preparation_view.store.put([parent_prep_record])
+
+    # add a specimen record to the specimen view's store
+    specimen_record = SourceRecord(SAMPLE_SPECIMEN_ID, SAMPLE_SPECIMEN_DATA, "test")
+    specimen_view.store.put([specimen_record])
+    specimen_occurrence_id = SAMPLE_SPECIMEN_DATA["AdmGUIDPreferredValue"]
+
+    data = preparation_view.transform(record)
+    assert data == {
+        "_id": record.id,
+        "created": "2023-05-02T14:55:51+00:00",
+        "modified": "2023-05-02T14:55:51+00:00",
+        "project": "Darwin Tree of Life",
+        "preparationNumber": "FF06063966",
+        "preparationProcess": "Flash Freezing: Dry Ice",
+        "preparationContents": "MUSCLE",
+        "associatedOccurrences": f"Voucher: {specimen_occurrence_id}",
+        "specimenID": SAMPLE_SPECIMEN_ID,
+        "scientificName": "Synodontis schall (Bloch & Schneider, 1801)",
+        "order": "Siluriformes",
+        "barcode": "013234322",
+        "decimalLatitude": "10.0833333",
+        "decimalLongitude": "35.6333333",
+        "locality": "Forward base three, Mouth of Didessa River, Blue Nile Gorge, Ethiopia, Alt. 900 m",
     }
 
 
@@ -204,3 +320,100 @@ class TestIsOnLoan:
             "t1", {"LocCurrentSummaryData": "this is on loan somewhere"}, "test"
         )
         assert is_on_loan(record)
+
+
+class TestGetVoucherData:
+    def test_no_voucher(self, preparation_view: PreparationView):
+        record = SourceRecord("1", {"EntPreSpecimenRef": "2"}, "test")
+        assert preparation_view.get_voucher_data(record) is None
+
+        record = SourceRecord("1", {"RegRegistrationParentRef": "2"}, "test")
+        assert preparation_view.get_voucher_data(record) is None
+
+    def test_prep_specimen_voucher(
+        self, preparation_view: PreparationView, specimen_view: SpecimenView
+    ):
+        prep = SourceRecord("1", {"EntPreSpecimenRef": "2"}, "test")
+        specimen = SourceRecord("2", SAMPLE_SPECIMEN_DATA, "test")
+
+        preparation_view.store.put([prep, specimen])
+
+        assert preparation_view.get_voucher_data(prep) == specimen_view.transform(
+            specimen
+        )
+
+    def test_prep_specimen_voucher_but_invalid_specimen(
+        self, preparation_view: PreparationView
+    ):
+        prep = SourceRecord("1", {"EntPreSpecimenRef": "2"}, "test")
+        # this is an invalid specimen (specimen_view.is_member will fail)
+        specimen = SourceRecord("2", {"type": "specimen", "lol": "yeah"}, "test")
+
+        preparation_view.store.put([prep, specimen])
+
+        assert preparation_view.get_voucher_data(prep) is None
+
+    def test_prep_multiple_parents_specimen_voucher_but_invalid_specimen(
+        self, preparation_view: PreparationView, specimen_view: SpecimenView
+    ):
+        """
+        This is not a scenario that is going to happen, but it proves the traversal of
+        the links works under strenuous conditions.
+        """
+        prep = SourceRecord("1", {"EntPreSpecimenRef": "2"}, "test")
+        parents = [
+            SourceRecord(str(i), {"EntPreSpecimenRef": str(i + 1)}, "test")
+            for i in range(2, 10)
+        ]
+        specimen = SourceRecord("9", SAMPLE_SPECIMEN_DATA, "test")
+
+        preparation_view.store.put([prep, *parents, specimen])
+
+        assert preparation_view.get_voucher_data(prep) == specimen_view.transform(
+            specimen
+        )
+
+    def test_mammal_part_specimen_voucher(
+        self, preparation_view: PreparationView, specimen_view: SpecimenView
+    ):
+        prep = SourceRecord(
+            "1",
+            {"ColRecordType": "Mammal Group Part", "RegRegistrationParentRef": "2"},
+            "test",
+        )
+        specimen = SourceRecord("2", SAMPLE_SPECIMEN_DATA, "test")
+
+        preparation_view.store.put([prep, specimen])
+
+        assert preparation_view.get_voucher_data(prep) == specimen_view.transform(
+            specimen
+        )
+
+    def test_self_ref_loop(self, preparation_view: PreparationView):
+        prep = SourceRecord("1", {"EntPreSpecimenRef": "1"}, "test")
+        preparation_view.store.put([prep])
+        assert preparation_view.get_voucher_data(prep) is None
+
+    def test_longer_loop(self, preparation_view: PreparationView):
+        prep_1 = SourceRecord("1", {"EntPreSpecimenRef": "2"}, "test")
+        prep_2 = SourceRecord(
+            "2",
+            {"ColRecordType": "Mammal Group Part", "RegRegistrationParentRef": "3"},
+            "test",
+        )
+        prep_3 = SourceRecord("3", {"EntPreSpecimenRef": "4"}, "test")
+        prep_4 = SourceRecord("4", {"EntPreSpecimenRef": "2"}, "test")
+        preparation_view.store.put([prep_1, prep_2, prep_3, prep_4])
+        assert preparation_view.get_voucher_data(prep_1) is None
+
+
+def test_is_mammal_part_prep():
+    assert is_mammal_part_prep(
+        SourceRecord("1", {"ColRecordType": "Mammal Group Part"}, "test")
+    )
+    assert not is_mammal_part_prep(
+        SourceRecord("1", {"ColRecordType": "Mammal Group Parent"}, "test")
+    )
+    assert not is_mammal_part_prep(
+        SourceRecord("1", {"ColRecordType": "Preparation"}, "test")
+    )

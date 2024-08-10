@@ -1,3 +1,7 @@
+from pathlib import Path
+
+from dataimporter.emu.views.image import ImageView
+from dataimporter.emu.views.taxonomy import TaxonomyView
 from dataimporter.emu.views.utils import (
     NO_PUBLISH,
     DISALLOWED_STATUSES,
@@ -8,10 +12,23 @@ from dataimporter.emu.views.utils import (
     is_web_published,
     is_valid_guid,
     INVALID_GUID,
+    MEDIA_ID_REF_FIELD,
+    add_associated_media,
+    merge,
 )
 from dataimporter.emu.views.utils import emu_date
+from dataimporter.lib.dbs import Store
 from dataimporter.lib.model import SourceRecord
-from dataimporter.lib.view import View, FilterResult, SUCCESS_RESULT
+from dataimporter.lib.view import (
+    View,
+    FilterResult,
+    SUCCESS_RESULT,
+    strip_empty,
+    make_link,
+    ID,
+)
+
+TAXONOMY_ID_REF_FIELD = "EntIndIndexLotTaxonNameLocalRef"
 
 
 class IndexLotView(View):
@@ -20,6 +37,18 @@ class IndexLotView(View):
 
     This view populates the index lot resource on the Data Portal.
     """
+
+    def __init__(
+        self,
+        path: Path,
+        store: Store,
+        image_view: ImageView,
+        taxonomy_view: TaxonomyView,
+        sg_name: str,
+    ):
+        super().__init__(path, store, sg_name)
+        self.image_link = make_link(self, MEDIA_ID_REF_FIELD, image_view, ID)
+        self.taxonomy_link = make_link(self, TAXONOMY_ID_REF_FIELD, taxonomy_view, ID)
 
     def is_member(self, record: SourceRecord) -> FilterResult:
         """
@@ -46,7 +75,8 @@ class IndexLotView(View):
 
         return SUCCESS_RESULT
 
-    def make_data(self, record: SourceRecord) -> dict:
+    @strip_empty
+    def transform(self, record: SourceRecord) -> dict:
         """
         Converts the record's raw data to a dict which will be the data presented on the
         Data Portal.
@@ -59,7 +89,7 @@ class IndexLotView(View):
         get_all = record.get_all_values
         get_first = record.get_first_value
 
-        return {
+        data = {
             "_id": record.id,
             "created": emu_date(
                 get_first("AdmDateInserted"), get_first("AdmTimeInserted")
@@ -79,3 +109,11 @@ class IndexLotView(View):
             "materialTypes": get_all("EntIndTypes"),
             "materialPrimaryTypeNumber": get_all("EntIndPrimaryTypeNo"),
         }
+
+        # add multimedia links
+        add_associated_media(record, data, self.image_link)
+
+        # add taxonomy data
+        merge(record, data, self.taxonomy_link)
+
+        return data

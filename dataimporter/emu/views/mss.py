@@ -9,7 +9,7 @@ from dataimporter.emu.views.utils import (
     INVALID_GUID,
 )
 from dataimporter.lib.model import SourceRecord
-from dataimporter.lib.view import View, FilterResult, SUCCESS_RESULT
+from dataimporter.lib.view import View, FilterResult, SUCCESS_RESULT, strip_empty
 
 MULTIMEDIA_NOT_IMAGE = FilterResult(False, "Multimedia not an image")
 MULTIMEDIA_NO_IDENTIFIER = FilterResult(False, "Image had no identifier")
@@ -44,7 +44,8 @@ class MSSView(View):
 
         return SUCCESS_RESULT
 
-    def make_data(self, record: SourceRecord) -> dict:
+    @strip_empty
+    def transform(self, record: SourceRecord) -> dict:
         """
         Converts the record's raw data to a dict which will be stored in the MSS index.
 

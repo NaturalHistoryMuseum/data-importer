@@ -10,6 +10,7 @@ from dataimporter.emu.dumps import (
     is_valid_eaudit_record,
     EMU_TABLES,
     convert_eaudit_to_delete,
+    IGNORE_FIELDS,
 )
 from dataimporter.lib.model import SourceRecord
 from tests.helpers.dumps import create_dump
@@ -98,7 +99,7 @@ class TestEMuDump:
         assert read_records == [
             SourceRecord(
                 str(i),
-                {"rownum": str(i), EMU_ID_FIELD: str(i), **record},
+                {EMU_ID_FIELD: str(i), **record},
                 dump.name,
             )
             for i, record in enumerate(records, start=1)
@@ -132,7 +133,7 @@ class TestEMuDump:
         assert read_records == [
             SourceRecord(
                 str(i),
-                {"rownum": str(i), EMU_ID_FIELD: str(i), **record},
+                {EMU_ID_FIELD: str(i), **record},
                 dump.name,
             )
             for i, record in enumerate(records, start=1)
@@ -148,6 +149,20 @@ class TestEMuDump:
         dump = EMuDump(path, "etaxonomy", date(2020, 2, 4))
         read_records = list(dump.read())
         assert len(read_records) == len(records)
+
+    def test_ignore_fields(self, tmp_path: Path):
+        records = [
+            # add data for each of the current ignore fields
+            {"x": "banana", **{f: str(i) for f in IGNORE_FIELDS}}
+            for i in range(10)
+        ]
+        path = create_dump(tmp_path, "etaxonomy", date(2020, 2, 4), *records)
+        dump = EMuDump(path, "etaxonomy", date(2020, 2, 4))
+
+        read_records = list(dump.read())
+
+        for ignore_field in IGNORE_FIELDS:
+            assert all(ignore_field not in record for record in read_records)
 
 
 class TestIsValidEAuditRecord:

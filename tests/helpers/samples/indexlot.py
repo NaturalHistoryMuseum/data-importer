@@ -1,8 +1,10 @@
 from tests.helpers.dumps import read_emu_extract
 from tests.helpers.samples.image import SAMPLE_IMAGE_ID
+from tests.helpers.samples.taxonomy import SAMPLE_TAXONOMY_ID
 
 # this is taken from ecatalogue.export.20231008.gz but with the MulMultiMediaRefs
-# replaced with a single reference to the SAMPLE_IMAGE_ID
+# replaced with a single reference to the SAMPLE_IMAGE_ID and a sample taxonomy ID added
+# into EntIndIndexLotTaxonNameLocalRef
 raw_data = f"""
 rownum=2712
 irn:1=1176577
@@ -15,7 +17,7 @@ ColRecordType:1=Index Lot
 GeneralCatalogueNumber:1=irn: 1176577
 EntIndIndexLotNameRef:1=922005
 EntIndIndexLotNameRefLocal:1=922005
-EntIndIndexLotTaxonNameLocalRef:1=989532
+EntIndIndexLotTaxonNameLocalRef:1={SAMPLE_TAXONOMY_ID}
 EntIndIndexLotTaxonRefLocal:1=Vindex sculptilis Bates, 1886 -- Passalidae; Scarabaeoidea; Coleoptera; Insecta
 EntIndIndexLotCurrentNameLocal:1=Vindex sculptilis Bates, 1886 -- Passalidae; Scarabaeoidea; Coleoptera; Insecta
 EntIndIndexLotSummaryData:1=Vindex sculptilis Bates, 1886 -- Passalidae; Scarabaeoidea; Coleoptera; Insecta

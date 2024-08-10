@@ -1,12 +1,13 @@
 import re
 from functools import lru_cache
+from itertools import chain
 from typing import Optional, Iterable
 
 from ciso8601 import parse_datetime
 from dateutil import tz
 
 from dataimporter.lib.model import SourceRecord
-from dataimporter.lib.view import FilterResult
+from dataimporter.lib.view import FilterResult, Link
 
 DISALLOWED_STATUSES = {
     "DELETE",
@@ -44,10 +45,15 @@ INVALID_GUID = FilterResult(False, "Invalid GUID")
 INVALID_TYPE = FilterResult(False, "Record type invalid")
 INVALID_STATUS = FilterResult(False, "Invalid record status")
 INVALID_DEPARTMENT = FilterResult(False, "Invalid department")
+INVALID_SUB_DEPARTMENT = FilterResult(False, "Invalid sub-department")
 
 GUID_REGEX = re.compile(
     "[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}", re.I
 )
+
+MEDIA_ID_REF_FIELD = "MulMultiMediaRef"
+MEDIA_TARGET_FIELD = "associatedMedia"
+MEDIA_COUNT_TARGET_FIELD = "associatedMediaCount"
 
 
 def is_web_published(record: SourceRecord) -> bool:
@@ -58,9 +64,7 @@ def is_web_published(record: SourceRecord) -> bool:
     :param record: the record to check
     :return: True if the record can be published on the Portal, False if not
     """
-    return (
-        record.get_first_value("AdmPublishWebNoPasswordFlag", default="").lower() == "y"
-    )
+    return record.get_first_value("AdmPublishWebNoPasswordFlag", lower=True) == "y"
 
 
 def is_valid_guid(record: SourceRecord) -> bool:
@@ -118,3 +122,22 @@ def combine_text(lines: Iterable[str]) -> Optional[str]:
     """
     text = "\n".join(filter(None, (line.strip() for line in lines)))
     return text if text else None
+
+
+def add_associated_media(record: SourceRecord, data: dict, link: Link):
+    media = link.lookup_and_transform(record)
+    if media:
+        existing_media = data.get(MEDIA_TARGET_FIELD, [])
+        # order by media ID
+        data[MEDIA_TARGET_FIELD] = sorted(
+            chain(existing_media, media), key=lambda m: int(m["_id"])
+        )
+        data[MEDIA_COUNT_TARGET_FIELD] = len(existing_media) + len(media)
+
+
+def merge(record: SourceRecord, data: dict, link: Link):
+    other = link.lookup_and_transform_one(record)
+    if other:
+        data.update(
+            (key, value) for key, value in other.items() if data.get(key) is None
+        )

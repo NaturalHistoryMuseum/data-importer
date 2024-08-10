@@ -7,7 +7,6 @@ import pytest
 import responses
 from responses import matchers
 
-from dataimporter.lib.dbs import DataDB
 from dataimporter.ext.gbif import (
     GBIFView,
     get_download_url,
@@ -17,6 +16,7 @@ from dataimporter.ext.gbif import (
     request_download,
     GBIFDownload,
 )
+from dataimporter.lib.dbs import Store
 from dataimporter.lib.model import SourceRecord
 from tests.helpers.samples.gbif import (
     SAMPLE_GBIF_RECORD_ID,
@@ -27,8 +27,7 @@ from tests.helpers.samples.gbif import (
 
 
 class TestGBIFView:
-    def test_transform(self, tmp_path: Path):
-        gbif_view = GBIFView(tmp_path / "gbif", DataDB(tmp_path / "gbif_data"))
+    def test_transform(self, gbif_view: GBIFView):
         gbif_record = SourceRecord(
             SAMPLE_GBIF_RECORD_ID, SAMPLE_GBIF_RECORD_DATA, "gbif"
         )
@@ -43,8 +42,7 @@ class TestGBIFView:
             ),
         }
 
-    def test_transform_no_issues(self, tmp_path: Path):
-        gbif_view = GBIFView(tmp_path / "gbif", DataDB(tmp_path / "gbif_data"))
+    def test_transform_no_issues(self, gbif_view: GBIFView):
         record_data = deepcopy(SAMPLE_GBIF_RECORD_DATA)
         record_data["issue"] = ""
         gbif_record = SourceRecord(SAMPLE_GBIF_RECORD_ID, record_data, "gbif")
@@ -149,12 +147,12 @@ def test_changed_records(
 
     # create a clean db to which we will add 2 dummy records so that there is something
     # in the db for the function under test to check the new records against.
-    gbif_db = DataDB(tmp_path / "gbif_data")
+    gbif_store = Store(tmp_path / "gbif_data")
 
     # grab the first two records from the download that we have loaded as sample data
     samples = list(SAMPLE_GBIF_RECORDS.items())[:2]
 
-    gbif_db.put_many(
+    gbif_store.put(
         [
             # firstly, add a record with a valid ID from the download and the same data
             SourceRecord(samples[0][0], samples[0][1], "test"),
@@ -163,16 +161,16 @@ def test_changed_records(
             SourceRecord(samples[1][0], {"not": "good", "data": "nope!"}, "test"),
         ]
     )
-    assert gbif_db.size() == 2
+    assert gbif_store.size() == 2
 
     # now add all the records
-    records = list(get_changed_records(gbif_db, "gbif_username", "gbif_password"))
+    records = list(get_changed_records(gbif_store, "gbif_username", "gbif_password"))
     # one record should have been ignored because the data hasn't changed, 8 are new,
     # and 1 is an update
     assert len(records) == 9
-    gbif_db.put_many(records)
-    assert gbif_db.size() == 10
-    assert gbif_db.get_record(samples[1][0]).data == samples[1][1]
+    gbif_store.put(records)
+    assert gbif_store.size() == 10
+    assert gbif_store.get_record(samples[1][0]).data == samples[1][1]
 
 
 @responses.activate

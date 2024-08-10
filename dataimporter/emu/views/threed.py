@@ -6,7 +6,7 @@ from dataimporter.emu.views.utils import (
 )
 from dataimporter.emu.views.utils import emu_date
 from dataimporter.lib.model import SourceRecord
-from dataimporter.lib.view import FilterResult, View, SUCCESS_RESULT
+from dataimporter.lib.view import FilterResult, View, SUCCESS_RESULT, strip_empty
 
 MULTIMEDIA_NOT_URL = FilterResult(False, "Multimedia not a URL")
 INVALID_PUBLISHER = FilterResult(False, "Invalid 3D publisher")
@@ -39,10 +39,7 @@ class ThreeDView(View):
         if not is_web_published(record):
             return NO_PUBLISH
 
-        if (
-            record.get_first_value("DetPublisher", default="").lower()
-            not in VALID_PUBLISHERS
-        ):
+        if record.get_first_value("DetPublisher", lower=True) not in VALID_PUBLISHERS:
             return INVALID_PUBLISHER
 
         # TODO: do we really need this?
@@ -51,7 +48,8 @@ class ThreeDView(View):
 
         return SUCCESS_RESULT
 
-    def make_data(self, record: SourceRecord) -> dict:
+    @strip_empty
+    def transform(self, record: SourceRecord) -> dict:
         """
         Converts the record's raw data to a dict which will then be embedded in other
         records and presented on the Data Portal.

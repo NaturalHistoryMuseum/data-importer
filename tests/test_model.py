@@ -1,3 +1,7 @@
+from typing import Optional
+
+import pytest
+
 from dataimporter.lib.model import SourceRecord
 
 
@@ -114,3 +118,29 @@ class TestRecord:
         assert record.get_first_value("a", "b", clean=True) == "b"
         assert record.get_first_value("a", clean=False) == ""
         assert record.get_first_value("a", "b", clean=False) == ""
+
+    @pytest.mark.parametrize(
+        "data, expected",
+        [
+            ({"a": "beans"}, None),
+            ({"NhmSecEmbargoDate": "beans"}, None),
+            ({"NhmSecEmbargoDate": "2020-10-03"}, 1601683200000),
+            ({"NhmSecEmbargoExtensionDate": "2020-10-03"}, 1601683200000),
+            (
+                {
+                    "NhmSecEmbargoDate": "2019-05-03",
+                    "NhmSecEmbargoExtensionDate": "2020-10-03",
+                },
+                1601683200000,
+            ),
+            (
+                {
+                    "NhmSecEmbargoDate": "2020-10-03",
+                    "NhmSecEmbargoExtensionDate": "2020-09-01",
+                },
+                1601683200000,
+            ),
+        ],
+    )
+    def test_get_embargo(self, data: dict, expected: Optional[int]):
+        assert SourceRecord("1", data, "test").get_embargo() == expected

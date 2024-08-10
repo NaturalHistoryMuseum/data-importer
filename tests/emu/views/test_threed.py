@@ -1,9 +1,7 @@
-from pathlib import Path
 from typing import List, Tuple
 
 import pytest
 
-from dataimporter.lib.dbs import DataDB
 from dataimporter.emu.views.threed import (
     ThreeDView,
     MULTIMEDIA_NOT_URL,
@@ -19,14 +17,6 @@ from tests.helpers.samples.threed import (
     MS_SAMPLE_3D_ID,
     MS_SAMPLE_3D_DATA,
 )
-
-
-@pytest.fixture
-def three_d_view(tmp_path: Path) -> ThreeDView:
-    view = ThreeDView(tmp_path / "3d_view", DataDB(tmp_path / "3d_data"))
-    yield view
-    view.close()
-
 
 is_member_scenarios: List[Tuple[dict, FilterResult]] = [
     ({"MulDocumentType": "I"}, MULTIMEDIA_NOT_URL),
@@ -49,14 +39,6 @@ def test_is_member(overrides: dict, result: FilterResult, three_d_view: ThreeDVi
     ms_data = {**MS_SAMPLE_3D_DATA, **overrides}
     ms_record = SourceRecord(MS_SAMPLE_3D_ID, ms_data, "test")
     assert three_d_view.is_member(ms_record) == result
-
-
-def test_transform_deleted(three_d_view: ThreeDView):
-    record = SourceRecord("1", {}, "test")
-    assert record.is_deleted
-
-    data = three_d_view.transform(record)
-    assert data == {}
 
 
 def test_transform_sketchfab(three_d_view: ThreeDView):

@@ -1,12 +1,11 @@
-import abc
 from dataclasses import dataclass
-from itertools import chain
+from functools import wraps
 from pathlib import Path
-from typing import Iterable, Optional, List, Set, Any
+from typing import Iterable, Optional, List, Union
 
-from splitgill.utils import now, partition
+from splitgill.utils import partition
 
-from dataimporter.lib.dbs import ChangeQueue, EmbargoQueue, DataDB, Index
+from dataimporter.lib.dbs import ChangeQueue, Store, Index
 from dataimporter.lib.model import SourceRecord
 
 
@@ -31,6 +30,26 @@ class FilterResult:
 SUCCESS_RESULT = FilterResult(True)
 
 
+def strip_empty(func):
+    """
+    A decorator which strips out keys that have empty strings from the dict returned
+    from the decorated function.
+
+    :param func: the function to decorate which returns a dict
+    :return: a decorated function
+    """
+
+    @wraps(func)
+    def inner(*args, **kwargs):
+        return {
+            key: value
+            for key, value in func(*args, **kwargs).items()
+            if value is not None
+        }
+
+    return inner
+
+
 class View:
     """
     A view on a data DB which provides a few different things, primarily:
@@ -39,23 +58,30 @@ class View:
     - transformation to convert a data DB SourceRecord object into a publishable
       record
     - tracking of records that change in the data DB that are members of this view
-    - embargo tracking
-    - links from this view to other and from others to this view as well as the
-      propagation of changes through those links
+    - links from this view to other views
     """
 
-    def __init__(self, path: Path, db: DataDB):
+    def __init__(self, path: Path, store: Store, sg_name: Optional[str] = None):
         """
         :param path: the root path that all view related data should be stored under
-        :param db: the DataDB object that backs this view
+        :param store: the Store object that backs this view
+        :param sg_name: the name of the SplitgillDatabase this view populates
         """
         self.path = path
-        self.db = db
+        self.store = store
+        self.sg_name = sg_name
         self.name = path.name
         self.changes = ChangeQueue(self.path / "changes")
-        self.embargoes = EmbargoQueue(self.path / "embargoes")
-        self.view_links_as_base: Set[ViewLink] = set()
-        self.view_links_as_foreign: Set[ViewLink] = set()
+        # a list of links which need to be updated when records in this view change
+        self.dependants: List[Link] = []
+
+    def add_dependant(self, link: "Link"):
+        """
+        Add a dependant via the given link.
+
+        :param link: the Link to add
+        """
+        self.dependants.append(link)
 
     def is_member(self, record: SourceRecord) -> FilterResult:
         """
@@ -71,48 +97,49 @@ class View:
         """
         return SUCCESS_RESULT
 
-    def make_data(self, record: SourceRecord) -> dict:
-        """
-        Given a record, return a dict containing the data to be ingested by Splitgill.
-        This is likely to be the representation that makes it to the Data Portal, if
-        indeed this view is published in that way. Linked data shouldn't be added in
-        this method as this will be done automatically by the transform method.
-
-        By default, this method returns the unmodified data from the source record.
-
-        This method does not need to deal with deletions as it will not be passed them
-        by the transform method.
-
-        :param record: the SourceRecord object to transform
-        :return: a dict
-        """
-        return record.data
-
     def transform(self, record: SourceRecord) -> dict:
         """
         Given a record, return a dict which will be ingested by Splitgill. This is
-        therefore likely to be the representation that makes it to the Data Portal.
-
-        The dict returned by this method contains both the core data and any linked data
-        too. Nones are stripped by this method as well.
+        therefore likely to be the representation that makes it to the Data Portal. This
+        representation may include any data from linked views.
 
         :param record: a SourceRecord object
         :return: a dict
         """
-        if record.is_deleted:
-            return {}
+        return record.data
 
-        # make the data and strip any Nones
-        data = {k: v for k, v in self.make_data(record).items() if v is not None}
-        # augment with links if there are any
-        for view_link in self.view_links_as_base:
-            view_link.transform(record, data)
-        return data
+    def find(self, ids: Iterable[str]) -> Iterable[SourceRecord]:
+        """
+        Find all records matching the given ids and yield them. Records which are
+        deleted or not members of this view are not returned, they are silently skipped.
+
+        :param ids: an iterable of IDs
+        :return: yields SourceRecord objects
+        """
+        yield from (
+            record
+            for record in self.store.get_records(ids, yield_deleted=False)
+            if self.is_member(record)
+        )
+
+    def get(self, record_id: str) -> Optional[SourceRecord]:
+        """
+        Get and return the record with the given ID. If the record can't be found, is
+        deleted, or isn't a member of this view, None is returned.
+
+        :param record_id: the record ID
+        :return: None or a SourceRecord object
+        """
+        record = self.store.get_record(record_id, return_deleted=False)
+        if record is not None and self.is_member(record):
+            return record
+        return None
 
     def find_and_transform(self, ids: Iterable[str]) -> Iterable[dict]:
         """
-        Convenience function which finds the records in this view which have the given
-        IDs, passes them through the transform method, and then yields them.
+        Convenience function which finds the records in the view's backing store which
+        have the given IDs, passes them through the transform method, and then yields
+        them.
 
         If any IDs aren't in this view, can't be found, are embargoed, or are deleted
         they will be ignored.
@@ -120,19 +147,7 @@ class View:
         :param ids: the ids to look up
         :return: an iterable of dicts
         """
-        embargo_timestamp = now()
-        return map(
-            self.transform,
-            (
-                record
-                for record in self.db.get_records(
-                    record_id
-                    for record_id in ids
-                    if not self.embargoes.is_embargoed(record_id, embargo_timestamp)
-                )
-                if not record.is_deleted and self.is_member(record)
-            ),
-        )
+        return map(self.transform, self.find(ids))
 
     def get_and_transform(self, record_id: str) -> Optional[dict]:
         """
@@ -144,32 +159,13 @@ class View:
         :param record_id: the record ID to look up and transform
         :return: the data dict from the transform call or None
         """
-        if self.embargoes.is_embargoed(record_id, now()):
-            return None
-        record = self.db.get_record(record_id)
-        if record is None or record.is_deleted or not self.is_member(record):
-            return None
-        return self.transform(record)
-
-    def link(self, view_link: "ViewLink"):
-        """
-        Link this view ot the view link. In reality, this view is already in the view
-        link object so all this actually does is store the view link object in the
-        appropriate attribute set depending on whether this view is the base view in the
-        view link or the foreign view.
-
-        :param view_link: a ViewLink object
-        """
-        if view_link.base_view is self:
-            self.view_links_as_base.add(view_link)
-        else:
-            self.view_links_as_foreign.add(view_link)
+        record = self.get(record_id)
+        return None if record is None else self.transform(record)
 
     def queue(self, records: List[SourceRecord]):
         """
         Given a set of records, update the changed records queue in this view. This will
-        add any changed records to the queue, as well as any deletions. Changes will be
-        propagated to the views linked to this view.
+        add any changed records to the queue, as well as any deletions.
 
         This method doesn't account for records that have changed view. I.e. were a
         member of this view and then changed to become a member of a different view.
@@ -178,34 +174,23 @@ class View:
 
         :param records: the records to check and queue
         """
-        members = [record for record in records if self.is_member(record)]
-        if members:
-            self.changes.put_many(members)
-            self.embargoes.put_many(members)
-            for view_link in self.view_links_as_base:
-                view_link.update_from_base(members)
-            for view_link in self.view_links_as_foreign:
-                view_link.update_from_foreign(members)
+        changed_records = [
+            record
+            for record in records
+            # filter out records that have already been queued (this is inefficient, but
+            # also we need this condition to prevent infinite loops on views linked to
+            # themselves)
+            if not self.changes.is_queued(record.id)
+            and (record.is_deleted or self.is_member(record))
+        ]
+        if not changed_records:
+            return
 
-        deleted = [record for record in records if record.is_deleted]
-        if deleted:
-            self.changes.put_many(deleted)
-            for view_link in self.view_links_as_foreign:
-                view_link.update_from_foreign(deleted)
+        self.changes.put_many(changed_records)
 
-    def queue_new_releases(self):
-        """
-        Queues any records that have fallen out of their embargo.
-
-        The record embargoes are compared to the current datetime.
-        """
-        # TODO: does this need to check redactions?
-        # update the change queue with the released embargo ids (in chunks, which is
-        # probably unnecessary but better safe than sorry)
-        up_to = now()
-        for chunk in partition(self.embargoes.iter_released(up_to), 5000):
-            self.queue(list(self.db.get_records(chunk)))
-        self.embargoes.flush_released(up_to)
+        # loop through all the views that link to this one and update their queues too
+        for link in self.dependants:
+            link.queue_changes(changed_records)
 
     def count(self) -> int:
         """
@@ -222,28 +207,23 @@ class View:
 
         :return: yields SourceRecord objects
         """
-        # iterate over the changed record IDs, yielding the full records
-        yield from self.db.get_records(self.changes)
+        yield from self.store.get_records(self.changes.iter(), yield_deleted=True)
 
     def iter_all(self) -> Iterable[SourceRecord]:
         """
         Iterate over all records in the view, yielding them as SourceRecord objects.
-
-        Only records which are members, aren't deleted, and aren't embargoed are
-        yielded.
+        Only records which are members of this view or have been deleted are yielded.
 
         :return: yields SourceRecord objects
         """
-        embargo_threshold = now()
-        for record in self.db:
-            if (
-                # should we yield deleted records?
-                record.is_deleted
-                or self.embargoes.is_embargoed(record.id, embargo_threshold)
-                or not self.is_member(record)
-            ):
-                continue
-            yield record
+        # this can produce deletes for records that may never have been members and
+        # therefore never made it to mongo, but that's ok, we'll ignore them when
+        # we try to add them to mongo and find that they don't exist already
+        yield from (
+            record
+            for record in self.store.iter(yield_deleted=True)
+            if record.is_deleted or self.is_member(record)
+        )
 
     def flush(self):
         """
@@ -257,254 +237,202 @@ class View:
         """
         # clear everything out
         self.changes.clear()
-        self.embargoes.clear()
-        for view_link in self.view_links_as_base:
-            view_link.clear_from_base()
-        for view_link in self.view_links_as_foreign:
-            view_link.clear_from_foreign()
-
         # reload from source
-        for chunk in partition(self.db, 5000):
+        for chunk in partition(self.store.iter(yield_deleted=False), 5000):
             self.queue(chunk)
 
     def close(self):
         """
-        Close any open connections.
+        Close the changes database.
+
+        Note that this method doesn't close the underlying store because it could be
+        being used by other views.
         """
-        self.embargoes.close()
         self.changes.close()
-        for view_link in chain(self.view_links_as_base, self.view_links_as_foreign):
-            view_link.close()
 
 
-class ViewLink(abc.ABC):
+@dataclass
+class Ref:
     """
-    Abstract class representing a link between two views. The objective of this class is
-    twofold, firstly it provides a relationship model to track changes between the two
-    views. When something changes on the linked view, the linked records on the base
-    view need to be added to the base view's change queue. Additionally, this change
-    needs to then propagate to any views linked to the base view and so on. This is
-    handled through the "update_from_base" and "update_from_foreign" methods in this
-    class. Secondly, it provides the transformation of the linked record's data into the
-    base record's data. For example, linked records may be nested, or have their data
-    merged. This is all handled by the "transform" function.
-
-    The base view in this class contains the records which will have the linked view's
-    record data added to them. For example, for our multimedia relationships the base
-    view is the specimen and the foreign view is the images. The images are added to the
-    base view's specimen records in the associatedMedia field. Typically, the base view
-    records also contain the data that defines the links (e.g. the IDs of the linked
-    records) but it doesn't have to.
+    Class representing a field which has values that reference another view.
     """
 
-    def __init__(self, name: str, base_view: View, foreign_view: View):
-        """
-        :param name: a unique name for the view link
-        :param base_view: the base view object
-        :param foreign_view: the foreign view object
-        """
-        self.name = name
-        self.base_view = base_view
-        self.foreign_view = foreign_view
-        # add this object to the base and foreign views
-        self.base_view.link(self)
-        self.foreign_view.link(self)
+    field: Optional[str] = None
 
-    def __eq__(self, other: Any) -> bool:
-        if isinstance(other, ViewLink):
-            return self.name == other.name
-        return NotImplemented
+    @property
+    def is_id(self) -> bool:
+        """
+        Returns True if the field is an ID field.
 
-    def __hash__(self) -> int:
-        return hash(self.name)
+        :return: True if is an ID, False if not
+        """
+        return self.field is None
 
-    @abc.abstractmethod
-    def update_from_base(self, base_records: List[SourceRecord]):
+    def get_values(self, record: SourceRecord) -> List[str]:
         """
-        Update the view link with data from the changed base records.
+        Returns all the values in this field from the given record.
 
-        :param base_records: a list of base SourceRecord object
+        :param record: the record to get the values from
+        :return: the values in this field as a list (even if there's only one value)
         """
-        ...
+        if self.field is None:
+            return [record.id]
+        else:
+            return list(record.iter_all_values(self.field))
 
-    @abc.abstractmethod
-    def update_from_foreign(self, foreign_records: List[SourceRecord]):
+    def get_value(self, record: SourceRecord) -> Optional[str]:
         """
-        Update the view link with data from the changed foreign records.
+        Returns the first value in this field from the given record. If no values exist,
+        returns None.
 
-        :param foreign_records: a list of base SourceRecord object
+        :param record: the record to get the value from
+        :return: the value or None
         """
-        ...
-
-    @abc.abstractmethod
-    def transform(self, base_record: SourceRecord, data: dict):
-        """
-        Given a base record and the transformed data created from it by the base view,
-        combine the linked data from the foreign view with it.
-
-        :param base_record: the base SourceRecord
-        :param data: the transformed base record
-        """
-        ...
-
-    def clear_from_base(self):
-        """
-        Clear the data in this view link that has been sourced from the base view.
-        """
-        pass
-
-    def clear_from_foreign(self):
-        """
-        Clear the data in this view link that has been sourced from the foreign view.
-        """
-        pass
-
-    def close(self):
-        """
-        Close any databases/files/etc associated with this view link.
-        """
-        pass
+        if self.field is None:
+            return record.id
+        else:
+            return next(iter(record.iter_all_values(self.field)), None)
 
 
-class ManyToOneViewLink(ViewLink, abc.ABC):
+# reusable ID reference
+ID = Ref()
+
+
+@dataclass
+class Link:
     """
-    Represents a many-to-one link between two views.
+    Represents a link from one view to another view.
 
-    Base records have a link to at most one foreign record, but many foreign records can
-    link back to the same base record.
+    The views can be the same view, creating a self-referential link.
     """
 
-    def __init__(self, path: Path, base_view: View, foreign_view: View, field: str):
+    owner: View
+    owner_ref: Ref
+    owner_index: Optional[Index]
+    foreign: View
+    foreign_ref: Ref
+    foreign_index: Optional[Index]
+
+    def queue_changes(self, foreign_records: List[SourceRecord]):
         """
-        :param path: the root path where the ID map database will be stored
-        :param base_view: the base view
-        :param foreign_view: the foreign view
-        :param field: field on base records which contains the linked foreign record ID
+        Given a list of foreign records which have changed, looks up the owner records
+        which relate to them, and queues those records on the owner view.
+
+        :param foreign_records: the foreign records that have changed
         """
-        super().__init__(path.name, base_view, foreign_view)
-        self.path = path
-        self.field = field
-        # a many-to-one index from base id -> foreign id
-        self.id_map = Index(path / "id_map")
+        ids_to_queue = []
 
-    def update_from_base(self, base_records: List[SourceRecord]):
+        for foreign_record in foreign_records:
+            # get the ref values from the record
+            ref_values = self.foreign_ref.get_values(foreign_record)
+            if not ref_values:
+                continue
+
+            if self.owner_ref.is_id:
+                # ref values are IDs, so we can just use them immediately
+                ids_to_queue.extend(ref_values)
+            else:
+                # ref values are an intermediary, need to look this up in the index
+                ids_to_queue.extend(self.owner_index.lookup(ref_values))
+
+        if ids_to_queue:
+            self.owner.queue(list(self.owner.find(ids_to_queue)))
+
+    def lookup(self, owner_record: SourceRecord) -> List[SourceRecord]:
         """
-        Extracts the linked foreign ID from each of the given records and adds them to
-        the ID map.
+        Lookup all the foreign records related to the given owner record.
 
-        :param base_records: the changed base records
+        :param owner_record: a record from the owner view
+        :return: a list of foreign records
         """
-        self.id_map.put_many(
-            (base_record.id, foreign_id)
-            for base_record in base_records
-            if (foreign_id := base_record.get_first_value(self.field))
-        )
+        # get the ref values from the record
+        ref_values = self.owner_ref.get_values(owner_record)
+        if not ref_values:
+            return []
 
-    def update_from_foreign(self, foreign_records: List[SourceRecord]):
+        if self.foreign_ref.is_id:
+            # ref values are IDs, so we can just use them immediately
+            ref_ids = ref_values
+        else:
+            # ref values are an intermediary, need to look this up in the index
+            ref_ids = list(self.foreign_index.lookup(ref_values))
+            if not ref_ids:
+                return []
+
+        # return the records that are found in this view
+        return list(self.foreign.find(ref_ids))
+
+    def lookup_one(self, owner_record: SourceRecord) -> Optional[SourceRecord]:
         """
-        Propagate the changes in the given foreign records to the base records linked to
-        them.
+        Lookup the first foreign record related to the given owner record.
 
-        :param foreign_records: the updated foreign records
+        :param owner_record: a record from the owner view
+        :return: a foreign record or None if no records are related
         """
-        # do a reverse lookup to find the potentially many base IDs associated with each
-        # updated foreign ID, and store them in a set
-        base_ids = {
-            base_id
-            for foreign_record in foreign_records
-            for base_id in self.id_map.get_keys(foreign_record.id)
-        }
+        return next(iter(self.lookup(owner_record)), None)
 
-        if base_ids:
-            base_records = list(self.base_view.db.get_records(base_ids))
-            if base_records:
-                # if there are associated base records, queue changes to them on the
-                # base view
-                self.base_view.queue(base_records)
-
-    def get_foreign_record_data(self, base_record: SourceRecord) -> Optional[dict]:
-        foreign_id = base_record.get_first_value(self.field)
-        if foreign_id:
-            return self.foreign_view.get_and_transform(foreign_id)
-
-    def clear_from_base(self):
+    def lookup_and_transform(self, owner_record: SourceRecord) -> List[dict]:
         """
-        Clears out the ID map.
+        Lookup all the foreign records related to the given owner record, transform
+        them, and return the resulting list of dicts.
+
+        :param owner_record: a record from the owner view
+        :return: a list of dicts created from the related foreign records
         """
-        self.id_map.clear()
+        return [self.foreign.transform(record) for record in self.lookup(owner_record)]
+
+    def lookup_and_transform_one(self, owner_record: SourceRecord) -> Optional[dict]:
+        """
+        Lookup the first foreign record related to the given owner record, transform it,
+        and return the resulting dict.
+
+        :return: a foreign record or None if no records are related
+        :return: a dict created from the related foreign record, or None if no records
+                 are related
+        """
+        return next(iter(self.lookup_and_transform(owner_record)), None)
 
 
-class ManyToManyViewLink(ViewLink, abc.ABC):
+def make_link(
+    owner: View,
+    owner_ref: Union[str, Ref],
+    foreign: View,
+    foreign_ref: Union[str, Ref],
+) -> Link:
     """
-    Represents a many-to-many link between two views.
+    Create a link between two views. This essentially creates a many-to-many link
+    between the two views allowing lookup of records from the owner to the foreign view
+    as part of record transformation, and the flow of updates from the foreign view back
+    to the owner view when linked records change. Links can be self-referential.
 
-    Base records have a link to many foreign records and many foreign records can link
-    back to the same base record.
+    If any index are required for the link to work and data already exists in the
+    backing stores, they will be created meaning this function may take time to
+    complete. If the indexes already exist, they will not be recreated.
+
+    :param owner: the view that is creating this link and will have updates queued upon
+                  it when changes occur in the foreign view
+    :param owner_ref: the field containing the values referencing the foreign view
+    :param foreign: the view that is being linked to, the owner view will be added to
+                    this view as a dependant
+    :param foreign_ref: the field containing the values referenced by the owner view
+    :return: a Link object
     """
+    # ensure the refs are Refs
+    if isinstance(owner_ref, str):
+        owner_ref = Ref(owner_ref)
+    if isinstance(foreign_ref, str):
+        foreign_ref = Ref(foreign_ref)
 
-    def __init__(self, path: Path, base_view: View, foreign_view: View, field: str):
-        """
-        :param path: the root path where the ID map database will be stored
-        :param base_view: the base view
-        :param foreign_view: the foreign view
-        :param field: field on base records which contains the linked foreign record ID
-        """
-        super().__init__(path.name, base_view, foreign_view)
-        self.path = path
-        self.field = field
-        # a many-to-many index from base id -> foreign id
-        self.id_map = Index(path / "id_map")
+    # create indexes as needed
+    if owner_ref.is_id:
+        owner_index = None
+    else:
+        owner_index = owner.store.create_index(owner_ref.field)
+    if foreign_ref.is_id:
+        foreign_index = None
+    else:
+        foreign_index = foreign.store.create_index(foreign_ref.field)
 
-    def update_from_base(self, base_records: List[SourceRecord]):
-        """
-        Update the ID map with the IDs of each base record provided along with the IDs
-        of the foreign records that are linked to each base record. This is a many-to-
-        many mapping as multiple foreign IDs can be present on each base record.
-
-        :param base_records: the updated base records
-        """
-        self.id_map.put_multiple_values(
-            (record.id, record.iter_all_values(self.field)) for record in base_records
-        )
-
-    def update_from_foreign(self, foreign_records: List[SourceRecord]):
-        """
-        Propagate the changes in the given foreign records to the base records linked to
-        them.
-
-        :param foreign_records: the updated foreign records
-        """
-        # do a reverse lookup to find the potentially many base IDs associated with each
-        # updated foreign ID, and store them in a set
-        base_ids = {
-            base_id
-            for foreign_record in foreign_records
-            for base_id in self.id_map.get_keys(foreign_record.id)
-        }
-
-        if base_ids:
-            base_records = list(self.base_view.db.get_records(base_ids))
-            if base_records:
-                # if there are associated base records, queue changes to them on the
-                # base view
-                self.base_view.queue(base_records)
-
-    def get_foreign_record_data(self, base_record: SourceRecord) -> List[dict]:
-        """
-        Returns a list of transformed foreign records which are linked to the given base
-        record. If no records are linked, an empty list is returned.
-
-        :param base_record: the base record
-        :return: a list of the transformed foreign data
-        """
-        return list(
-            self.foreign_view.find_and_transform(
-                base_record.iter_all_values(self.field)
-            )
-        )
-
-    def clear_from_base(self):
-        """
-        Clears out the ID map.
-        """
-        self.id_map.clear()
+    link = Link(owner, owner_ref, owner_index, foreign, foreign_ref, foreign_index)
+    foreign.add_dependant(link)
+    return link

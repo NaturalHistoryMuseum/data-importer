@@ -9,7 +9,7 @@ from zipfile import ZipFile
 import requests
 from requests.auth import HTTPBasicAuth
 
-from dataimporter.lib.dbs import DataDB
+from dataimporter.lib.dbs import Store
 from dataimporter.lib.model import SourceRecord
 from dataimporter.lib.view import View
 
@@ -19,7 +19,7 @@ class GBIFView(View):
     View for GBIF records.
     """
 
-    def make_data(self, record: SourceRecord) -> dict:
+    def transform(self, record: SourceRecord) -> dict:
         """
         Converts the GBIF record's raw data to a dict which will then be embedded in
         specimen records and presented on the Data Portal.
@@ -41,7 +41,7 @@ class GBIFView(View):
 
 
 def get_changed_records(
-    gbif_db: DataDB, gbif_username: str, gbif_password: str
+    store: Store, gbif_username: str, gbif_password: str
 ) -> Iterable[SourceRecord]:
     """
     Get a stream of the latest records from GBIF. This function will take time to
@@ -49,7 +49,7 @@ def get_changed_records(
     download it, and then stream the records from the downloaded CSV that have changed
     compared to the ones in the data DB already.
 
-    :param gbif_db: the GBIF data DB
+    :param store: the GBIF Store
     :param gbif_username: a GBIF username for requesting the download
     :param gbif_password: a GBIF password for requesting the download
     :return: yields the changed SourceRecord objects
@@ -75,7 +75,7 @@ def get_changed_records(
                         for row in reader:
                             gbif_id = row["gbifID"]
                             updated_record = SourceRecord(gbif_id, row, download_id)
-                            existing_record = gbif_db.get_record(gbif_id)
+                            existing_record = store.get_record(gbif_id)
                             # if the record has changed or is new, yield it
                             if existing_record != updated_record:
                                 yield updated_record

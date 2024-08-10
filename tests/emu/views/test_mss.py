@@ -1,9 +1,7 @@
-from pathlib import Path
 from typing import List, Tuple
 
 import pytest
 
-from dataimporter.lib.dbs import DataDB
 from dataimporter.emu.views.mss import (
     MSSView,
     MULTIMEDIA_NOT_IMAGE,
@@ -13,14 +11,6 @@ from dataimporter.emu.views.utils import NO_PUBLISH, INVALID_GUID
 from dataimporter.lib.model import SourceRecord
 from dataimporter.lib.view import FilterResult, SUCCESS_RESULT
 from tests.helpers.samples.image import SAMPLE_IMAGE_DATA, SAMPLE_IMAGE_ID
-
-
-@pytest.fixture
-def mss_view(tmp_path: Path) -> MSSView:
-    view = MSSView(tmp_path / "mss_view", DataDB(tmp_path / "mss_data"))
-    yield view
-    view.close()
-
 
 is_member_scenarios: List[Tuple[dict, FilterResult]] = [
     ({"MulMimeType": "Document"}, MULTIMEDIA_NOT_IMAGE),
@@ -36,14 +26,6 @@ def test_is_member(overrides: dict, result: FilterResult, mss_view: MSSView):
     data = {**SAMPLE_IMAGE_DATA, **overrides}
     record = SourceRecord(SAMPLE_IMAGE_ID, data, "test")
     assert mss_view.is_member(record) == result
-
-
-def test_transform_deleted(mss_view: MSSView):
-    record = SourceRecord(SAMPLE_IMAGE_ID, {}, "test")
-    assert record.is_deleted
-
-    data = mss_view.transform(record)
-    assert data == {}
 
 
 def test_transform(mss_view: MSSView):

@@ -1,5 +1,6 @@
-import click
 import code
+
+import click
 
 from dataimporter.cli.shell import setup_env
 from dataimporter.cli.utils import with_config, console, VIEW_NAMES
@@ -25,27 +26,6 @@ def merge(config: Config):
             console.log(f"Force merge on {name} indices")
             importer.force_merge(name)
             console.log(f"{name} complete")
-
-
-@maintenance_group.command("update-profiles")
-@with_config()
-@click.option(
-    "--rebuild",
-    is_flag=True,
-    show_default=True,
-    default=False,
-    help="Rebuild all profiles for each database",
-)
-def update_profiles(config: Config, rebuild: bool = False):
-    """
-    Updates the profile data for each database.
-    """
-    with DataImporter(config) as importer:
-        for name in VIEW_NAMES:
-            sg_db = importer.sg_dbs[name]
-            console.log(f"Updating profiles for {name} database")
-            sg_db.update_profiles(rebuild=rebuild)
-            console.log(f"Completed updating profiles for {name} database")
 
 
 @maintenance_group.command()

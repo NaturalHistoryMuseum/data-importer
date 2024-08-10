@@ -1,5 +1,6 @@
 from tests.helpers.dumps import read_emu_extract
 from tests.helpers.samples.image import SAMPLE_IMAGE_ID
+from tests.helpers.samples.taxonomy import SAMPLE_TAXONOMY_ID
 
 # this is taken from ecatalogue.export.20231019.gz but with the MulMultiMediaRefs
 # replaced with a single reference to the SAMPLE_IMAGE_ID
@@ -278,6 +279,7 @@ SecCanEdit:1=Group Default
 SecCanDelete:1=Group Default
 SecDepartment:1=Zoology
 SecLookupRoot:1=Zoology
+CardParasiteRef:1={SAMPLE_TAXONOMY_ID}
 """
 
 SAMPLE_SPECIMEN_ID, SAMPLE_SPECIMEN_DATA = read_emu_extract(raw_data)

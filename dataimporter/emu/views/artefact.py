@@ -1,3 +1,6 @@
+from pathlib import Path
+
+from dataimporter.emu.views.image import ImageView
 from dataimporter.emu.views.utils import (
     NO_PUBLISH,
     DISALLOWED_STATUSES,
@@ -9,10 +12,20 @@ from dataimporter.emu.views.utils import (
     is_valid_guid,
     INVALID_GUID,
     combine_text,
+    add_associated_media,
+    MEDIA_ID_REF_FIELD,
 )
 from dataimporter.emu.views.utils import emu_date
+from dataimporter.lib.dbs import Store
 from dataimporter.lib.model import SourceRecord
-from dataimporter.lib.view import View, FilterResult, SUCCESS_RESULT
+from dataimporter.lib.view import (
+    View,
+    FilterResult,
+    SUCCESS_RESULT,
+    strip_empty,
+    make_link,
+    ID,
+)
 
 
 class ArtefactView(View):
@@ -21,6 +34,10 @@ class ArtefactView(View):
 
     This view populates the artefacts resource on the Data Portal.
     """
+
+    def __init__(self, path: Path, store: Store, image_view: ImageView, sg_name: str):
+        super().__init__(path, store, sg_name)
+        self.image_link = make_link(self, MEDIA_ID_REF_FIELD, image_view, ID)
 
     def is_member(self, record: SourceRecord) -> FilterResult:
         """
@@ -47,7 +64,8 @@ class ArtefactView(View):
 
         return SUCCESS_RESULT
 
-    def make_data(self, record: SourceRecord) -> dict:
+    @strip_empty
+    def transform(self, record: SourceRecord) -> dict:
         """
         Converts the record's raw data to a dict which will be the data presented on the
         Data Portal.
@@ -59,7 +77,8 @@ class ArtefactView(View):
         # cache this for perf
         get_first = record.get_first_value
 
-        return {
+        # create the core data
+        data = {
             "_id": record.id,
             "created": emu_date(
                 get_first("AdmDateInserted"), get_first("AdmTimeInserted")
@@ -75,3 +94,8 @@ class ArtefactView(View):
             ),
             "scientificName": get_first("IdeCurrentScientificName"),
         }
+
+        # add multimedia links
+        add_associated_media(record, data, self.image_link)
+
+        return data

@@ -1,7 +1,7 @@
 from dataimporter.emu.views.utils import NO_PUBLISH, is_web_published
 from dataimporter.emu.views.utils import emu_date
 from dataimporter.lib.model import SourceRecord
-from dataimporter.lib.view import View, FilterResult, SUCCESS_RESULT
+from dataimporter.lib.view import View, FilterResult, SUCCESS_RESULT, strip_empty
 
 
 class TaxonomyView(View):
@@ -24,7 +24,8 @@ class TaxonomyView(View):
 
         return SUCCESS_RESULT
 
-    def make_data(self, record: SourceRecord) -> dict:
+    @strip_empty
+    def transform(self, record: SourceRecord) -> dict:
         """
         Converts the record's raw data to a dict which will then be merged into other
         records and presented on the Data Portal.
@@ -38,6 +39,7 @@ class TaxonomyView(View):
 
         return {
             "_id": record.id,
+            # todo: should these be here? Probably not right?
             "created": emu_date(
                 get_first("AdmDateInserted"), get_first("AdmTimeInserted")
             ),

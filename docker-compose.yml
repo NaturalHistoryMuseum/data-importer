@@ -45,9 +45,6 @@ services:
       xpack.security.enabled: "false"
       # this ensures the tests can delete indexes using wildcards
       action.destructive_requires_name: "false"
-    ports:
-      - "9200:9200"
-      - "9100:9100"
 
   mongo:
     image: mongo:6.0.8
