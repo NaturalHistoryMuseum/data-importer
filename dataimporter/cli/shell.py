@@ -16,7 +16,6 @@ def setup_env(importer: DataImporter) -> dict:
         "importer": importer,
         "console": console,
         # some convenience functions for printing data
-        "prd": partial(print_record_data, importer),
         "pcd": partial(print_record_data, importer, "ecatalogue"),
         "ptd": partial(print_record_data, importer, "etaxonomy"),
         "pmd": partial(print_record_data, importer, "emultimedia"),
