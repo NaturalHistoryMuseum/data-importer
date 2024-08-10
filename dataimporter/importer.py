@@ -170,55 +170,45 @@ class DataImporter:
             for view in views:
                 view.queue(batch)
 
-    def queue_emu_changes(self, only_one: bool = False) -> List[date]:
+    def queue_emu_changes(self) -> Optional[date]:
         """
-        Look for new EMu dumps, upsert the records into the appropriate DataDB and then
-        queue the changes into the derived views.
+        Look for new EMu dumps and if any are found beyond the date of the last queued
+        EMu import, add the next day's data to the stores and view queues.
 
-        :param only_one: if True, only process the first set of dumps and then return,
-                         otherwise, process them all (default: False)
-        :return the dates that were queued
+        :return the date that was queued or None if no dumps were found
         """
         last_queued = self.emu_status.get()
         dump_sets = find_emu_dumps(self.config.dumps_path, after=last_queued)
         if not dump_sets:
-            return []
+            return None
 
-        if only_one:
-            dump_sets = dump_sets[:1]
+        next_day_dump_set = dump_sets[0]
 
         store_names = {store.name for store in self.stores if store.name != "gbif"}
-        dates_queued = []
-        for dump_set in dump_sets:
-            for dump in dump_set.dumps:
-                # normal tables are immediately processable, but if the dump is from
-                # the eaudit table we need to do some additional work because each
-                # audit record refers to a potentially different table from which it
-                # is deleting a record
-                if dump.table != "eaudit":
-                    self.queue_changes(dump.read(), dump.table)
-                else:
-                    # wrap the dump stream in a filter to only allow through records
-                    # we want to process
-                    filtered_dump = filter(
-                        partial(is_valid_eaudit_record, tables=store_names),
-                        dump.read(),
-                    )
-                    # queue the changes to each table's database in turn
-                    for table, records in groupby(
-                        filtered_dump, key=lambda record: record.data["AudTable"]
-                    ):
-                        # convert the raw audit records into delete records as we
-                        # queue them
-                        self.queue_changes(
-                            map(convert_eaudit_to_delete, records), table
-                        )
-            # we've handled all the dumps from this date, update the last date stored on
-            # disk in case we fail later to avoid redoing work
-            self.emu_status.update(dump_set.date)
-            dates_queued.append(dump_set.date)
+        for dump in next_day_dump_set.dumps:
+            # normal tables are immediately processable, but if the dump is from
+            # the eaudit table we need to do some additional work because each
+            # audit record refers to a potentially different table from which it
+            # is deleting a record
+            if dump.table != "eaudit":
+                self.queue_changes(dump.read(), dump.table)
+            else:
+                # wrap the dump stream in a filter to only allow through records
+                # we want to process
+                filtered_dump = filter(
+                    partial(is_valid_eaudit_record, tables=store_names),
+                    dump.read(),
+                )
+                # queue the changes to each table's database in turn
+                for table, records in groupby(
+                    filtered_dump, key=lambda record: record.data["AudTable"]
+                ):
+                    # convert the raw audit records into delete records as we
+                    # queue them
+                    self.queue_changes(map(convert_eaudit_to_delete, records), table)
 
-        return dates_queued
+        self.emu_status.update(next_day_dump_set.date)
+        return next_day_dump_set.date
 
     def queue_gbif_changes(self):
         """

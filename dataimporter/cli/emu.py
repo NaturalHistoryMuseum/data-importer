@@ -36,12 +36,12 @@ def auto(config: Config, one: bool = False, delay_sync: bool = False):
     with DataImporter(config) as importer:
         while True:
             console.log("Queuing next dump set")
-            dates_queued = importer.queue_emu_changes(only_one=True)
-            if not dates_queued:
+            date_queued = importer.queue_emu_changes()
+            if date_queued is None:
                 console.log("No more dumps to import, done")
                 break
 
-            console.log(f"Date queued: {dates_queued[0].isoformat()}")
+            console.log(f"Date queued: {date_queued.isoformat()}")
 
             for name in VIEW_NAMES:
                 console.log(f"Adding changes from {name} view to mongo")
@@ -92,13 +92,12 @@ def queue(amount: str, config: Config):
 
         while amount > 0:
             console.log("Queuing next dump set")
-            dates_queued = importer.queue_emu_changes(only_one=True)
-            if not dates_queued:
+            date_queued = importer.queue_emu_changes()
+            if date_queued is None:
                 console.log("No data to queue")
                 break
             else:
-                date_queued = dates_queued[0].isoformat()
-                console.log(f"Date queued: {date_queued}")
+                console.log(f"Date queued: {date_queued.isoformat()}")
             amount -= 1
 
 

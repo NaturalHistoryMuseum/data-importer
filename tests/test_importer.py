@@ -118,7 +118,7 @@ class TestDataImporter:
             create_etaxonomy("2"),
         )
 
-        importer.queue_emu_changes()
+        assert importer.queue_emu_changes() == first_dump_date
 
         assert importer.get_store("ecatalogue").size() == 4
         assert importer.get_store("emultimedia").size() == 3
@@ -148,7 +148,7 @@ class TestDataImporter:
             create_eaudit("1", "etaxonomy"),
         )
 
-        importer.queue_emu_changes()
+        assert importer.queue_emu_changes() == second_dump_date
 
         # these have all lost 1 to reflect the newly deleted records
         assert importer.get_store("ecatalogue").size() == 3
@@ -183,7 +183,7 @@ class TestDataImporter:
             create_emultimedia("4"),
         )
 
-        importer.queue_emu_changes()
+        assert importer.queue_emu_changes() == third_dump_date
 
         assert importer.get_store("ecatalogue").size() == 3
         # there's a new emultimedia record now
@@ -217,13 +217,6 @@ class TestDataImporter:
             config.dumps_path, "etaxonomy", first_dump_date, create_etaxonomy("1")
         )
 
-        importer.queue_emu_changes(only_one=True)
-
-        assert importer.emu_status.get() == first_dump_date
-        assert importer.get_store("ecatalogue").size() == 1
-        assert importer.get_store("emultimedia").size() == 1
-        assert importer.get_store("etaxonomy").size() == 1
-
         second_dump_date = date(2023, 10, 4)
         create_dump(
             config.dumps_path,
@@ -238,8 +231,13 @@ class TestDataImporter:
             config.dumps_path, "etaxonomy", second_dump_date, create_etaxonomy("2")
         )
 
-        importer.queue_emu_changes(only_one=True)
+        assert importer.queue_emu_changes() == first_dump_date
+        assert importer.emu_status.get() == first_dump_date
+        assert importer.get_store("ecatalogue").size() == 1
+        assert importer.get_store("emultimedia").size() == 1
+        assert importer.get_store("etaxonomy").size() == 1
 
+        assert importer.queue_emu_changes() == second_dump_date
         assert importer.emu_status.get() == second_dump_date
         assert importer.get_store("ecatalogue").size() == 2
         assert importer.get_store("emultimedia").size() == 2
