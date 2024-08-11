@@ -29,10 +29,10 @@ from tests.helpers.dumps import (
 
 @pytest.fixture
 def config(tmp_path: Path) -> Config:
-    mongo_config = MongoConfig("localhost", 27017)
-    elasticsearch_config = ElasticsearchConfig(["http://localhost:9200"])
+    mongo_config = MongoConfig("mongo", 27017)
+    elasticsearch_config = ElasticsearchConfig(["http://es:9200"])
     portal_config = PortalConfig(
-        "http://10.0.11.20", "postgres://ckan:password@db/ckan", "admin"
+        "http://localhost", "postgres://ckan:password@db/ckan", "admin"
     )
     return Config(
         data_path=tmp_path / "data",
