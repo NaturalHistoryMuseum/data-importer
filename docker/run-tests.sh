@@ -12,7 +12,7 @@ done
 
 # run the tests
 echo "Running pytest with coverage"
-pytest -v --cov="dataimporter" --cov-report term-missing tests
+pytest -v -x --cov="dataimporter" --cov-report term-missing tests
 # store the exit code from the pytest run
 test_exit_code=$?
 
