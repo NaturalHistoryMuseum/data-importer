@@ -146,7 +146,6 @@ def sync(view: str, config: Config, resync: bool = False):
 
 
 @emu_group.command("get-emu-date")
-@click.argument("amount", type=str)
 @with_config()
 def get_emu_date(config: Config):
     """
