@@ -45,6 +45,7 @@ class Config:
     portal_config: PortalConfig
     gbif_username: Optional[str] = None
     gbif_password: Optional[str] = None
+    source: Optional[Path] = None
 
     def __post_init__(self):
         # make sure the paths are paths
@@ -86,6 +87,7 @@ def load(path: Path) -> Config:
             mongo_config=mongo_config,
             es_config=es_config,
             portal_config=portal_config,
+            source=path,
         )
 
         return config
