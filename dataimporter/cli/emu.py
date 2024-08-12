@@ -1,6 +1,5 @@
-import math
-
 import click
+import math
 
 from dataimporter.cli.utils import with_config, console, VIEW_NAMES
 from dataimporter.importer import DataImporter
