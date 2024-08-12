@@ -75,6 +75,15 @@ class View:
         # a list of links which need to be updated when records in this view change
         self.dependants: List[Link] = []
 
+    @property
+    def has_database(self) -> bool:
+        """
+        Returns whether this view directly feeds a Splitgill database.
+
+        :return: True if a Splitgill database should exist for this view, False if not
+        """
+        return self.sg_name is not None
+
     def add_dependant(self, link: "Link"):
         """
         Add a dependant via the given link.
