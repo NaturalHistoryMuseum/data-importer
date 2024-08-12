@@ -38,11 +38,11 @@ def get_status(config: Config):
             console.log("Backing store", view.store.name)
             console.log("Queue size:", view.count())
 
-            try:
-                database = importer.get_database(view)
-            except ValueError:
+            database = importer.get_database(view)
+            if database is None:
                 console.log(Rule())
                 continue
+
             console.log("Database:", database.name)
             console.log("MongoDB count:", database.data_collection.count_documents({}))
             console.log(
