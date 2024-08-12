@@ -149,7 +149,7 @@ class DataImporter:
         :param view: a view
         :return: a SplitgillDatabase instance
         """
-        if view.sg_name is None:
+        if not view.has_database:
             raise ValueError("View does not have a sg_name")
         return SplitgillDatabase(view.sg_name, self.client)
 
