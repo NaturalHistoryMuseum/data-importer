@@ -1,9 +1,12 @@
 import click
 import math
 
-from dataimporter.cli.utils import with_config, console, VIEW_NAMES
+from dataimporter.cli.utils import with_config, console
 from dataimporter.importer import DataImporter
 from dataimporter.lib.config import Config
+
+
+EMU_VIEWS = ("specimen", "indexlot", "artefact", "mss", "preparation")
 
 
 @click.group("emu")
@@ -42,7 +45,7 @@ def auto(config: Config, one: bool = False, delay_sync: bool = False):
 
             console.log(f"Date queued: {date_queued.isoformat()}")
 
-            for name in VIEW_NAMES:
+            for name in EMU_VIEWS:
                 console.log(f"Adding changes from {name} view to mongo")
                 importer.add_to_mongo(name)
                 console.log(f"Added changes from {name} view to mongo")
@@ -50,7 +53,7 @@ def auto(config: Config, one: bool = False, delay_sync: bool = False):
             if delay_sync:
                 console.log(f"Delaying sync...")
             else:
-                for name in VIEW_NAMES:
+                for name in EMU_VIEWS:
                     console.log(f"Syncing changes from {name} view to elasticsearch")
                     importer.sync_to_elasticsearch(name)
                     console.log(f"Finished with {name}")
@@ -60,7 +63,7 @@ def auto(config: Config, one: bool = False, delay_sync: bool = False):
                 break
 
         if delay_sync:
-            for name in VIEW_NAMES:
+            for name in EMU_VIEWS:
                 console.log(f"Syncing changes from {name} view to elasticsearch")
                 importer.sync_to_elasticsearch(name)
                 console.log(f"Finished with {name}")
@@ -101,7 +104,7 @@ def queue(amount: str, config: Config):
 
 
 @emu_group.command("ingest")
-@click.argument("view", type=click.Choice(VIEW_NAMES))
+@click.argument("view", type=click.Choice(EMU_VIEWS))
 @click.option(
     "--everything",
     is_flag=True,
@@ -124,7 +127,7 @@ def ingest(view: str, config: Config, everything: bool = False):
 
 
 @emu_group.command("sync")
-@click.argument("view", type=click.Choice(VIEW_NAMES))
+@click.argument("view", type=click.Choice(EMU_VIEWS))
 @click.option(
     "--resync",
     is_flag=True,

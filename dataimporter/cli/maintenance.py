@@ -3,7 +3,7 @@ import code
 import click
 
 from dataimporter.cli.shell import setup_env
-from dataimporter.cli.utils import with_config, console, VIEW_NAMES
+from dataimporter.cli.utils import with_config, console
 from dataimporter.importer import DataImporter
 from dataimporter.lib.config import Config
 
@@ -22,10 +22,11 @@ def merge(config: Config):
     This cleans up deleted documents etc.
     """
     with DataImporter(config) as importer:
-        for name in VIEW_NAMES:
-            console.log(f"Force merge on {name} indices")
-            importer.force_merge(name)
-            console.log(f"{name} complete")
+        for view in importer.views:
+            if view.has_database:
+                console.log(f"Force merge on {view.name} indices")
+                importer.force_merge(view.name)
+                console.log(f"{view.name} complete")
 
 
 @maintenance_group.command()
