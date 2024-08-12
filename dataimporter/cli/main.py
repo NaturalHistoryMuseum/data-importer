@@ -39,7 +39,7 @@ def get_status(config: Config):
             console.log("Queue size:", view.count())
 
             try:
-                database = importer.get_splitgill_database(view)
+                database = importer.get_database(view)
             except ValueError:
                 console.log(Rule())
                 continue

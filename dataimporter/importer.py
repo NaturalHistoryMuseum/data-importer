@@ -2,7 +2,7 @@ from datetime import date, datetime
 from functools import partial
 from itertools import groupby
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Union
 
 from splitgill.manager import SplitgillClient, SplitgillDatabase
 from splitgill.model import Record
@@ -141,16 +141,20 @@ class DataImporter:
                 return view
         return None
 
-    def get_splitgill_database(self, view: View) -> SplitgillDatabase:
+    def get_database(self, view: Union[str, View]) -> Optional[SplitgillDatabase]:
         """
         Returns a new SplitgillDatabase instance for the given view. If the view doesn't
-        have an associated SplitgillDatabase name, then a ValueError is raised.
+        have an associated SplitgillDatabase name, then None is returned.
 
-        :param view: a view
-        :return: a SplitgillDatabase instance
+        :param view: a View instance or a view's name
+        :return: a SplitgillDatabase instance or None
         """
+        if isinstance(view, str):
+            view = self.get_view(view)
+        if view is None:
+            return None
         if not view.has_database:
-            raise ValueError("View does not have a sg_name")
+            return None
         return SplitgillDatabase(view.sg_name, self.client)
 
     def queue_changes(self, records: Iterable[SourceRecord], store_name: str):
@@ -266,7 +270,7 @@ class DataImporter:
         self.release_records(now())
 
         view = self.get_view(view_name)
-        database = self.get_splitgill_database(view)
+        database = self.get_database(view)
 
         if everything:
             changed_records = view.iter_all()
@@ -303,7 +307,7 @@ class DataImporter:
                haven't changed
         """
         view = self.get_view(view_name)
-        database = self.get_splitgill_database(view)
+        database = self.get_database(view)
         database.sync(resync=resync)
 
     def force_merge(self, view_name: str) -> dict:
@@ -315,7 +319,7 @@ class DataImporter:
         :return:
         """
         view = self.get_view(view_name)
-        database = self.get_splitgill_database(view)
+        database = self.get_database(view)
         client = self.client.elasticsearch
         return client.options(request_timeout=None).indices.forcemerge(
             index=database.indices.wildcard,

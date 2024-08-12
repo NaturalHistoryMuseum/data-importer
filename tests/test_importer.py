@@ -291,7 +291,7 @@ class TestDataImporter:
 
             importer.add_to_mongo(name)
 
-            database = importer.get_splitgill_database(importer.get_view(name))
+            database = importer.get_database(importer.get_view(name))
             assert database.get_committed_version() == to_timestamp(
                 datetime(2023, 10, 20, 11, 4, 31)
             )
@@ -361,7 +361,7 @@ class TestDataImporter:
 
             importer.add_to_mongo(name)
 
-            database = importer.get_splitgill_database(importer.get_view(name))
+            database = importer.get_database(importer.get_view(name))
             assert database.get_committed_version() == to_timestamp(
                 datetime(2023, 10, 20, 11, 4, 31)
             )
@@ -437,7 +437,7 @@ class TestDataImporter:
 
             importer.add_to_mongo(name)
 
-            database = importer.get_splitgill_database(importer.get_view(name))
+            database = importer.get_database(importer.get_view(name))
 
         assert database.get_committed_version() == to_timestamp(
             datetime(2023, 10, 20, 11, 4, 31)
@@ -492,7 +492,7 @@ class TestDataImporter:
 
             importer.add_to_mongo(name)
 
-            database = importer.get_splitgill_database(importer.get_view(name))
+            database = importer.get_database(importer.get_view(name))
 
         assert database.get_committed_version() == to_timestamp(
             datetime(2023, 10, 20, 11, 4, 31)
@@ -560,7 +560,7 @@ class TestDataImporter:
 
             importer.add_to_mongo(name)
 
-            database = importer.get_splitgill_database(importer.get_view(name))
+            database = importer.get_database(importer.get_view(name))
             assert database.get_committed_version() == to_timestamp(
                 datetime(2023, 10, 20, 11, 4, 31)
             )
