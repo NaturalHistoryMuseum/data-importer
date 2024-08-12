@@ -245,7 +245,12 @@ class DataImporter:
         return store.redact(record_ids, redaction_id)
 
     def release_records(self, up_to: int):
-        # todo: doc
+        """
+        Releases embargoed records from each store up to the given up_to value. Released
+        records queued to the views impacted.
+
+        :param up_to: records with an embargo before this timestamp will be released
+        """
         for store in self.stores:
             self.queue_changes(store.release_records(up_to), store.name)
 
