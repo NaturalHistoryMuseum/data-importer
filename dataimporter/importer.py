@@ -30,6 +30,24 @@ from dataimporter.lib.options import DEFAULT_OPTIONS
 from dataimporter.lib.view import View
 
 
+class StoreNotFound(Exception):
+    def __init__(self, name: str):
+        super().__init__(f"Store {name} not found")
+        self.name = name
+
+
+class ViewNotFound(Exception):
+    def __init__(self, name: str):
+        super().__init__(f"View {name} not found")
+        self.name = name
+
+
+class ViewDoesNotHaveDatabase(Exception):
+    def __init__(self, view: View):
+        super().__init__(f"View {view.name} does not have a Splitgill database")
+        self.view = view.name
+
+
 class DataImporter:
     """
     Main manager class for the data importer.
@@ -117,44 +135,46 @@ class DataImporter:
         # this is where store the last date we have fully imported from EMu
         self.emu_status = EMuStatus(config.data_path / "emu_last_date.txt")
 
-    def get_store(self, name: str) -> Optional[Store]:
+    def get_store(self, name: str) -> Store:
         """
-        Get the store with the given name. If the store doesn't exist, None is returned.
+        Get the store with the given name. If the store doesn't exist, a StoreNotFound
+        exception is raised.
 
         :param name: the name of the store
-        :return: the Store instance or None
+        :return: the Store instance
         """
         for store in self.stores:
             if store.name == name:
                 return store
-        return None
+        raise StoreNotFound(name)
 
-    def get_view(self, name: str) -> Optional[View]:
+    def get_view(self, name: str) -> View:
         """
-        Get the view with the given name. If the view doesn't exist, None is returned.
+        Get the view with the given name. If the view doesn't exist, a ViewNotFound
+        exception is raised.
 
         :param name: the name of the view
-        :return: the View instance or None
+        :return: the View instance
         """
         for view in self.views:
             if view.name == name:
                 return view
-        return None
+        raise ViewNotFound(name)
 
-    def get_database(self, view: Union[str, View]) -> Optional[SplitgillDatabase]:
+    def get_database(self, view: Union[str, View]) -> SplitgillDatabase:
         """
         Returns a new SplitgillDatabase instance for the given view. If the view doesn't
-        have an associated SplitgillDatabase name, then None is returned.
+        have an associated SplitgillDatabase name, then a ViewDoesNotHaveDatabase
+        exception is raised. If the view parameter is passed as a str and the view does
+        not exist, a ViewNotFound exception is raised.
 
         :param view: a View instance or a view's name
-        :return: a SplitgillDatabase instance or None
+        :return: a SplitgillDatabase instance
         """
         if isinstance(view, str):
             view = self.get_view(view)
-        if view is None:
-            return None
         if not view.has_database:
-            return None
+            raise ViewDoesNotHaveDatabase(view)
         return SplitgillDatabase(view.sg_name, self.client)
 
     def queue_changes(self, records: Iterable[SourceRecord], store_name: str):

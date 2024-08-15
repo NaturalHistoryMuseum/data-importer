@@ -9,7 +9,8 @@ from dataimporter.cli.ext import ext_group
 from dataimporter.cli.maintenance import maintenance_group
 from dataimporter.cli.portal import portal_group
 from dataimporter.cli.utils import with_config, console
-from dataimporter.importer import DataImporter
+from dataimporter.cli.view import view_group
+from dataimporter.importer import DataImporter, ViewDoesNotHaveDatabase
 from dataimporter.lib.config import Config
 
 
@@ -38,8 +39,9 @@ def get_status(config: Config):
             console.log("Backing store", view.store.name)
             console.log("Queue size:", view.count())
 
-            database = importer.get_database(view)
-            if database is None:
+            try:
+                database = importer.get_database(view)
+            except ViewDoesNotHaveDatabase:
                 console.log(Rule())
                 continue
 
