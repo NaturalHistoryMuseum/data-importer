@@ -42,7 +42,7 @@ class ViewNotFound(Exception):
         self.name = name
 
 
-class ViewDoesNotHaveDatabase(Exception):
+class ViewIsNotPublished(Exception):
     def __init__(self, view: View):
         super().__init__(f"View {view.name} does not have a Splitgill database")
         self.view = view.name
@@ -173,9 +173,9 @@ class DataImporter:
         """
         if isinstance(view, str):
             view = self.get_view(view)
-        if not view.has_database:
-            raise ViewDoesNotHaveDatabase(view)
-        return SplitgillDatabase(view.sg_name, self.client)
+        if not view.is_published:
+            raise ViewIsNotPublished(view)
+        return SplitgillDatabase(view.published_name, self.client)
 
     def queue_changes(self, records: Iterable[SourceRecord], store_name: str):
         """

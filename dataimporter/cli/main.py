@@ -10,7 +10,7 @@ from dataimporter.cli.maintenance import maintenance_group
 from dataimporter.cli.portal import portal_group
 from dataimporter.cli.utils import with_config, console
 from dataimporter.cli.view import view_group
-from dataimporter.importer import DataImporter, ViewDoesNotHaveDatabase
+from dataimporter.importer import DataImporter, ViewIsNotPublished
 from dataimporter.lib.config import Config
 
 
@@ -41,7 +41,7 @@ def get_status(config: Config):
 
             try:
                 database = importer.get_database(view)
-            except ViewDoesNotHaveDatabase:
+            except ViewIsNotPublished:
                 console.log(Rule())
                 continue
 

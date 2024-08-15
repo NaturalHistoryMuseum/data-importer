@@ -61,28 +61,29 @@ class View:
     - links from this view to other views
     """
 
-    def __init__(self, path: Path, store: Store, sg_name: Optional[str] = None):
+    def __init__(self, path: Path, store: Store, published_name: Optional[str] = None):
         """
         :param path: the root path that all view related data should be stored under
         :param store: the Store object that backs this view
-        :param sg_name: the name of the SplitgillDatabase this view populates
+        :param published_name: the name of the SplitgillDatabase this view populates
         """
         self.path = path
         self.store = store
-        self.sg_name = sg_name
+        self.published_name = published_name
         self.name = path.name
         self.changes = ChangeQueue(self.path / "changes")
         # a list of links which need to be updated when records in this view change
         self.dependants: List[Link] = []
 
     @property
-    def has_database(self) -> bool:
+    def is_published(self) -> bool:
         """
-        Returns whether this view directly feeds a Splitgill database.
+        Returns whether this view directly feeds a Splitgill database, i.e. is
+        "published" to the Portal.
 
         :return: True if a Splitgill database should exist for this view, False if not
         """
-        return self.sg_name is not None
+        return self.published_name is not None
 
     def add_dependant(self, link: "Link"):
         """

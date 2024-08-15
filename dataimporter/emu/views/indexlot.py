@@ -44,9 +44,9 @@ class IndexLotView(View):
         store: Store,
         image_view: ImageView,
         taxonomy_view: TaxonomyView,
-        sg_name: str,
+        published_name: str,
     ):
-        super().__init__(path, store, sg_name)
+        super().__init__(path, store, published_name)
         self.image_link = make_link(self, MEDIA_ID_REF_FIELD, image_view, ID)
         self.taxonomy_link = make_link(self, TAXONOMY_ID_REF_FIELD, taxonomy_view, ID)
 

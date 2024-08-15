@@ -87,8 +87,10 @@ class PreparationView(View):
     This view populates the preparation resource on the Data Portal.
     """
 
-    def __init__(self, path: Path, store: Store, specimen_view: View, sg_name: str):
-        super().__init__(path, store, sg_name)
+    def __init__(
+        self, path: Path, store: Store, specimen_view: View, published_name: str
+    ):
+        super().__init__(path, store, published_name)
         self.specimen_view = specimen_view
         self.voucher_spec_link = make_link(
             self, SPECIMEN_ID_REF_FIELD, specimen_view, ID

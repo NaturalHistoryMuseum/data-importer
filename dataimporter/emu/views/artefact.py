@@ -35,8 +35,10 @@ class ArtefactView(View):
     This view populates the artefacts resource on the Data Portal.
     """
 
-    def __init__(self, path: Path, store: Store, image_view: ImageView, sg_name: str):
-        super().__init__(path, store, sg_name)
+    def __init__(
+        self, path: Path, store: Store, image_view: ImageView, published_name: str
+    ):
+        super().__init__(path, store, published_name)
         self.image_link = make_link(self, MEDIA_ID_REF_FIELD, image_view, ID)
 
     def is_member(self, record: SourceRecord) -> FilterResult:
