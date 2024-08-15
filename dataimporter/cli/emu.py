@@ -103,50 +103,6 @@ def queue(amount: str, config: Config):
             amount -= 1
 
 
-@emu_group.command("ingest")
-@click.argument("view", type=click.Choice(EMU_VIEWS))
-@click.option(
-    "--everything",
-    is_flag=True,
-    show_default=True,
-    default=False,
-    help="Add all records to MongoDB regardless of whether they have changed. This is "
-    "primarily useful when a change has been made to a view's filters or "
-    "representation",
-)
-@with_config()
-def ingest(view: str, config: Config, everything: bool = False):
-    """
-    On the given view, updates MongoDB with any queued EMu changes and flushes the
-    queues.
-    """
-    with DataImporter(config) as importer:
-        console.log(f"Adding changes from {view} view to mongo")
-        importer.add_to_mongo(view, everything=everything)
-        console.log(f"Added changes from {view} view to mongo")
-
-
-@emu_group.command("sync")
-@click.argument("view", type=click.Choice(EMU_VIEWS))
-@click.option(
-    "--resync",
-    is_flag=True,
-    show_default=True,
-    default=False,
-    help="Resynchronise all data in Elasticsearch with MongoDB for this view, not just "
-    "the records that have changed.",
-)
-@with_config()
-def sync(view: str, config: Config, resync: bool = False):
-    """
-    Updates Elasticsearch with the changes in MongoDB for the given view.
-    """
-    with DataImporter(config) as importer:
-        console.log(f"Syncing changes from {view} view to elasticsearch")
-        importer.sync_to_elasticsearch(view, resync=resync)
-        console.log(f"Finished with {view}")
-
-
 @emu_group.command("get-emu-date")
 @with_config()
 def get_emu_date(config: Config):

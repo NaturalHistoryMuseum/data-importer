@@ -85,6 +85,7 @@ def get_status(config: Config):
 
 cli.add_command(emu_group)
 cli.add_command(ext_group)
+cli.add_command(view_group)
 cli.add_command(portal_group)
 cli.add_command(maintenance_group)
 
