@@ -10,7 +10,7 @@ from dataimporter.cli.maintenance import maintenance_group
 from dataimporter.cli.portal import portal_group
 from dataimporter.cli.utils import with_config, console
 from dataimporter.cli.view import view_group
-from dataimporter.importer import DataImporter, ViewIsNotPublished
+from dataimporter.importer import DataImporter
 from dataimporter.lib.config import Config
 
 
@@ -34,17 +34,20 @@ def get_status(config: Config):
         console.log(Rule())
         console.log("Per view statistics:")
         console.log(Rule())
-        for view in importer.views:
+
+        not_published_views = [view for view in importer.views if not view.is_published]
+        for view in sorted(not_published_views, key=lambda view: view.name):
             console.log("View:", view.name, f"({type(view).__name__})", style="bold")
             console.log("Backing store", view.store.name)
             console.log("Queue size:", view.count())
+            console.log(Rule())
 
-            try:
-                database = importer.get_database(view)
-            except ViewIsNotPublished:
-                console.log(Rule())
-                continue
-
+        published_views = [view for view in importer.views if view.is_published]
+        for view in sorted(published_views, key=lambda view: view.name):
+            console.log("View:", view.name, f"({type(view).__name__})", style="bold")
+            console.log("Backing store", view.store.name)
+            console.log("Queue size:", view.count())
+            database = importer.get_database(view)
             console.log("Database:", database.name)
             console.log("MongoDB count:", database.data_collection.count_documents({}))
             console.log(
