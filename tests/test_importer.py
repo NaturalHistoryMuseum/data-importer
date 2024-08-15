@@ -9,7 +9,7 @@ from splitgill.search import keyword_ci
 from splitgill.utils import to_timestamp
 
 from dataimporter.emu.dumps import FIRST_VERSION
-from dataimporter.importer import DataImporter, EMuStatus
+from dataimporter.importer import DataImporter, EMuStatus, StoreNotFound
 from dataimporter.lib.config import (
     Config,
     MongoConfig,
@@ -64,7 +64,8 @@ class TestDataImporter:
         assert importer.get_store("emultimedia") is not None
         assert importer.get_store("etaxonomy") is not None
         assert importer.get_store("gbif") is not None
-        assert importer.get_store("eaudit") is None
+        with pytest.raises(StoreNotFound):
+            importer.get_store("eaudit")
 
         # check the views that we expect are created
         assert len(importer.views) == 9
