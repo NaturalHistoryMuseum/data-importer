@@ -23,7 +23,7 @@ def merge(config: Config):
     """
     with DataImporter(config) as importer:
         for view in importer.views:
-            if view.has_database:
+            if view.is_published:
                 console.log(f"Force merge on {view.name} indices")
                 importer.force_merge(view.name)
                 console.log(f"{view.name} complete")
