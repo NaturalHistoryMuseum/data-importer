@@ -74,8 +74,8 @@ def init(config: Config):
                 }
             ],
         },
-        "preparation": {
-            "name": "collection-preparations",
+        "sample": {
+            "name": "collection-samples",
             "notes": "Sample records from the Natural History Museum's collection",
             "title": "Sample Collection",
             "author": "Natural History Museum",
@@ -88,7 +88,7 @@ def init(config: Config):
                     "name": "Samples",
                     "description": "Sample records",
                     "format": "csv",
-                    "package_id": "collection-preparations",
+                    "package_id": "collection-samples",
                     "url": "_datastore_only_resource",
                     "url_type": "dataset",
                 },
