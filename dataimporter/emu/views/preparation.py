@@ -42,7 +42,6 @@ SPECIMEN_ID_REF_FIELD = "EntPreSpecimenRef"
 PARENT_SPECIMEN_ID_REF_FIELD = "RegRegistrationParentRef"
 
 # the Portal fields which are copied from the specimen to the prep data dict
-# TODO: missing CollEventDateVisitedFrom, CollEventName_tab, and kinda ColSite
 MAPPED_SPECIMEN_FIELDS = [
     "associatedMedia",
     "associatedMediaCount",
