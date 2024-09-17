@@ -1,4 +1,5 @@
 from splitgill.indexing.options import ParsingOptionsBuilder
+from splitgill.diffing import SG_DATE_FORMATS
 
 builder = ParsingOptionsBuilder()
 
@@ -13,20 +14,16 @@ builder.with_true_value("true").with_true_value("yes").with_true_value("y")
 builder.with_false_value("false").with_false_value("no").with_false_value("n")
 
 # date formats
-# some common basic formats
+# add the formats used by Splitgill itself allowing us to pickup datetime objects
+for fmt in SG_DATE_FORMATS:
+    builder.with_date_format(fmt)
+# then add the formats we want to support (some of which will already be in the SG list)
+builder.with_date_format("%Y-%m")
 builder.with_date_format("%Y-%m-%d")
-# rfc 3339ish
 builder.with_date_format("%Y-%m-%dT%H:%M:%S")
 builder.with_date_format("%Y-%m-%dT%H:%M:%S.%f")
 builder.with_date_format("%Y-%m-%dT%H:%M:%S%z")
 builder.with_date_format("%Y-%m-%dT%H:%M:%S.%f%z")
-builder.with_date_format("%Y%m%dT%H%m%s")
-# same as the above, just with a space instead of the T separator
-builder.with_date_format("%Y-%m-%d %H:%M:%S")
-builder.with_date_format("%Y-%m-%d %H:%M:%S.%f")
-builder.with_date_format("%Y-%m-%d %H:%M:%S%z")
-builder.with_date_format("%Y-%m-%d %H:%M:%S.%f%z")
-builder.with_date_format("%Y%m%d %H%m%s")
 
 # geo hints
 builder.with_geo_hint(
@@ -36,4 +33,4 @@ builder.with_geo_hint(
     16,
 )
 
-DEFAULT_OPTIONS = builder.build()
+PARSING_OPTIONS = builder.build()

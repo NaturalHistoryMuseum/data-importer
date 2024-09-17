@@ -1,9 +1,9 @@
 from datetime import date, datetime
 from functools import partial
-from itertools import groupby
 from pathlib import Path
 from typing import Iterable, List, Optional, Union
 
+from itertools import groupby
 from splitgill.manager import SplitgillClient, SplitgillDatabase
 from splitgill.model import Record
 from splitgill.utils import partition, now
@@ -26,7 +26,7 @@ from dataimporter.ext.gbif import GBIFView, get_changed_records
 from dataimporter.lib.config import Config
 from dataimporter.lib.dbs import Store
 from dataimporter.lib.model import SourceRecord
-from dataimporter.lib.options import DEFAULT_OPTIONS
+from dataimporter.lib.options import PARSING_OPTIONS
 from dataimporter.lib.view import View
 
 
@@ -305,7 +305,7 @@ class DataImporter:
 
         database.ingest(records, commit=False, modified_field="modified")
         # send the options anyway, even if there's no change to them
-        database.update_options(DEFAULT_OPTIONS, commit=False)
+        database.update_options(PARSING_OPTIONS, commit=False)
         committed = database.commit()
         # flush the queue as we've handled everything in it now
         view.flush()
