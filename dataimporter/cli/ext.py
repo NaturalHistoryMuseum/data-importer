@@ -1,6 +1,6 @@
 import click
 
-from dataimporter.cli.utils import console
+from dataimporter.cli.utils import console, with_config
 from dataimporter.importer import DataImporter
 from dataimporter.lib.config import Config
 
@@ -11,12 +11,16 @@ def ext_group():
 
 
 @ext_group.command()
+@with_config()
 def gbif(config: Config):
     """
     Requests a new download of our specimen dataset from GBIF, downloads this DwC-A, and
     queues any changes found in it, then ingests and indexes any changes that cascade
     from these GBIF records to their associated specimen records.
     """
+    if not config.gbif_username or not config.gbif_password:
+        console.log("[red]gbif_username and gbif_password must be set")
+
     with DataImporter(config) as importer:
         console.log("Queuing new GBIF changes")
         importer.queue_gbif_changes()
