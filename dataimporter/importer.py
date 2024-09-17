@@ -63,7 +63,9 @@ class DataImporter:
         self.config = config
         # client for mongo and elasticsearch via Splitgill
         self.client = SplitgillClient(
-            config.get_mongo_client(), config.get_elasticsearch_client()
+            config.get_mongo_client(),
+            config.get_elasticsearch_client(),
+            config.get_mongo_database_name(),
         )
 
         # make sure the data path exists

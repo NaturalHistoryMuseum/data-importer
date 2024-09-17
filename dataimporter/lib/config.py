@@ -19,6 +19,7 @@ class ElasticsearchConfig:
 class MongoConfig:
     host: str = "localhost"
     port: int = 27017
+    database: str = "sg"
 
     def get_client(self) -> MongoClient:
         return MongoClient(self.host, self.port)
@@ -59,6 +60,9 @@ class Config:
 
     def get_mongo_client(self) -> MongoClient:
         return self.mongo_config.get_client()
+
+    def get_mongo_database_name(self) -> str:
+        return self.mongo_config.database
 
 
 class ConfigLoadError(Exception):
