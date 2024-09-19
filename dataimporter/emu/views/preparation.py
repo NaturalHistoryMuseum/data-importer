@@ -174,6 +174,8 @@ class PreparationView(View):
             "preparationContents": gf("EntPreContents", "PrtType", "PreBodyPart"),
             "preparationProcess": get_preparation_process(record),
             "preparationDate": gf("EntPreDate"),
+            # todo: field name?
+            "purpose": get_purpose(record),
         }
 
         # add specimen data if available
@@ -245,3 +247,23 @@ def get_preparation_process(record: SourceRecord) -> Optional[str]:
         return None
     else:
         return re.sub(r"^killing agent:?\s*", "", process, count=1, flags=re.I)
+
+
+def get_purpose(record: SourceRecord) -> Optional[str]:
+    """
+    Given a record, extract the purpose of specimen value from a note text field. We
+    don't know which note text field it will be because there's no note type, so we just
+    look for the first note text value which starts "purpose of specimen:".
+
+    :param record: the record
+    :return: the purpose value or None if it was not found
+    """
+    # find all the note text fields
+    note_fields = [key for key in record.data.keys() if key.startswith("NteText")]
+    if note_fields:
+        for value in record.iter_all_values(*note_fields):
+            if value.lower().startswith("purpose of specimen:"):
+                # "purpose of specimen:" is 20 chars long
+                return value[20:].strip()
+
+    return None
