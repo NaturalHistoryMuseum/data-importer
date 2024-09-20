@@ -66,6 +66,11 @@ class MSSView(View):
             "file": identifiers[0],
         }
 
+        # add old MAM asset IDs if found
+        old_asset_id = record.get_first_value("GenDigitalMediaId")
+        if old_asset_id and old_asset_id != "Pending":
+            data["old_asset_id"] = old_asset_id
+
         # grab the widths and heights of the original and all the derivatives
         widths = tuple(record.iter_all_values("DocWidth"))
         heights = tuple(record.iter_all_values("DocHeight"))
