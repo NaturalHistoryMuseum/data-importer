@@ -41,6 +41,7 @@ def config(tmp_path: Path) -> Config:
         artefact_id="artefact-id",
         indexlot_id="indexlot-id",
         preparation_id="preparation-id",
+        sg_prefix="test-",
         iiif_base_url="https://not.a.real.domain.com/media",
         mongo_config=mongo_config,
         es_config=elasticsearch_config,

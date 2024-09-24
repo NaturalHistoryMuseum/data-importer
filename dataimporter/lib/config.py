@@ -40,6 +40,7 @@ class Config:
     artefact_id: str
     indexlot_id: str
     preparation_id: str
+    sg_prefix: str
     iiif_base_url: str
     mongo_config: MongoConfig
     es_config: ElasticsearchConfig

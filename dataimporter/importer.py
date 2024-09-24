@@ -95,14 +95,14 @@ class DataImporter:
             self.views_path / "artefact",
             ecatalogue_store,
             image_view,
-            config.artefact_id,
+            f"{config.sg_prefix}{config.artefact_id}",
         )
         indexlot_view = IndexLotView(
             self.views_path / "indexlot",
             ecatalogue_store,
             image_view,
             taxonomy_view,
-            config.indexlot_id,
+            f"{config.sg_prefix}{config.indexlot_id}",
         )
         mammal_part_view = MammalPartView(
             self.views_path / "mammalpart", ecatalogue_store
@@ -114,13 +114,13 @@ class DataImporter:
             taxonomy_view,
             gbif_view,
             mammal_part_view,
-            config.specimen_id,
+            f"{config.sg_prefix}{config.specimen_id}",
         )
         prep_view = PreparationView(
             self.views_path / "preparation",
             ecatalogue_store,
             specimen_view,
-            config.preparation_id,
+            f"{config.sg_prefix}{config.preparation_id}",
         )
         self.views = [
             image_view,
