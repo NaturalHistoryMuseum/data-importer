@@ -168,9 +168,9 @@ class PreparationView(View):
             "created": emu_date(gf("AdmDateInserted"), gf("AdmTimeInserted")),
             "modified": emu_date(gf("AdmDateModified"), gf("AdmTimeModified")),
             "project": ga("NhmSecProjectName"),
-            "preparationNumber": gf("EntPreNumber"),
+            "identifier": gf("EntPreNumber"),
             "preparationType": gf("EntPrePreparationKind", "PreType"),
-            "mediumType": gf("EntPreStorageMedium", "CatPreservative"),
+            "preservation": gf("EntPreStorageMedium", "CatPreservative"),
             "preparationContents": gf("EntPreContents", "PrtType", "PreBodyPart"),
             "preparationProcess": get_preparation_process(record),
             "preparationDate": gf("EntPreDate"),
@@ -182,7 +182,6 @@ class PreparationView(View):
         voucher_data = self.get_voucher_data(record)
         if voucher_data:
             data["associatedOccurrences"] = f"Voucher: {voucher_data['occurrenceID']}"
-            data["specimenID"] = voucher_data["_id"]
             data.update(
                 (field, value)
                 for field in MAPPED_SPECIMEN_FIELDS
