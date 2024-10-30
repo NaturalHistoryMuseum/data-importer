@@ -169,6 +169,7 @@ class PreparationView(View):
             "preparationProcess": get_preparation_process(record),
             "preparationDate": gf("EntPreDate"),
             "purpose": get_purpose(record),
+            "occurrenceID": gf("AdmGUIDPreferredValue"),
             "created": emu_date(gf("AdmDateInserted"), gf("AdmTimeInserted")),
             "modified": emu_date(gf("AdmDateModified"), gf("AdmTimeModified")),
         }
