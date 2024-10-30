@@ -75,10 +75,6 @@ def is_on_loan(record: SourceRecord) -> bool:
     return False
 
 
-def is_mammal_part_prep(record: SourceRecord) -> bool:
-    return record.get_first_value("ColRecordType", lower=True) == "mammal group part"
-
-
 class PreparationView(View):
     """
     View for preparation records.
@@ -209,7 +205,10 @@ class PreparationView(View):
             record = stack.popleft()
 
             refs = [self.voucher_spec_link.owner_ref, self.voucher_prep_link.owner_ref]
-            if is_mammal_part_prep(record):
+            if (
+                record.get_first_value("ColRecordType", lower=True)
+                == "mammal group part"
+            ):
                 # adding this last means it will ultimately be checked first cause stack
                 refs.append(self.voucher_parent_link.owner_ref)
 

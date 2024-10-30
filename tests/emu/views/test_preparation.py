@@ -9,7 +9,6 @@ from dataimporter.emu.views.preparation import (
     get_preparation_process,
     is_on_loan,
     ON_LOAN,
-    is_mammal_part_prep,
 )
 from dataimporter.emu.views.specimen import SpecimenView
 from dataimporter.emu.views.utils import (
@@ -401,15 +400,3 @@ class TestGetVoucherData:
         prep_4 = SourceRecord("4", {"EntPreSpecimenRef": "2"}, "test")
         preparation_view.store.put([prep_1, prep_2, prep_3, prep_4])
         assert preparation_view.get_voucher_data(prep_1) is None
-
-
-def test_is_mammal_part_prep():
-    assert is_mammal_part_prep(
-        SourceRecord("1", {"ColRecordType": "Mammal Group Part"}, "test")
-    )
-    assert not is_mammal_part_prep(
-        SourceRecord("1", {"ColRecordType": "Mammal Group Parent"}, "test")
-    )
-    assert not is_mammal_part_prep(
-        SourceRecord("1", {"ColRecordType": "Preparation"}, "test")
-    )
