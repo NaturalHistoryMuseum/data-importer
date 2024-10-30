@@ -165,8 +165,6 @@ class PreparationView(View):
 
         data = {
             "_id": record.id,
-            "created": emu_date(gf("AdmDateInserted"), gf("AdmTimeInserted")),
-            "modified": emu_date(gf("AdmDateModified"), gf("AdmTimeModified")),
             "project": ga("NhmSecProjectName"),
             "identifier": gf("EntPreNumber"),
             "preparationType": gf("EntPrePreparationKind", "PreType"),
@@ -175,6 +173,8 @@ class PreparationView(View):
             "preparationProcess": get_preparation_process(record),
             "preparationDate": gf("EntPreDate"),
             "purpose": get_purpose(record),
+            "created": emu_date(gf("AdmDateInserted"), gf("AdmTimeInserted")),
+            "modified": emu_date(gf("AdmDateModified"), gf("AdmTimeModified")),
         }
 
         # add specimen data if available
