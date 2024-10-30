@@ -174,7 +174,6 @@ class PreparationView(View):
             "preparationContents": gf("EntPreContents", "PrtType", "PreBodyPart"),
             "preparationProcess": get_preparation_process(record),
             "preparationDate": gf("EntPreDate"),
-            # todo: field name?
             "purpose": get_purpose(record),
         }
 
