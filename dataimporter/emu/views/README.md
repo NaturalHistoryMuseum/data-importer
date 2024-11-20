@@ -91,8 +91,8 @@ flowchart TD
     DIS -->|Yes| NO
     DEPT -->|Yes| LOAN1
     DEPT -->|No| NO
-    LOAN1 -->|Yes| LOAN2
-    LOAN1 -->|No| NO
-    LOAN2 -->|Yes| YES
-    LOAN2 -->|No| NO
+    LOAN1 -->|No| LOAN2
+    LOAN1 -->|Yes| NO
+    LOAN2 -->|No| YES
+    LOAN2 -->|Yes| NO
 ```
