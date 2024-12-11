@@ -66,6 +66,20 @@ class MSSView(View):
             "file": identifiers[0],
         }
 
+        # add the orientation tag data from exif if specified
+        tags = record.get_all_values("ExiTag", reduce=False)
+        tag_values = record.get_all_values("ExiValue", reduce=False)
+        if tags and tag_values:
+            try:
+                # the orientation tag is 274 (0x0112), so look up the index of that in
+                # the tags tuple and then the value will be at the same index in the
+                # values tuple. Because EMu, the value can be either a number or the
+                # text version, e.g. "7" or "Rotate 270 CW"
+                data["orientation"] = tag_values[tags.index("274")]
+            except ValueError:
+                # no orientation in the tags so there's nothing to do
+                pass
+
         # add old MAM asset IDs if found
         old_asset_id = record.get_first_value("GenDigitalMediaId")
         if old_asset_id and old_asset_id != "Pending":
