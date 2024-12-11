@@ -248,7 +248,7 @@ def test_transform_with_linked_data(
         "superfamily": "Chalcidoidea",
         "taxonRank": "Species",
         # added via the mammal part link
-        "preparations": ["Skull"],
+        "preparations": "Skull",
         # added via the gbif link
         "gbifID": "100",
         "gbifIssue": issues,

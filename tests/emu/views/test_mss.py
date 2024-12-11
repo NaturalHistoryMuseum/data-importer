@@ -40,6 +40,7 @@ def test_transform(mss_view: MSSView):
         "width": 6638,
         "height": 10199,
         "orientation": "Horizontal (normal)",
+        "old_asset_id": "0d5f124013467e40307c6e0dc7595cd92d25b907",
         "derivatives": [
             {"file": "BM000019319.thumb.jpg", "width": 59, "height": 90},
             {"file": "BM000019319.120x10199.jpeg", "width": 120, "height": 184},
@@ -67,6 +68,8 @@ def test_transform_no_derivatives(mss_view: MSSView):
         "file": "BM000019319.tif",
         "width": 6638,
         "height": 10199,
+        "old_asset_id": "0d5f124013467e40307c6e0dc7595cd92d25b907",
+        "orientation": "Horizontal (normal)",
     }
 
 
@@ -76,7 +79,7 @@ def test_transform_no_orientation(mss_view: MSSView):
     # the associated tag and tag name bits EMu exports)
     for field in ["ExiTag", "ExiName", "ExiValue"]:
         # in the test data the orientation tag is the 8th element of the exif lists
-        del data[field][8]
+        data[field] = tuple(v for i, v in enumerate(data[field]) if i != 8)
     record = SourceRecord(SAMPLE_IMAGE_ID, data, "test")
 
     data = mss_view.transform(record)

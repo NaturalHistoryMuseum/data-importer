@@ -85,6 +85,7 @@ specimen_id: 'specimen'
 artefact_id: 'artefact'
 indexlot_id: 'indexlot'
 preparation_id: 'preparation'
+sg_prefix: 'test'
 iiif_base_url: 'https://not.a.real.domain.com/media'
 elasticsearch:
   hosts:

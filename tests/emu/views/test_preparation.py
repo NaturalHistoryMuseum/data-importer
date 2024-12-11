@@ -93,6 +93,8 @@ def test_transform_mol_prep(preparation_view: PreparationView):
         "preparationType": "DNA Extract",
         "preparationContents": "**OTHER_SOMATIC_ANIMAL_TISSUE**",
         "preparationDate": "2022-05-09",
+        "occurrenceID": "f11c9c35-4da5-45e5-9dbb-6f8f55b26aa7",
+        "purpose": "DNA barcoding only",
     }
 
 
@@ -110,6 +112,8 @@ def test_transform_mammal_part(preparation_view: PreparationView):
         "identifier": "FF06063966",
         "preparationProcess": "Flash Freezing: Dry Ice",
         "preparationContents": "MUSCLE",
+        "occurrenceID": "541cb421-2a3f-4699-ad3b-8030f36afffa",
+        "purpose": "DNA barcoding only",
     }
 
 
@@ -140,6 +144,8 @@ def test_transform_mol_prep_with_voucher_direct(
         "decimalLatitude": "10.0833333",
         "decimalLongitude": "35.6333333",
         "locality": "Forward base three, Mouth of Didessa River, Blue Nile Gorge, Ethiopia, Alt. 900 m",
+        "occurrenceID": "f11c9c35-4da5-45e5-9dbb-6f8f55b26aa7",
+        "purpose": "DNA barcoding only",
     }
 
 
@@ -177,6 +183,8 @@ def test_transform_mol_prep_with_voucher_indirect(
         "decimalLatitude": "10.0833333",
         "decimalLongitude": "35.6333333",
         "locality": "Forward base three, Mouth of Didessa River, Blue Nile Gorge, Ethiopia, Alt. 900 m",
+        "occurrenceID": "f11c9c35-4da5-45e5-9dbb-6f8f55b26aa7",
+        "purpose": "DNA barcoding only",
     }
 
 
@@ -208,6 +216,8 @@ def test_transform_mammal_part_with_voucher_direct(
         "decimalLatitude": "10.0833333",
         "decimalLongitude": "35.6333333",
         "locality": "Forward base three, Mouth of Didessa River, Blue Nile Gorge, Ethiopia, Alt. 900 m",
+        "occurrenceID": "541cb421-2a3f-4699-ad3b-8030f36afffa",
+        "purpose": "DNA barcoding only",
     }
 
 
@@ -244,6 +254,8 @@ def test_transform_mammal_part_with_voucher_indirect(
         "decimalLatitude": "10.0833333",
         "decimalLongitude": "35.6333333",
         "locality": "Forward base three, Mouth of Didessa River, Blue Nile Gorge, Ethiopia, Alt. 900 m",
+        "occurrenceID": "541cb421-2a3f-4699-ad3b-8030f36afffa",
+        "purpose": "DNA barcoding only",
     }
 
 
