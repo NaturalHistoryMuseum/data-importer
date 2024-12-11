@@ -577,7 +577,7 @@ class TestDataImporter:
             assert search_base.count() == 8
             assert (
                 search_base.filter(
-                    "term", **{keyword_ci("mediumType"): "Ethanol (6%)"}
+                    "term", **{keyword_ci("preservation"): "Ethanol (6%)"}
                 ).count()
                 == 1
             )
