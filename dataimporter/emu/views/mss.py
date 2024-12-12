@@ -67,8 +67,8 @@ class MSSView(View):
         }
 
         # add the orientation tag data from exif if specified
-        tags = record.get_all_values("ExiTag", reduce=False)
-        tag_values = record.get_all_values("ExiValue", reduce=False)
+        tags = record.get_all_values("ExiTag", reduce=False, clean=False)
+        tag_values = record.get_all_values("ExiValue", reduce=False, clean=False)
         if tags and tag_values:
             try:
                 # the orientation tag is 274 (0x0112), so look up the index of that in
