@@ -79,14 +79,12 @@ class ImageView(View):
             "type": "StillImage",
             "license": "http://creativecommons.org/licenses/by/4.0/",
             "rightsHolder": "The Trustees of the Natural History Museum, London",
-            # TODO: should we use PixelXDimension PixelYDimension for this to be aligned
-            #       with AC?
-            "width": get_first("ChaImageWidth"),
-            "height": get_first("ChaImageHeight"),
+            "PixelXDimension": get_first("ChaImageWidth"),
+            "PixelYDimension": get_first("ChaImageHeight"),
         }
 
         if mime_subtype := get_first("MulMimeFormat"):
             # we know that the mime type is image because it's in our member filter
-            data["mime"] = f"image/{mime_subtype}"
+            data["format"] = f"image/{mime_subtype}"
 
         return data
