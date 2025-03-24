@@ -12,7 +12,7 @@ from dataimporter.lib.config import Config, load, ConfigLoadError
 CONFIG_ENV_VAR = "DIMP_CONFIG"
 
 # global console for all to use
-console: Console = Console(log_time_format="[%x %X] ")
+console: Console = Console(log_time_format="[%Y-%m-%d %H:%M:%S] ")
 
 
 class ConfigType(click.Path):
