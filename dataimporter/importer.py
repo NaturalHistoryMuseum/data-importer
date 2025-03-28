@@ -85,6 +85,9 @@ class DataImporter:
         self.stores = [ecatalogue_store, emultimedia_store, etaxonomy_store, gbif_store]
 
         # create the views we need
+        # mss published name does not have the sg_prefix on the front so that it can
+        # be separated from the data portal's resources (it becomes impossible to clash
+        # names by creating a resource called "mss")
         mss_view = MSSView(self.views_path / "mss", emultimedia_store, "mss")
         image_view = ImageView(
             self.views_path / "image", emultimedia_store, config.iiif_base_url
