@@ -17,6 +17,7 @@ from dataimporter.lib.config import (
     PortalConfig,
 )
 from dataimporter.lib.model import SourceRecord
+from tests.conftest import MONGO_HOST, MONGO_PORT, ES_PORT, ES_HOST
 from tests.helpers.dumps import create_dump
 from tests.helpers.dumps import (
     create_ecatalogue,
@@ -29,8 +30,8 @@ from tests.helpers.dumps import (
 
 @pytest.fixture
 def config(tmp_path: Path) -> Config:
-    mongo_config = MongoConfig("mongo", 27017)
-    elasticsearch_config = ElasticsearchConfig(["http://es:9200"])
+    mongo_config = MongoConfig(MONGO_HOST, MONGO_PORT)
+    elasticsearch_config = ElasticsearchConfig([f"http://{ES_HOST}:{ES_PORT}"])
     portal_config = PortalConfig(
         "http://localhost", "postgres://ckan:password@db/ckan", "admin"
     )

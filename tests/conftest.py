@@ -1,10 +1,8 @@
+import os
 from contextlib import suppress
 from pathlib import Path
 
 import pytest
-from elasticsearch import Elasticsearch
-from pymongo import MongoClient
-
 from dataimporter.emu.views.artefact import ArtefactView
 from dataimporter.emu.views.image import ImageView
 from dataimporter.emu.views.indexlot import IndexLotView
@@ -16,10 +14,17 @@ from dataimporter.emu.views.taxonomy import TaxonomyView
 from dataimporter.emu.views.threed import ThreeDView
 from dataimporter.ext.gbif import GBIFView
 from dataimporter.lib.dbs import Store
+from elasticsearch import Elasticsearch
+from pymongo import MongoClient
+
+MONGO_HOST = os.environ.get("DIMP_TEST_MONGO_HOST", "mongo")
+MONGO_PORT = int(os.environ.get("DIMP_TEST_MONGO_PORT", 27017))
+ES_HOST = os.environ.get("DIMP_TEST_ES_HOST", "es")
+ES_PORT = int(os.environ.get("DIMP_TEST_ES_PORT", 9200))
 
 
 def _clear_mongo():
-    with MongoClient("mongo", 27017) as client:
+    with MongoClient(MONGO_HOST, MONGO_PORT) as client:
         database_names = client.list_database_names()
         for name in database_names:
             # the list_database_names function gives us back names like "admin" which we
@@ -37,7 +42,7 @@ def reset_mongo():
 
 
 def _clear_elasticsearch():
-    with Elasticsearch("http://es:9200") as es:
+    with Elasticsearch(f"http://{ES_HOST}:{ES_PORT}") as es:
         es.indices.delete(index="*")
         index_templates = es.indices.get_index_template(name="*")
         for index_template in index_templates["index_templates"]:
