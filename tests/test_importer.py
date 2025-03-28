@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 from freezegun import freeze_time
-from splitgill.search import keyword_ci
+from splitgill.search import keyword
 from splitgill.utils import to_timestamp
 
 from dataimporter.emu.dumps import FIRST_VERSION
@@ -310,14 +310,14 @@ class TestDataImporter:
             assert search_base.count() == 8
             assert (
                 search_base.filter(
-                    "term", **{keyword_ci("artefactName"): "3 beans"}
+                    "term", **{keyword("artefactName"): "3 beans"}
                 ).count()
                 == 1
             )
             # this comes from the image
             assert (
                 search_base.filter(
-                    "term", **{keyword_ci("associatedMedia.title"): "image 4"}
+                    "term", **{keyword("associatedMedia.title"): "image 4"}
                 ).count()
                 == 1
             )
@@ -378,23 +378,19 @@ class TestDataImporter:
             search_base = database.search()
             assert search_base.count() == 8
             assert (
-                search_base.filter(
-                    "term", **{keyword_ci("material"): "3 lemons"}
-                ).count()
+                search_base.filter("term", **{keyword("material"): "3 lemons"}).count()
                 == 1
             )
             # this comes from the image
             assert (
                 search_base.filter(
-                    "term", **{keyword_ci("associatedMedia.title"): "image 4"}
+                    "term", **{keyword("associatedMedia.title"): "image 4"}
                 ).count()
                 == 1
             )
             # this comes from the taxonomy
             assert (
-                search_base.filter(
-                    "term", **{keyword_ci("kingdom"): "kingdom 4"}
-                ).count()
+                search_base.filter("term", **{keyword("kingdom"): "kingdom 4"}).count()
                 == 1
             )
 
@@ -455,22 +451,19 @@ class TestDataImporter:
         search_base = database.search()
         assert search_base.count() == 8
         assert (
-            search_base.filter(
-                "term", **{keyword_ci("locality"): "3 Number Road"}
-            ).count()
+            search_base.filter("term", **{keyword("locality"): "3 Number Road"}).count()
             == 1
         )
         # this comes from the image
         assert (
             search_base.filter(
-                "term", **{keyword_ci("associatedMedia.title"): "image 4"}
+                "term", **{keyword("associatedMedia.title"): "image 4"}
             ).count()
             == 1
         )
         # this comes from the taxonomy
         assert (
-            search_base.filter("term", **{keyword_ci("kingdom"): "kingdom 4"}).count()
-            == 1
+            search_base.filter("term", **{keyword("kingdom"): "kingdom 4"}).count() == 1
         )
 
     @freeze_time("2023-10-20 11:04:31")
@@ -510,8 +503,7 @@ class TestDataImporter:
         search_base = database.search()
         assert search_base.count() == 8
         assert (
-            search_base.filter("term", **{keyword_ci("file"): "banana-4.jpg"}).count()
-            == 1
+            search_base.filter("term", **{keyword("file"): "banana-4.jpg"}).count() == 1
         )
 
     @freeze_time("2023-10-20 11:04:31")
@@ -578,21 +570,21 @@ class TestDataImporter:
             assert search_base.count() == 8
             assert (
                 search_base.filter(
-                    "term", **{keyword_ci("preservation"): "Ethanol (6%)"}
+                    "term", **{keyword("preservation"): "Ethanol (6%)"}
                 ).count()
                 == 1
             )
             # check a field that should have been copied from the voucher specimen
             assert (
                 search_base.filter(
-                    "term", **{keyword_ci("barcode"): "000-00-0-12"}
+                    "term", **{keyword("barcode"): "000-00-0-12"}
                 ).count()
                 == 1
             )
             # check a field that should have been copied from the voucher specimen's
             # taxonomy
             assert (
-                search_base.filter("term", **{keyword_ci("order"): "order 11"}).count()
+                search_base.filter("term", **{keyword("order"): "order 11"}).count()
                 == 1
             )
 
