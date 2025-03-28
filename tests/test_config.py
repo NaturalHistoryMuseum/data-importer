@@ -49,6 +49,8 @@ class TestConfig:
             MagicMock(),
             MagicMock(),
             MagicMock(),
+            MagicMock(),
+            MagicMock(),
         )
 
         assert isinstance(config.data_path, Path)
@@ -66,6 +68,8 @@ class TestConfig:
             MagicMock(),
             MongoConfig(),
             ElasticsearchConfig(),
+            MagicMock(),
+            MagicMock(),
             MagicMock(),
         )
         assert isinstance(config.get_elasticsearch_client(), Elasticsearch)
@@ -87,6 +91,8 @@ indexlot_id: 'indexlot'
 preparation_id: 'preparation'
 sg_prefix: 'test'
 iiif_base_url: 'https://not.a.real.domain.com/media'
+bo_chunk_size: 100
+bo_worked_count: 4
 elasticsearch:
   hosts:
     - 'http://test_es:9200'
@@ -114,3 +120,5 @@ portal:
         assert config.portal_config.url == "http://10.0.11.20"
         assert config.portal_config.dsn == "postgres://ckan:password@db/ckan"
         assert config.portal_config.admin_user == "admin"
+        assert config.bo_chunk_size == 100
+        assert config.bo_worked_count == 4

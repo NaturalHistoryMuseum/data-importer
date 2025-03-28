@@ -48,6 +48,8 @@ class Config:
     gbif_username: Optional[str] = None
     gbif_password: Optional[str] = None
     source: Optional[Path] = None
+    bo_chunk_size: int = 100
+    bo_worked_count: int = 3
 
     def __post_init__(self):
         # make sure the paths are paths

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Iterable, List, Optional, Union
 
 from itertools import groupby
+from splitgill.indexing.syncing import BulkOptions
 from splitgill.manager import SplitgillClient, SplitgillDatabase
 from splitgill.model import Record
 from splitgill.utils import partition, now
@@ -326,7 +327,11 @@ class DataImporter:
         """
         view = self.get_view(view_name)
         database = self.get_database(view)
-        database.sync(resync=resync)
+        bulk_options = BulkOptions(
+            chunk_size=self.config.bo_chunk_size,
+            worker_count=self.config.bo_worked_count,
+        )
+        database.sync(resync=resync, bulk_options=bulk_options)
 
     def force_merge(self, view_name: str) -> dict:
         """

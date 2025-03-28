@@ -49,6 +49,8 @@ def config(tmp_path: Path) -> Config:
         portal_config=portal_config,
         gbif_username=None,
         gbif_password=None,
+        bo_chunk_size=100,
+        bo_worked_count=4,
     )
 
 
