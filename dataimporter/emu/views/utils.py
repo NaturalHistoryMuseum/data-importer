@@ -141,3 +141,46 @@ def merge(record: SourceRecord, data: dict, link: Link):
         data.update(
             (key, value) for key, value in other.items() if data.get(key) is None
         )
+
+
+# a set of EXIF orientation values (both raw numbers and textual representations) which,
+# if applied to an image, would cause the width and height to swap
+EXIF_ORIENTATION_SWAP_VALUES = {
+    "5",
+    "mirror horizontal and rotate 270 cw",
+    "6",
+    "rotate 90 cw",
+    "7",
+    "mirror horizontal and rotate 90 cw",
+    "8",
+    "rotate 270 cw",
+}
+
+
+def orientation_requires_swap(record: SourceRecord) -> bool:
+    """
+    Determines whether the image represented by the given record object requires its
+    width and height values to be swapped based on the EXIF orientation tag. If the tag
+    isn't found or the tag indicates no width/height swap is needed, then False is
+    returned. If the orientation tag is in the range 5-8 then a swap is required and
+    True is returned.
+
+    :param record: the SourceRecord object
+    :return: True if the width and height need to be swapped, False if not
+    """
+    exif_tags = record.get_all_values("ExiTag", reduce=False, clean=False)
+    exif_tag_values = record.get_all_values("ExiValue", reduce=False, clean=False)
+    if exif_tags and exif_tag_values:
+        try:
+            # the orientation tag is 274 (0x0112), so look up the index of that in
+            # the tags tuple and then the value will be at the same index in the
+            # values tuple. Because EMu, the value can be either a number or the
+            # text version, e.g. "7" or "Rotate 270 CW"
+            orientation = exif_tag_values[exif_tags.index("274")]
+            # if the orientation tag has one of the values in the swap set, return True
+            return orientation.lower() in EXIF_ORIENTATION_SWAP_VALUES
+        except ValueError:
+            # the orientation tag wasn't present in the exif data, fall through
+            pass
+
+    return False

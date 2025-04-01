@@ -6,6 +6,7 @@ from dataimporter.emu.views.utils import (
     emu_date,
     translate_collection_code,
     combine_text,
+    orientation_requires_swap,
 )
 from dataimporter.lib.model import SourceRecord
 
@@ -56,3 +57,86 @@ def test_combine_text():
     assert combine_text(["line 1\n", "\n\n\n", "line 3\n\n"]) == "line 1\nline 3"
     assert combine_text(["", "line 1", "\n", "\n", "line 3", ""]) == "line 1\nline 3"
     assert combine_text(["line\n1", "line\n2"]) == "line\n1\nline\n2"
+
+
+class TestOrientationRequiresSwap:
+    def test_no_tags(self):
+        record = SourceRecord("1", {}, "test")
+        assert not orientation_requires_swap(record)
+
+    def test_with_tag_no_swap_number(self):
+        data = {
+            "ExiTag": ("284", "274", "266"),
+            "ExiValue": (
+                "Chunky",
+                "1",
+                "2",
+            ),
+        }
+        record = SourceRecord("1", data, "test")
+        assert not orientation_requires_swap(record)
+
+    def test_with_tag_no_swap_text(self):
+        data = {
+            "ExiTag": ("284", "274", "266"),
+            "ExiValue": (
+                "Chunky",
+                "Rotate 180",
+                "2",
+            ),
+        }
+        record = SourceRecord("1", data, "test")
+        assert not orientation_requires_swap(record)
+
+    def test_with_tag_swap_number(self):
+        data = {
+            "ExiTag": ("284", "274", "266"),
+            "ExiValue": (
+                "Chunky",
+                "6",
+                "2",
+            ),
+        }
+        record = SourceRecord("1", data, "test")
+        assert orientation_requires_swap(record)
+
+    def test_with_tag_swap_text(self):
+        data = {
+            "ExiTag": ("284", "274", "266"),
+            "ExiValue": (
+                "Chunky",
+                "Rotate 270 CW",
+                "2",
+            ),
+        }
+        record = SourceRecord("1", data, "test")
+        assert orientation_requires_swap(record)
+
+    def test_with_tag_swap_text_wrong_case(self):
+        data = {
+            "ExiTag": ("284", "274", "266"),
+            "ExiValue": (
+                "Chunky",
+                "rOtAte 270 cW",
+                "2",
+            ),
+        }
+        record = SourceRecord("1", data, "test")
+        assert orientation_requires_swap(record)
+
+    def test_with_tag_swap_text_and_empty_values(self):
+        # this tests ensures that empty exif values aren't being skipped. Basically, if
+        # record.get_all_values is used then clean=False must be passed otherwise the
+        # alignment of the tag tuple with the value tuple fails
+        data = {
+            "ExiTag": ("284", "271", "274", "266"),
+            "ExiValue": (
+                "Chunky",
+                # this value is empty!
+                "",
+                "Rotate 270 CW",
+                "2",
+            ),
+        }
+        record = SourceRecord("1", data, "test")
+        assert orientation_requires_swap(record)

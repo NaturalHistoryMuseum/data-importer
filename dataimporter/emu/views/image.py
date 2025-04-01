@@ -5,6 +5,7 @@ from dataimporter.emu.views.utils import (
     is_web_published,
     is_valid_guid,
     INVALID_GUID,
+    orientation_requires_swap,
 )
 from dataimporter.emu.views.utils import emu_date
 from dataimporter.lib.dbs import Store
@@ -79,9 +80,14 @@ class ImageView(View):
             "type": "StillImage",
             "license": "http://creativecommons.org/licenses/by/4.0/",
             "rightsHolder": "The Trustees of the Natural History Museum, London",
-            "PixelXDimension": get_first("ChaImageWidth"),
-            "PixelYDimension": get_first("ChaImageHeight"),
         }
+
+        width = get_first("ChaImageWidth")
+        height = get_first("ChaImageHeight")
+        if width and height:
+            swap = orientation_requires_swap(record)
+            data["PixelXDimension"] = width if not swap else height
+            data["PixelYDimension"] = height if not swap else width
 
         if mime_subtype := get_first("MulMimeFormat"):
             # we know that the mime type is image because it's in our member filter

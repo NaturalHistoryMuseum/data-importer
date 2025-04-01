@@ -39,7 +39,6 @@ def test_transform(mss_view: MSSView):
         "file": "BM000019319.tif",
         "width": 6638,
         "height": 10199,
-        "orientation": "Horizontal (normal)",
         "old_asset_id": "0d5f124013467e40307c6e0dc7595cd92d25b907",
         "derivatives": [
             {"file": "BM000019319.thumb.jpg", "width": 59, "height": 90},
@@ -69,18 +68,35 @@ def test_transform_no_derivatives(mss_view: MSSView):
         "width": 6638,
         "height": 10199,
         "old_asset_id": "0d5f124013467e40307c6e0dc7595cd92d25b907",
-        "orientation": "Horizontal (normal)",
     }
 
 
-def test_transform_no_orientation(mss_view: MSSView):
-    data = SAMPLE_IMAGE_DATA.copy()
-    # remove the exif tag in our sample data which stores the orientation value (and all
-    # the associated tag and tag name bits EMu exports)
-    for field in ["ExiTag", "ExiName", "ExiValue"]:
-        # in the test data the orientation tag is the 8th element of the exif lists
-        data[field] = tuple(v for i, v in enumerate(data[field]) if i != 8)
-    record = SourceRecord(SAMPLE_IMAGE_ID, data, "test")
+def test_transform_with_orientation(mss_view: MSSView):
+    record_data = SAMPLE_IMAGE_DATA.copy()
+
+    # replace the orientation value with one that requires a width/height swap
+    values = list(record_data["ExiValue"])
+    values[8] = "Mirror horizontal and rotate 270 CW"
+    record_data["ExiValue"] = tuple(values)
+
+    record = SourceRecord(SAMPLE_IMAGE_ID, record_data, "test")
 
     data = mss_view.transform(record)
-    assert "orientation" not in data
+    assert data == {
+        "id": record.id,
+        "mime": "tiff",
+        "guid": "c2bde4e9-ca2b-466c-ab41-509468b841a4",
+        "file": "BM000019319.tif",
+        "width": 10199,
+        "height": 6638,
+        "old_asset_id": "0d5f124013467e40307c6e0dc7595cd92d25b907",
+        "derivatives": [
+            {"file": "BM000019319.thumb.jpg", "height": 59, "width": 90},
+            {"file": "BM000019319.120x10199.jpeg", "height": 120, "width": 184},
+            {"file": "BM000019319.200x10199.jpeg", "height": 200, "width": 307},
+            {"file": "BM000019319.325x10199.jpeg", "height": 325, "width": 499},
+            {"file": "BM000019319.470x10199.jpeg", "height": 470, "width": 722},
+            {"file": "BM000019319.705x10199.jpeg", "height": 705, "width": 1083},
+            {"file": "BM000019319.1500x10199.jpeg", "height": 1500, "width": 2305},
+        ],
+    }

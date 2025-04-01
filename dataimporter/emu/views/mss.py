@@ -1,12 +1,12 @@
-from itertools import zip_longest
-
 from fastnumbers import try_int
+from itertools import zip_longest
 
 from dataimporter.emu.views.utils import (
     NO_PUBLISH,
     is_web_published,
     is_valid_guid,
     INVALID_GUID,
+    orientation_requires_swap,
 )
 from dataimporter.lib.model import SourceRecord
 from dataimporter.lib.view import View, FilterResult, SUCCESS_RESULT, strip_empty
@@ -66,24 +66,14 @@ class MSSView(View):
             "file": identifiers[0],
         }
 
-        # add the orientation tag data from exif if specified
-        tags = record.get_all_values("ExiTag", reduce=False, clean=False)
-        tag_values = record.get_all_values("ExiValue", reduce=False, clean=False)
-        if tags and tag_values:
-            try:
-                # the orientation tag is 274 (0x0112), so look up the index of that in
-                # the tags tuple and then the value will be at the same index in the
-                # values tuple. Because EMu, the value can be either a number or the
-                # text version, e.g. "7" or "Rotate 270 CW"
-                data["orientation"] = tag_values[tags.index("274")]
-            except ValueError:
-                # no orientation in the tags so there's nothing to do
-                pass
-
         # add old MAM asset IDs if found
         old_asset_id = record.get_first_value("GenDigitalMediaId")
         if old_asset_id and old_asset_id != "Pending":
             data["old_asset_id"] = old_asset_id
+
+        # store a bool indicating whether the widths and heights of the main image and
+        # derivatives need to be swapped due to the orientation tag on the image record
+        swap = orientation_requires_swap(record)
 
         # grab the widths and heights of the original and all the derivatives
         widths = tuple(record.iter_all_values("DocWidth"))
@@ -96,8 +86,8 @@ class MSSView(View):
         if original_width is not None or original_height is not None:
             # set the width and height of the original image at the root of the data
             # dict
-            data["width"] = original_width
-            data["height"] = original_height
+            data["width"] = original_width if not swap else original_height
+            data["height"] = original_height if not swap else original_width
 
         derivatives = []
         for identifier, width, height in zip_longest(
@@ -108,7 +98,11 @@ class MSSView(View):
             # ignore the triple if we don't have all of these values
             if identifier and width is not None and height is not None:
                 derivatives.append(
-                    {"file": identifier, "width": width, "height": height}
+                    {
+                        "file": identifier,
+                        "width": width if not swap else height,
+                        "height": height if not swap else width,
+                    }
                 )
 
         if len(derivatives) > 1:

@@ -42,3 +42,31 @@ def test_transform(image_view: ImageView):
         "PixelXDimension": "6638",
         "PixelYDimension": "10199",
     }
+
+
+def test_transform_with_orientation(image_view: ImageView):
+    record_data = SAMPLE_IMAGE_DATA.copy()
+
+    # replace the orientation value with one that requires a width/height swap
+    values = list(record_data["ExiValue"])
+    values[8] = "Mirror horizontal and rotate 270 CW"
+    record_data["ExiValue"] = tuple(values)
+
+    record = SourceRecord(SAMPLE_IMAGE_ID, record_data, "test")
+
+    data = image_view.transform(record)
+    assert data == {
+        "_id": record.id,
+        "created": "2013-11-12T16:13:51+00:00",
+        "modified": "2016-02-03T09:13:10+00:00",
+        "assetID": "c2bde4e9-ca2b-466c-ab41-509468b841a4",
+        "identifier": f"{image_view.iiif_url_base}/c2bde4e9-ca2b-466c-ab41-509468b841a4",
+        "title": "BM000019319",
+        "format": "image/tiff",
+        "category": "Specimen",
+        "type": "StillImage",
+        "license": "http://creativecommons.org/licenses/by/4.0/",
+        "rightsHolder": "The Trustees of the Natural History Museum, London",
+        "PixelXDimension": "10199",
+        "PixelYDimension": "6638",
+    }
