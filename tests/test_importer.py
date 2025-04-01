@@ -50,7 +50,7 @@ def config(tmp_path: Path) -> Config:
         gbif_username=None,
         gbif_password=None,
         bo_chunk_size=100,
-        bo_worked_count=4,
+        bo_worker_count=4,
     )
 
 

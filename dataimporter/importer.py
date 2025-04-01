@@ -329,7 +329,7 @@ class DataImporter:
         database = self.get_database(view)
         bulk_options = BulkOptions(
             chunk_size=self.config.bo_chunk_size,
-            worker_count=self.config.bo_worked_count,
+            worker_count=self.config.bo_worker_count,
         )
         database.sync(resync=resync, bulk_options=bulk_options)
 

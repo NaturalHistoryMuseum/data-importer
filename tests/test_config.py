@@ -92,7 +92,7 @@ preparation_id: 'preparation'
 sg_prefix: 'test'
 iiif_base_url: 'https://not.a.real.domain.com/media'
 bo_chunk_size: 100
-bo_worked_count: 4
+bo_worker_count: 4
 elasticsearch:
   hosts:
     - 'http://test_es:9200'
@@ -121,4 +121,4 @@ portal:
         assert config.portal_config.dsn == "postgres://ckan:password@db/ckan"
         assert config.portal_config.admin_user == "admin"
         assert config.bo_chunk_size == 100
-        assert config.bo_worked_count == 4
+        assert config.bo_worker_count == 4
