@@ -396,11 +396,4 @@ class SpecimenView(View):
         # add GBIF
         merge(record, data, self.gbif_link)
 
-        # add mammal part summary
-        mammal_parts = self.mammal_part_link.lookup_and_transform(record)
-        if mammal_parts:
-            parts = [part["part"] for part in mammal_parts]
-            # todo: field name ok?
-            data["preparations"] = parts[0] if len(parts) == 1 else parts
-
         return data
