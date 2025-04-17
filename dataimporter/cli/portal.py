@@ -74,26 +74,6 @@ def init(config: Config):
                 }
             ],
         },
-        "sample": {
-            "name": "collection-samples",
-            "notes": "Sample records from the Natural History Museum's collection",
-            "title": "Sample Collection",
-            "author": "Natural History Museum",
-            "license_id": "cc-zero",
-            "dataset_category": "Collections",
-            "owner_org": "nhm",
-            "resources": [
-                {
-                    "id": config.preparation_id,
-                    "name": "Samples",
-                    "description": "Sample records",
-                    "format": "csv",
-                    "package_id": "collection-samples",
-                    "url": "_datastore_only_resource",
-                    "url_type": "dataset",
-                },
-            ],
-        },
     }
     url = f"{config.portal_config.url}/api/action/package_create"
     api_key = get_api_key(config.portal_config.dsn, config.portal_config.admin_user)
