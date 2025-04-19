@@ -155,6 +155,8 @@ def test_transform_no_linked_data(specimen_view: SpecimenView):
     }
 
 
+# skipping because we have removed the mammal part/parent link data
+@pytest.mark.skip
 def test_transform_with_linked_data(
     specimen_view: SpecimenView,
     image_view: ImageView,
