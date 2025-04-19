@@ -79,9 +79,6 @@ version_files = [
     "pyproject.toml:version"
 ]
 
-[tool.ruff.format]
-quote-style = "single"
-
 [tool.pylint]
 max-line-length = 88
 disable = ["C0114", "R0903"]
