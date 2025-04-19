@@ -49,7 +49,7 @@ real testing.
 To run the tests:
 
 ```bash
-docker-compose run --build test
+docker compose run --build test
 ```
 
 <!--tests-end-->
