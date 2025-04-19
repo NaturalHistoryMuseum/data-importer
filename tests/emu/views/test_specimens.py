@@ -1,4 +1,4 @@
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
 import pytest
 
@@ -6,30 +6,29 @@ from dataimporter.emu.views.image import ImageView
 from dataimporter.emu.views.mammalpart import MammalPartView
 from dataimporter.emu.views.specimen import (
     SpecimenView,
+    clean_determination_names,
+    get_first_non_person_string,
     get_individual_count,
     person_string_remover,
-    get_first_non_person_string,
-    clean_determination_names,
 )
 from dataimporter.emu.views.taxonomy import TaxonomyView
 from dataimporter.emu.views.utils import (
-    INVALID_TYPE,
-    NO_PUBLISH,
+    INVALID_DEPARTMENT,
     INVALID_GUID,
     INVALID_STATUS,
-    INVALID_DEPARTMENT,
+    INVALID_TYPE,
+    NO_PUBLISH,
 )
 from dataimporter.ext.gbif import GBIFView
 from dataimporter.lib.model import SourceRecord
-from dataimporter.lib.view import FilterResult, SUCCESS_RESULT
-from tests.helpers.samples.gbif import SAMPLE_GBIF_RECORD_ID, SAMPLE_GBIF_RECORD_DATA
-from tests.helpers.samples.image import SAMPLE_IMAGE_ID, SAMPLE_IMAGE_DATA
+from dataimporter.lib.view import SUCCESS_RESULT, FilterResult
+from tests.helpers.samples.image import SAMPLE_IMAGE_DATA, SAMPLE_IMAGE_ID
 from tests.helpers.samples.mammalpart import (
     SAMPLE_MAMMAL_PART_DATA,
     SAMPLE_MAMMAL_PART_ID,
 )
 from tests.helpers.samples.specimen import SAMPLE_SPECIMEN_DATA, SAMPLE_SPECIMEN_ID
-from tests.helpers.samples.taxonomy import SAMPLE_TAXONOMY_ID, SAMPLE_TAXONOMY_DATA
+from tests.helpers.samples.taxonomy import SAMPLE_TAXONOMY_DATA, SAMPLE_TAXONOMY_ID
 
 
 @pytest.mark.parametrize(
