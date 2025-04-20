@@ -56,11 +56,12 @@ docs = [
 repository = "https://github.com/NaturalHistoryMuseum/data-importer"
 changelog = "https://github.com/NaturalHistoryMuseum/data-importer/blob/main/CHANGELOG.md"
 
+[project.scripts]
+dimp = "dataimporter.cli.main:cli"
 
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
-
 
 [tool]
 [tool.setuptools]
