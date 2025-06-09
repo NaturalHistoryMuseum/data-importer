@@ -3,8 +3,8 @@ import code
 import click
 
 from dataimporter.cli.shell import setup_env
-from dataimporter.cli.utils import with_config, console
-from dataimporter.importer import DataImporter
+from dataimporter.cli.utils import console, with_config
+from dataimporter.importer import use_importer
 from dataimporter.lib.config import Config
 
 
@@ -21,7 +21,7 @@ def merge(config: Config):
 
     This cleans up deleted documents etc.
     """
-    with DataImporter(config) as importer:
+    with use_importer(config) as importer:
         for view in importer.views:
             if view.is_published:
                 console.log(f"Force merge on {view.name} indices")
@@ -38,7 +38,7 @@ def shell(config: Config):
 
     This is provided as purely a debugging tool, use at your own risk!
     """
-    with DataImporter(config) as importer:
+    with use_importer(config) as importer:
         console.print("Starting shell...")
         env = setup_env(importer)
         banner = f"Available variables/functions: {', '.join(env.keys())}"

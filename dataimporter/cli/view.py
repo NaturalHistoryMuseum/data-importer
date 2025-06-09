@@ -1,7 +1,7 @@
 import click
 
-from dataimporter.cli.utils import with_config, console
-from dataimporter.importer import DataImporter
+from dataimporter.cli.utils import console, with_config
+from dataimporter.importer import use_importer
 from dataimporter.lib.config import Config
 
 
@@ -16,7 +16,7 @@ def list_views(config: Config):
     """
     List the name of all the views in current use.
     """
-    with DataImporter(config) as importer:
+    with use_importer(config) as importer:
         console.log(", ".join(view.name for view in importer.views))
 
 
@@ -31,7 +31,7 @@ def flush(view: str, config: Config):
     first, just to make sure) but for published views you should make sure you know what
     you're doing.
     """
-    with DataImporter(config) as importer:
+    with use_importer(config) as importer:
         view = importer.get_view(view)
         console.log(
             f"Flushing {view.name} view queue, currently has", view.count(), "IDs in it"
@@ -57,7 +57,7 @@ def ingest(view: str, config: Config, everything: bool = False):
     On the given view, updates MongoDB with any queued EMu changes and flushes its
     queue.
     """
-    with DataImporter(config) as importer:
+    with use_importer(config) as importer:
         console.log(f"Adding changes from {view} view to mongo")
         importer.add_to_mongo(view, everything=everything)
         console.log(f"Added changes from {view} view to mongo")
@@ -78,7 +78,7 @@ def sync(view: str, config: Config, resync: bool = False):
     """
     Updates Elasticsearch with the changes in MongoDB for the given view.
     """
-    with DataImporter(config) as importer:
+    with use_importer(config) as importer:
         console.log(f"Syncing changes from {view} view to elasticsearch")
         importer.sync_to_elasticsearch(view, resync=resync)
         console.log(f"Finished with {view}")

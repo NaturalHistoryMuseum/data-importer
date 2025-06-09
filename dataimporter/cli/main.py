@@ -8,9 +8,9 @@ from dataimporter.cli.emu import emu_group
 from dataimporter.cli.ext import ext_group
 from dataimporter.cli.maintenance import maintenance_group
 from dataimporter.cli.portal import portal_group
-from dataimporter.cli.utils import with_config, console
+from dataimporter.cli.utils import console, with_config
 from dataimporter.cli.view import view_group
-from dataimporter.importer import DataImporter
+from dataimporter.importer import use_importer
 from dataimporter.lib.config import Config
 
 
@@ -28,7 +28,7 @@ def get_status(config: Config):
     """
     Prints some status information about the importer's data.
     """
-    with DataImporter(config) as importer:
+    with use_importer(config) as importer:
         console.log("Currently using config from", config.source)
         console.log("Latest EMu export queued:", importer.emu_status.get())
         console.log(Rule())

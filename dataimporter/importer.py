@@ -1,19 +1,21 @@
+from contextlib import contextmanager
 from datetime import date, datetime
 from functools import partial
-from pathlib import Path
-from typing import Iterable, List, Optional, Union
-
 from itertools import groupby
+from pathlib import Path
+from typing import Any, Generator, Iterable, List, Optional, Union
+
+from filelock import FileLock, Timeout
 from splitgill.indexing.syncing import BulkOptions
 from splitgill.manager import SplitgillClient, SplitgillDatabase
 from splitgill.model import Record
-from splitgill.utils import partition, now
+from splitgill.utils import now, partition
 
 from dataimporter.emu.dumps import (
+    FIRST_VERSION,
+    convert_eaudit_to_delete,
     find_emu_dumps,
     is_valid_eaudit_record,
-    convert_eaudit_to_delete,
-    FIRST_VERSION,
 )
 from dataimporter.emu.views.artefact import ArtefactView
 from dataimporter.emu.views.image import ImageView
@@ -49,6 +51,31 @@ class ViewIsNotPublished(Exception):
         self.view = view.name
 
 
+class ImporterAlreadyRunning(Exception):
+    def __init__(self):
+        super().__init__("A data importer process is already running")
+
+
+@contextmanager
+def use_importer(config: Config) -> Generator["DataImporter", Any, None]:
+    """
+    Creates a new DataImporter instance and yields it. Only one instance of the
+    DataImporter class can operate on a given data directory at one time and this
+    function will raise an ImporterAlreadyRunning exception if that is detected.
+
+    :param config: the config
+    """
+    config.data_path.mkdir(exist_ok=True)
+    lock = FileLock(config.lock_file)
+    try:
+        # don't wait for the other instance to finish if there is one, just fail asap
+        with lock.acquire(blocking=False):
+            with DataImporter(config) as importer:
+                yield importer
+    except Timeout:
+        raise ImporterAlreadyRunning()
+
+
 class DataImporter:
     """
     Main manager class for the data importer.
@@ -59,6 +86,9 @@ class DataImporter:
 
     def __init__(self, config: Config):
         """
+        Don't use this init directly, call use_importer above to ensure locking is
+        managed correctly.
+
         :param config: a config object
         """
         self.config = config
@@ -290,7 +320,7 @@ class DataImporter:
 
         :param view_name: the name of the view
         :param everything: whether to add all records to MongoDB even if they haven't
-               changed. Default: False.
+            changed. Default: False.
         :return: the new version committed, or None if no changes were made
         """
         self.release_records(now())
@@ -323,7 +353,7 @@ class DataImporter:
 
         :param view_name: the name of the view the Splitgill database will use
         :param resync: whether to resync all records to Elasticsearch even if they
-               haven't changed
+            haven't changed
         """
         view = self.get_view(view_name)
         database = self.get_database(view)
