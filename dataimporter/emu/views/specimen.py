@@ -51,7 +51,7 @@ BASIS_OF_RECORD_LOOKUP = {
     "Botany": "PreservedSpecimen",
     "Entomology": "PreservedSpecimen",
     "Zoology": "PreservedSpecimen",
-    "Paleontology": "FossilSpecimen",
+    "Palaeontology": "FossilSpecimen",
     "Mineralogy": "Occurrence",
 }
 

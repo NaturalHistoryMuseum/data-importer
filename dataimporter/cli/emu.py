@@ -1,10 +1,10 @@
-import click
 import math
 
-from dataimporter.cli.utils import with_config, console
-from dataimporter.importer import DataImporter
-from dataimporter.lib.config import Config
+import click
 
+from dataimporter.cli.utils import console, with_config
+from dataimporter.importer import use_importer
+from dataimporter.lib.config import Config
 
 EMU_VIEWS = ("specimen", "indexlot", "artefact", "mss", "preparation")
 
@@ -35,7 +35,7 @@ def auto(config: Config, one: bool = False, delay_sync: bool = False):
     Processes all the available EMu exports, queuing, ingesting, and indexing one day's
     worth of data at a time ensuring each day's data is represented by a new version.
     """
-    with DataImporter(config) as importer:
+    with use_importer(config) as importer:
         while True:
             console.log("Queuing next dump set")
             date_queued = importer.queue_emu_changes()
@@ -89,7 +89,7 @@ def queue(amount: str, config: Config):
         assert amount > 0, "Amount must be greater than 0"
         console.log(f"Queuing next {amount} dumpsets")
 
-    with DataImporter(config) as importer:
+    with use_importer(config) as importer:
         console.log(f"Current latest queued dumpset date: {importer.emu_status.get()}")
 
         while amount > 0:
@@ -109,5 +109,5 @@ def get_emu_date(config: Config):
     """
     Prints the latest date we've imported EMu exports for.
     """
-    with DataImporter(config) as importer:
+    with use_importer(config) as importer:
         console.log(importer.emu_status.get())

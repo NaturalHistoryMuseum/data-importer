@@ -1,7 +1,7 @@
-from contextlib import closing
 from datetime import date, datetime
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from typing import Any, Generator
+from unittest.mock import MagicMock, patch
 
 import pytest
 from freezegun import freeze_time
@@ -9,22 +9,28 @@ from splitgill.search import keyword
 from splitgill.utils import to_timestamp
 
 from dataimporter.emu.dumps import FIRST_VERSION
-from dataimporter.importer import DataImporter, EMuStatus, StoreNotFound
+from dataimporter.importer import (
+    DataImporter,
+    EMuStatus,
+    ImporterAlreadyRunning,
+    StoreNotFound,
+    use_importer,
+)
 from dataimporter.lib.config import (
     Config,
-    MongoConfig,
     ElasticsearchConfig,
+    MongoConfig,
     PortalConfig,
 )
 from dataimporter.lib.model import SourceRecord
-from tests.conftest import MONGO_HOST, MONGO_PORT, ES_PORT, ES_HOST
-from tests.helpers.dumps import create_dump
+from tests.conftest import ES_HOST, ES_PORT, MONGO_HOST, MONGO_PORT
 from tests.helpers.dumps import (
-    create_ecatalogue,
     EcatalogueType,
+    create_dump,
+    create_eaudit,
+    create_ecatalogue,
     create_emultimedia,
     create_etaxonomy,
-    create_eaudit,
 )
 
 
@@ -55,9 +61,18 @@ def config(tmp_path: Path) -> Config:
 
 
 @pytest.fixture
-def importer(config: Config) -> DataImporter:
-    with closing(DataImporter(config)) as imp:
+def importer(config: Config) -> Generator[DataImporter, Any, None]:
+    with use_importer(config) as imp:
         yield imp
+
+
+def test_use_importer(config: Config):
+    assert not config.data_path.exists()
+    with use_importer(config):
+        with pytest.raises(ImporterAlreadyRunning):
+            # trying to open another one should fail
+            with use_importer(config):
+                pass
 
 
 class TestDataImporter:
@@ -205,9 +220,7 @@ class TestDataImporter:
         assert importer.get_view("image").changes.size() == 4
         assert importer.get_view("mss").changes.size() == 4
 
-    def test_queue_emu_changes_only_one(self, config: Config):
-        importer = DataImporter(config)
-
+    def test_queue_emu_changes_only_one(self, config: Config, importer: DataImporter):
         first_dump_date = date(2023, 10, 3)
         create_dump(
             config.dumps_path,
@@ -256,7 +269,7 @@ class TestDataImporter:
         ]
         change_records_mock = MagicMock(return_value=gbif_records)
         with patch("dataimporter.importer.get_changed_records", change_records_mock):
-            with DataImporter(config) as importer:
+            with use_importer(config) as importer:
                 importer.queue_gbif_changes()
 
                 assert importer.get_store("gbif").size() == 3
@@ -291,7 +304,7 @@ class TestDataImporter:
             *[create_emultimedia(str(i), MulTitle=f"image {i}") for i in range(1, 9)],
         )
 
-        with DataImporter(config) as importer:
+        with use_importer(config) as importer:
             importer.queue_emu_changes()
 
             importer.add_to_mongo(name)
@@ -361,7 +374,7 @@ class TestDataImporter:
             *[create_etaxonomy(str(i), ClaKingdom=f"kingdom {i}") for i in range(1, 9)],
         )
 
-        with DataImporter(config) as importer:
+        with use_importer(config) as importer:
             importer.queue_emu_changes()
 
             importer.add_to_mongo(name)
@@ -433,7 +446,7 @@ class TestDataImporter:
             *[create_etaxonomy(str(i), ClaKingdom=f"kingdom {i}") for i in range(1, 9)],
         )
 
-        with DataImporter(config) as importer:
+        with use_importer(config) as importer:
             importer.queue_emu_changes()
 
             importer.add_to_mongo(name)
@@ -485,7 +498,7 @@ class TestDataImporter:
             ],
         )
 
-        with DataImporter(config) as importer:
+        with use_importer(config) as importer:
             importer.queue_emu_changes()
 
             importer.add_to_mongo(name)
@@ -552,7 +565,7 @@ class TestDataImporter:
             *[create_etaxonomy(str(i), ClaOrder=f"order {i}") for i in range(9, 17)],
         )
 
-        with DataImporter(config) as importer:
+        with use_importer(config) as importer:
             importer.queue_emu_changes()
 
             importer.add_to_mongo(name)

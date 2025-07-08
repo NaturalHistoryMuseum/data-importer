@@ -67,6 +67,15 @@ class Config:
     def get_mongo_database_name(self) -> str:
         return self.mongo_config.database
 
+    @property
+    def lock_file(self) -> Path:
+        """
+        Path to the lock file to be used for the data directory.
+
+        :return: the Path to the lock file
+        """
+        return self.data_path / "importer.lock"
+
 
 class ConfigLoadError(Exception):
     def __init__(self, reason: str):
