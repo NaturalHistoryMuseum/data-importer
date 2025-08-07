@@ -3,7 +3,7 @@ import tempfile
 import time
 from dataclasses import dataclass
 from io import TextIOWrapper
-from typing import Iterable, Dict
+from typing import Dict, Iterable
 from zipfile import ZipFile
 
 import requests
@@ -26,16 +26,16 @@ class GBIFView(View):
 
         :param record: the record to project
         :return: a dict containing the data for this record that should be combined with
-                 a specimen record
+            a specimen record
         """
         data = {
-            "gbifID": record.id,
+            'gbifID': record.id,
         }
-        issue_value = record.get_first_value("issue", default="").strip()
+        issue_value = record.get_first_value('issue', default='').strip()
         if issue_value:
             # make a tuple and remove any empty values (in case of formatting weirds)
-            data["gbifIssue"] = tuple(
-                issue for issue in issue_value.split(";") if issue
+            data['gbifIssue'] = tuple(
+                issue for issue in issue_value.split(';') if issue
             )
         return data
 
@@ -67,13 +67,13 @@ def get_changed_records(
             tmp_file.seek(0)
             # open the zip, read the occurrence file
             with ZipFile(tmp_file) as zip_file:
-                with zip_file.open(f"{download_id}.csv") as raw_csv_file:
-                    with TextIOWrapper(raw_csv_file, encoding="utf-8") as csv_file:
+                with zip_file.open(f'{download_id}.csv') as raw_csv_file:
+                    with TextIOWrapper(raw_csv_file, encoding='utf-8') as csv_file:
                         reader: Iterable[Dict[str, str]] = csv.DictReader(
-                            csv_file, dialect="excel-tab", quoting=csv.QUOTE_NONE
+                            csv_file, dialect='excel-tab', quoting=csv.QUOTE_NONE
                         )
                         for row in reader:
-                            gbif_id = row["gbifID"]
+                            gbif_id = row['gbifID']
                             updated_record = SourceRecord(gbif_id, row, download_id)
                             existing_record = store.get_record(gbif_id)
                             # if the record has changed or is new, yield it
@@ -91,22 +91,22 @@ def request_download(gbif_username: str, gbif_password: str) -> str:
     :return: the GBIF download ID
     """
     download_filter = {
-        "creator": gbif_username,
-        "notificationAddresses": [],
-        "sendNotification": False,
-        "format": "SIMPLE_CSV",
-        "predicate": {
-            "type": "equals",
-            "key": "DATASET_KEY",
+        'creator': gbif_username,
+        'notificationAddresses': [],
+        'sendNotification': False,
+        'format': 'SIMPLE_CSV',
+        'predicate': {
+            'type': 'equals',
+            'key': 'DATASET_KEY',
             # this is the NHM's specimen collection GBIF dataset key
-            "value": "7e380070-f762-11e1-a439-00145eb45e9a",
-            "matchCase": False,
+            'value': '7e380070-f762-11e1-a439-00145eb45e9a',
+            'matchCase': False,
         },
     }
     auth = HTTPBasicAuth(gbif_username, gbif_password)
     # request a new download
     response = requests.post(
-        "https://api.gbif.org/v1/occurrence/download/request",
+        'https://api.gbif.org/v1/occurrence/download/request',
         json=download_filter,
         auth=auth,
     )
@@ -121,8 +121,8 @@ class GBIFDownloadTimeout(Exception):
 
     def __init__(self, timeout: int, status: str):
         super().__init__(
-            f"GBIF download link not available within timeout ({timeout} seconds, last "
-            f"known status: {status})."
+            f'GBIF download link not available within timeout ({timeout} seconds, last '
+            f'known status: {status}).'
         )
         self.timeout = timeout
         self.status = status
@@ -137,7 +137,7 @@ class GBIFDownloadError(Exception):
 
     def __init__(self, status: str):
         super().__init__(
-            f"GBIF download link not available due to error, status: {status}"
+            f'GBIF download link not available due to error, status: {status}'
         )
         self.status = status
 
@@ -173,20 +173,20 @@ def get_download_url(download_id: str) -> GBIFDownload:
     """
     backoff_in_seconds = 60
     max_tries = 60
-    url = f"https://api.gbif.org/v1/occurrence/download/{download_id}"
-    status = "PREPARING"
+    url = f'https://api.gbif.org/v1/occurrence/download/{download_id}'
+    status = 'PREPARING'
 
     for _ in range(max_tries):
         with requests.get(url) as r:
             download_info = r.json()
-            status = download_info["status"]
-            if status == "SUCCEEDED":
+            status = download_info['status']
+            if status == 'SUCCEEDED':
                 return GBIFDownload(
-                    download_info["downloadLink"],
-                    download_info["size"],
-                    download_info["totalRecords"],
+                    download_info['downloadLink'],
+                    download_info['size'],
+                    download_info['totalRecords'],
                 )
-            elif status == "FAILED":
+            elif status == 'FAILED':
                 raise GBIFDownloadError(status)
             else:
                 time.sleep(backoff_in_seconds)

@@ -3,32 +3,32 @@ from pathlib import Path
 from dataimporter.emu.views.image import ImageView
 from dataimporter.emu.views.taxonomy import TaxonomyView
 from dataimporter.emu.views.utils import (
-    NO_PUBLISH,
-    DISALLOWED_STATUSES,
     DEPARTMENT_COLLECTION_CODES,
-    INVALID_STATUS,
+    DISALLOWED_STATUSES,
     INVALID_DEPARTMENT,
-    INVALID_TYPE,
-    is_web_published,
-    is_valid_guid,
     INVALID_GUID,
+    INVALID_STATUS,
+    INVALID_TYPE,
     MEDIA_ID_REF_FIELD,
+    NO_PUBLISH,
     add_associated_media,
+    emu_date,
+    is_valid_guid,
+    is_web_published,
     merge,
 )
-from dataimporter.emu.views.utils import emu_date
 from dataimporter.lib.dbs import Store
 from dataimporter.lib.model import SourceRecord
 from dataimporter.lib.view import (
-    View,
-    FilterResult,
-    SUCCESS_RESULT,
-    strip_empty,
-    make_link,
     ID,
+    SUCCESS_RESULT,
+    FilterResult,
+    View,
+    make_link,
+    strip_empty,
 )
 
-TAXONOMY_ID_REF_FIELD = "EntIndIndexLotTaxonNameLocalRef"
+TAXONOMY_ID_REF_FIELD = 'EntIndIndexLotTaxonNameLocalRef'
 
 
 class IndexLotView(View):
@@ -58,7 +58,7 @@ class IndexLotView(View):
         :param record: the record to filter
         :return: a FilterResult object
         """
-        if record.get_first_value("ColRecordType") != "Index Lot":
+        if record.get_first_value('ColRecordType') != 'Index Lot':
             return INVALID_TYPE
 
         if not is_web_published(record):
@@ -67,10 +67,10 @@ class IndexLotView(View):
         if not is_valid_guid(record):
             return INVALID_GUID
 
-        if record.get_first_value("SecRecordStatus") in DISALLOWED_STATUSES:
+        if record.get_first_value('SecRecordStatus') in DISALLOWED_STATUSES:
             return INVALID_STATUS
 
-        if record.get_first_value("ColDepartment") not in DEPARTMENT_COLLECTION_CODES:
+        if record.get_first_value('ColDepartment') not in DEPARTMENT_COLLECTION_CODES:
             return INVALID_DEPARTMENT
 
         return SUCCESS_RESULT
@@ -83,31 +83,31 @@ class IndexLotView(View):
 
         :param record: the record to project
         :return: a dict containing the data for this record that should be displayed on
-                 the Data Portal
+            the Data Portal
         """
         # cache these for perf
         get_all = record.get_all_values
         get_first = record.get_first_value
 
         data = {
-            "_id": record.id,
-            "created": emu_date(
-                get_first("AdmDateInserted"), get_first("AdmTimeInserted")
+            '_id': record.id,
+            'created': emu_date(
+                get_first('AdmDateInserted'), get_first('AdmTimeInserted')
             ),
-            "modified": emu_date(
-                get_first("AdmDateModified"), get_first("AdmTimeModified")
+            'modified': emu_date(
+                get_first('AdmDateModified'), get_first('AdmTimeModified')
             ),
-            "material": get_first("EntIndMaterial"),
-            "type": get_first("EntIndType"),
-            "media": get_first("EntIndMedia"),
-            "british": get_first("EntIndBritish"),
-            "kindOfMaterial": get_first("EntIndKindOfMaterial"),
-            "kindOfMedia": get_first("EntIndKindOfMedia"),
-            "materialCount": get_all("EntIndCount"),
-            "materialSex": get_all("EntIndSex"),
-            "materialStage": get_all("EntIndStage"),
-            "materialTypes": get_all("EntIndTypes"),
-            "materialPrimaryTypeNumber": get_all("EntIndPrimaryTypeNo"),
+            'material': get_first('EntIndMaterial'),
+            'type': get_first('EntIndType'),
+            'media': get_first('EntIndMedia'),
+            'british': get_first('EntIndBritish'),
+            'kindOfMaterial': get_first('EntIndKindOfMaterial'),
+            'kindOfMedia': get_first('EntIndKindOfMedia'),
+            'materialCount': get_all('EntIndCount'),
+            'materialSex': get_all('EntIndSex'),
+            'materialStage': get_all('EntIndStage'),
+            'materialTypes': get_all('EntIndTypes'),
+            'materialPrimaryTypeNumber': get_all('EntIndPrimaryTypeNo'),
         }
 
         # add multimedia links

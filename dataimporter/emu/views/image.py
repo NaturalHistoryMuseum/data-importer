@@ -1,18 +1,18 @@
 from pathlib import Path
 
 from dataimporter.emu.views.utils import (
-    NO_PUBLISH,
-    is_web_published,
-    is_valid_guid,
     INVALID_GUID,
+    NO_PUBLISH,
+    emu_date,
+    is_valid_guid,
+    is_web_published,
     orientation_requires_swap,
 )
-from dataimporter.emu.views.utils import emu_date
 from dataimporter.lib.dbs import Store
 from dataimporter.lib.model import SourceRecord
-from dataimporter.lib.view import FilterResult, View, SUCCESS_RESULT, strip_empty
+from dataimporter.lib.view import SUCCESS_RESULT, FilterResult, View, strip_empty
 
-MULTIMEDIA_NOT_IMAGE = FilterResult(False, "Multimedia not an image")
+MULTIMEDIA_NOT_IMAGE = FilterResult(False, 'Multimedia not an image')
 
 
 class ImageView(View):
@@ -39,7 +39,7 @@ class ImageView(View):
         :param record: the record to filter
         :return: a FilterResult object
         """
-        if record.get_first_value("MulMimeType") != "image":
+        if record.get_first_value('MulMimeType') != 'image':
             return MULTIMEDIA_NOT_IMAGE
 
         if not is_valid_guid(record):
@@ -58,39 +58,39 @@ class ImageView(View):
 
         :param record: the record to project
         :return: a dict containing the data for this record that should be displayed on
-                 the Data Portal
+            the Data Portal
         """
         # cache for perf
         get_first = record.get_first_value
 
-        asset_id = get_first("AdmGUIDPreferredValue")
+        asset_id = get_first('AdmGUIDPreferredValue')
         data = {
-            "_id": record.id,
-            "created": emu_date(
-                get_first("AdmDateInserted"), get_first("AdmTimeInserted")
+            '_id': record.id,
+            'created': emu_date(
+                get_first('AdmDateInserted'), get_first('AdmTimeInserted')
             ),
-            "modified": emu_date(
-                get_first("AdmDateModified"), get_first("AdmTimeModified")
+            'modified': emu_date(
+                get_first('AdmDateModified'), get_first('AdmTimeModified')
             ),
-            "assetID": asset_id,
-            "identifier": f"{self.iiif_url_base}/{asset_id}",
-            "title": get_first("MulTitle"),
-            "creator": get_first("MulCreator"),
-            "category": get_first("DetResourceType"),
-            "type": "StillImage",
-            "license": "http://creativecommons.org/licenses/by/4.0/",
-            "rightsHolder": "The Trustees of the Natural History Museum, London",
+            'assetID': asset_id,
+            'identifier': f'{self.iiif_url_base}/{asset_id}',
+            'title': get_first('MulTitle'),
+            'creator': get_first('MulCreator'),
+            'category': get_first('DetResourceType'),
+            'type': 'StillImage',
+            'license': 'http://creativecommons.org/licenses/by/4.0/',
+            'rightsHolder': 'The Trustees of the Natural History Museum, London',
         }
 
-        width = get_first("ChaImageWidth")
-        height = get_first("ChaImageHeight")
+        width = get_first('ChaImageWidth')
+        height = get_first('ChaImageHeight')
         if width and height:
             swap = orientation_requires_swap(record)
-            data["PixelXDimension"] = width if not swap else height
-            data["PixelYDimension"] = height if not swap else width
+            data['PixelXDimension'] = width if not swap else height
+            data['PixelYDimension'] = height if not swap else width
 
-        if mime_subtype := get_first("MulMimeFormat"):
+        if mime_subtype := get_first('MulMimeFormat'):
             # we know that the mime type is image because it's in our member filter
-            data["format"] = f"image/{mime_subtype}"
+            data['format'] = f'image/{mime_subtype}'
 
         return data
