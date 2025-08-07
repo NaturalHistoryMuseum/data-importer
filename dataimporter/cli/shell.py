@@ -13,14 +13,14 @@ def setup_env(importer: DataImporter) -> dict:
     :return: a dict
     """
     return {
-        "importer": importer,
-        "console": console,
+        'importer': importer,
+        'console': console,
         # some convenience functions for printing data
-        "pcd": partial(print_record_data, importer, "ecatalogue"),
-        "ptd": partial(print_record_data, importer, "etaxonomy"),
-        "pmd": partial(print_record_data, importer, "emultimedia"),
-        "pgd": partial(print_record_data, importer, "gbif"),
-        "cm": partial(check_membership, importer),
+        'pcd': partial(print_record_data, importer, 'ecatalogue'),
+        'ptd': partial(print_record_data, importer, 'etaxonomy'),
+        'pmd': partial(print_record_data, importer, 'emultimedia'),
+        'pgd': partial(print_record_data, importer, 'gbif'),
+        'cm': partial(check_membership, importer),
     }
 
 
@@ -34,11 +34,11 @@ def print_record_data(importer: DataImporter, name: str, record_id: Union[str, i
     """
     store = importer.get_store(name)
     if store is None:
-        console.print("store not found", style="red")
+        console.print('store not found', style='red')
         return
     record = store.get_record(str(record_id))
     if record is None:
-        console.print("record not found", style="red")
+        console.print('record not found', style='red')
         return
     console.print(record.data)
 
@@ -54,14 +54,14 @@ def check_membership(importer: DataImporter, name: str, record_id: Union[str, in
     """
     view = importer.get_view(name)
     if view is None:
-        console.print("view not found", style="red")
+        console.print('view not found', style='red')
         return
     record = view.store.get_record(str(record_id))
     if record is None:
-        console.print("record not found", style="red")
+        console.print('record not found', style='red')
         return
     result = view.is_member(record)
     if result:
-        print(f"{record_id} is a member of {name}")
+        print(f'{record_id} is a member of {name}')
     else:
         print(f"{record_id} is not a member of {name} due to '{result.reason}'")

@@ -9,7 +9,7 @@ from yaml import safe_load
 
 @dataclass
 class ElasticsearchConfig:
-    hosts: List[str] = field(default_factory=lambda: ["http://localhost:9200"])
+    hosts: List[str] = field(default_factory=lambda: ['http://localhost:9200'])
 
     def get_client(self) -> Elasticsearch:
         return Elasticsearch(hosts=self.hosts)
@@ -17,9 +17,9 @@ class ElasticsearchConfig:
 
 @dataclass
 class MongoConfig:
-    host: str = "localhost"
+    host: str = 'localhost'
     port: int = 27017
-    database: str = "sg"
+    database: str = 'sg'
 
     def get_client(self) -> MongoClient:
         return MongoClient(self.host, self.port)
@@ -74,12 +74,12 @@ class Config:
 
         :return: the Path to the lock file
         """
-        return self.data_path / "importer.lock"
+        return self.data_path / 'importer.lock'
 
 
 class ConfigLoadError(Exception):
     def __init__(self, reason: str):
-        super().__init__(f"Failed to load config due to {reason}")
+        super().__init__(f'Failed to load config due to {reason}')
         self.reason = reason
 
 
@@ -95,9 +95,9 @@ def load(path: Path) -> Config:
         with path.open() as f:
             raw: dict = safe_load(f)
 
-        es_config = ElasticsearchConfig(**raw.pop("elasticsearch", {}))
-        mongo_config = MongoConfig(**raw.pop("mongo", {}))
-        portal_config = PortalConfig(**raw.pop("portal", {}))
+        es_config = ElasticsearchConfig(**raw.pop('elasticsearch', {}))
+        mongo_config = MongoConfig(**raw.pop('mongo', {}))
+        portal_config = PortalConfig(**raw.pop('portal', {}))
         config = Config(
             **raw,
             mongo_config=mongo_config,

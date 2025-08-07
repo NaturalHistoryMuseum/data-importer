@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
-from typing import Iterable, Optional, List, Union
+from typing import Iterable, List, Optional, Union
 
 from splitgill.utils import partition
 
-from dataimporter.lib.dbs import ChangeQueue, Store, Index
+from dataimporter.lib.dbs import ChangeQueue, Index, Store
 from dataimporter.lib.model import SourceRecord
 
 
@@ -71,7 +71,7 @@ class View:
         self.store = store
         self.published_name = published_name
         self.name = path.name
-        self.changes = ChangeQueue(self.path / "changes")
+        self.changes = ChangeQueue(self.path / 'changes')
         # a list of links which need to be updated when records in this view change
         self.dependants: List[Link] = []
 
@@ -85,7 +85,7 @@ class View:
         """
         return self.published_name is not None
 
-    def add_dependant(self, link: "Link"):
+    def add_dependant(self, link: 'Link'):
         """
         Add a dependant via the given link.
 
@@ -398,7 +398,7 @@ class Link:
 
         :return: a foreign record or None if no records are related
         :return: a dict created from the related foreign record, or None if no records
-                 are related
+            are related
         """
         return next(iter(self.lookup_and_transform(owner_record)), None)
 
@@ -420,10 +420,10 @@ def make_link(
     complete. If the indexes already exist, they will not be recreated.
 
     :param owner: the view that is creating this link and will have updates queued upon
-                  it when changes occur in the foreign view
+        it when changes occur in the foreign view
     :param owner_ref: the field containing the values referencing the foreign view
     :param foreign: the view that is being linked to, the owner view will be added to
-                    this view as a dependant
+        this view as a dependant
     :param foreign_ref: the field containing the values referenced by the owner view
     :return: a Link object
     """

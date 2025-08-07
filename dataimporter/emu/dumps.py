@@ -5,42 +5,41 @@ from collections import defaultdict
 from datetime import date, datetime
 from functools import cached_property, total_ordering
 from pathlib import Path
-from typing import Iterable, Any, Optional, Set
-from typing import List
+from typing import Any, Iterable, List, Optional, Set
 
-from dataimporter.lib.model import SourceRecord, Data
+from dataimporter.lib.model import Data, SourceRecord
 
-EMU_ID_FIELD = "irn"
+EMU_ID_FIELD = 'irn'
 # this is arbitrary-ish, but it's the day before the first good full dumps we have
 FIRST_VERSION = date(2017, 8, 29)
 # the EMu tables we currently use
-EMU_TABLES = {"eaudit", "ecatalogue", "emultimedia", "etaxonomy"}
+EMU_TABLES = {'eaudit', 'ecatalogue', 'emultimedia', 'etaxonomy'}
 # fields to ignore and don't store
 IGNORE_FIELDS = {
     # really don't need this field, it's just the order of the record in the dump
-    "rownum",
+    'rownum',
     # this field contains old pre-EMu data which we just won't ever need so bye bye
-    "AdmOriginalData",
+    'AdmOriginalData',
 }
 
 
 def find_emu_dumps(
     root: Path,
     after: date = FIRST_VERSION,
-) -> List["EMuDumpSet"]:
+) -> List['EMuDumpSet']:
     """
     Find all the EMu dumps in the given path and return them as a list of EMuDumpSet
     objects.
 
     :param root: the root directory
     :param after: only dumps after this date will be returned, defaults to the day
-                  before the first full EMu dump from 30/08/17 (see FIRST_VERSION at the
-                  module level)
+        before the first full EMu dump from 30/08/17 (see FIRST_VERSION at the module
+        level)
     :return: a list of EMuDumpSet objects
     """
     dumps = defaultdict(list)
     dump_matcher = re.compile(
-        r"(?P<table>\w+)\.(?:deleted-)?export\.(?P<date>[0-9]{8})\.gz"
+        r'(?P<table>\w+)\.(?:deleted-)?export\.(?P<date>[0-9]{8})\.gz'
     )
 
     for path in root.iterdir():
@@ -52,7 +51,7 @@ def find_emu_dumps(
                 # ignore invalid tables
                 continue
 
-            dump_date = datetime.strptime(date_str, "%Y%m%d").date()
+            dump_date = datetime.strptime(date_str, '%Y%m%d').date()
             if dump_date <= after:
                 # ignore old dumps
                 continue
@@ -86,7 +85,7 @@ class EMuDump:
         return self.path.name
 
     def __str__(self) -> str:
-        return f"Dump {self.table}@{self.date} [{self.path}]"
+        return f'Dump {self.table}@{self.date} [{self.path}]'
 
     def __eq__(self, other: Any):
         if isinstance(other, EMuDump):
@@ -111,8 +110,8 @@ class EMuDump:
 
         :return: the number of records in the dump
         """
-        irn_field_prefix = f"{EMU_ID_FIELD}:1="
-        with gzip.open(self.path, "rt", encoding="utf-8") as f:
+        irn_field_prefix = f'{EMU_ID_FIELD}:1='
+        with gzip.open(self.path, 'rt', encoding='utf-8') as f:
             return sum(1 for line in f if line.lstrip().startswith(irn_field_prefix))
 
     def read(self) -> Iterable[SourceRecord]:
@@ -126,7 +125,7 @@ class EMuDump:
         # cache this so we don't have to look it up everytime we want to use it
         source = self.name
 
-        with gzip.open(self.path, "rt", encoding="utf-8") as f:
+        with gzip.open(self.path, 'rt', encoding='utf-8') as f:
             # state variables for each record
             emu_id: Optional[str] = None
             data: Data = {}
@@ -136,15 +135,15 @@ class EMuDump:
             # isn't in the file, thus forcing the record to be yielded if it's valid.
             # Note that I've never seen a file not end with ### in the real world, but
             # anything's possible with EMu!
-            for line in itertools.chain(f, ["###"]):
+            for line in itertools.chain(f, ['###']):
                 line = line.strip()
                 if not line:
                     continue
 
-                if line != "###":
+                if line != '###':
                     # the format is <field>:<index>=<value> or sometimes <field>=<value>
-                    field, value = line.split("=", 1)
-                    field = field.split(":", 1)[0]
+                    field, value = line.split('=', 1)
+                    field = field.split(':', 1)[0]
 
                     if field in IGNORE_FIELDS:
                         continue
@@ -185,11 +184,11 @@ def is_valid_eaudit_record(record: SourceRecord, tables: Set[str]) -> bool:
     """
     return (
         # we only want delete operations
-        record.data.get("AudOperation") == "delete"
+        record.data.get('AudOperation') == 'delete'
         # we only want deletions on tables we actually have data for already
-        and record.data.get("AudTable") in tables
+        and record.data.get('AudTable') in tables
         # AudKey is the irn of the deleted record, so it must have this field
-        and "AudKey" in record.data
+        and 'AudKey' in record.data
     )
 
 
@@ -199,14 +198,14 @@ def convert_eaudit_to_delete(record: SourceRecord) -> SourceRecord:
 
     :param record: the audit record in full
     :return: a new SourceRecord object which will produce a deletion on the target
-             record ID in the target table
+        record ID in the target table
     """
-    return SourceRecord(record.data["AudKey"], {}, record.source)
+    return SourceRecord(record.data['AudKey'], {}, record.source)
 
 
 @total_ordering
 class EMuDumpSet:
-    _order = ["eaudit", "ecatalogue", "emultimedia", "etaxonomy"]
+    _order = ['eaudit', 'ecatalogue', 'emultimedia', 'etaxonomy']
 
     def __init__(self, dump_date: date, dumps: List[EMuDump]):
         self.date = dump_date
@@ -218,7 +217,7 @@ class EMuDumpSet:
 
     @property
     def contains_eaudit(self) -> bool:
-        return any(table for table in self.tables if table == "eaudit")
+        return any(table for table in self.tables if table == 'eaudit')
 
     def __len__(self) -> int:
         return len(self.dumps)

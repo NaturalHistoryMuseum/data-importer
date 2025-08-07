@@ -8,12 +8,12 @@ from dataimporter.importer import use_importer
 from dataimporter.lib.config import Config
 
 
-@click.group("maintenance")
+@click.group('maintenance')
 def maintenance_group():
     pass
 
 
-@maintenance_group.command("merge")
+@maintenance_group.command('merge')
 @with_config()
 def merge(config: Config):
     """
@@ -24,9 +24,9 @@ def merge(config: Config):
     with use_importer(config) as importer:
         for view in importer.views:
             if view.is_published:
-                console.log(f"Force merge on {view.name} indices")
+                console.log(f'Force merge on {view.name} indices')
                 importer.force_merge(view.name)
-                console.log(f"{view.name} complete")
+                console.log(f'{view.name} complete')
 
 
 @maintenance_group.command()
@@ -39,7 +39,7 @@ def shell(config: Config):
     This is provided as purely a debugging tool, use at your own risk!
     """
     with use_importer(config) as importer:
-        console.print("Starting shell...")
+        console.print('Starting shell...')
         env = setup_env(importer)
-        banner = f"Available variables/functions: {', '.join(env.keys())}"
+        banner = f'Available variables/functions: {", ".join(env.keys())}'
         code.interact(banner=banner, local=env)
