@@ -12,20 +12,15 @@
 ## Overview
 
 <!--overview-start-->
-This repository contains the pipeline which moves data from the Museum's EMu instance
-into the [Data Portal](https://data.nhm.ac.uk).
+This repository contains the pipeline which moves data from the Museum's EMu instance into the [Data Portal](https://data.nhm.ac.uk).
 
-Data is exported from EMu as texexport reports 5 nights a week and then this pipelines
-moves it into the Data Portal's databases.
+Data is exported from EMu as texexport reports 5 nights a week and then this pipelines moves it into the Data Portal's databases.
 
-The data is versioned using the [Splitgill](https://pypi.org/project/splitgill/)
-library and stored in MongoDB and Elasticsearch.
+The data is versioned using the [Splitgill](https://pypi.org/project/splitgill/) library and stored in MongoDB and Elasticsearch.
 
 This is the 3rd iteration of this importer to date.
-The code history in this repository only contains the first iteration of the importer as
-the second iteration was developed in a private repository.
-To make the code available for the current version, the private parts of the repository
-have been moved to a different private repo, allowing this repository to be public.
+The code history in this repository only contains the first iteration of the importer as the second iteration was developed in a private repository.
+To make the code available for the current version, the private parts of the repository have been moved to a different private repo, allowing this repository to be public.
 
 <!--overview-end-->
 
@@ -43,8 +38,7 @@ pip install git+git://github.com/NaturalHistoryMuseum/data-importer.git#egg=data
 ## Tests
 
 <!--tests-start-->
-Tests are run through docker-compose so that MongoDB and Elasticsearch are available for
-real testing.
+Tests are run through docker-compose so that MongoDB and Elasticsearch are available for real testing.
 
 To run the tests:
 
