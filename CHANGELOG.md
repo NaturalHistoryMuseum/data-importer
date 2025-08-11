@@ -1,3 +1,24 @@
+## v1.2.1 (2025-08-11)
+
+### Docs
+
+- fix line breaks in readme
+- update docs config
+
+### Style
+
+- auto format python
+
+### CI System(s)
+
+- update github workflows
+
+### Chores/Misc
+
+- fix file endings
+- add PR templates, contributing guidelines, etc
+- update tool configs
+
 ## v1.2.0 (2025-07-08)
 
 ### Feature
