@@ -1,7 +1,6 @@
-from dataimporter.emu.views.utils import NO_PUBLISH, is_web_published
-from dataimporter.emu.views.utils import emu_date
+from dataimporter.emu.views.utils import NO_PUBLISH, emu_date, is_web_published
 from dataimporter.lib.model import SourceRecord
-from dataimporter.lib.view import View, FilterResult, SUCCESS_RESULT, strip_empty
+from dataimporter.lib.view import SUCCESS_RESULT, FilterResult, View, strip_empty
 
 
 class TaxonomyView(View):
@@ -32,33 +31,33 @@ class TaxonomyView(View):
 
         :param record: the record to project
         :return: a dict containing the data for this record that should be displayed on
-                 the Data Portal
+            the Data Portal
         """
         # cache for perf
         get_first = record.get_first_value
 
         return {
-            "_id": record.id,
+            '_id': record.id,
             # todo: should these be here? Probably not right?
-            "created": emu_date(
-                get_first("AdmDateInserted"), get_first("AdmTimeInserted")
+            'created': emu_date(
+                get_first('AdmDateInserted'), get_first('AdmTimeInserted')
             ),
-            "modified": emu_date(
-                get_first("AdmDateModified"), get_first("AdmTimeModified")
+            'modified': emu_date(
+                get_first('AdmDateModified'), get_first('AdmTimeModified')
             ),
-            "scientificName": get_first("ClaScientificNameBuilt"),
-            "currentScientificName": get_first("ClaCurrentSciNameLocal"),
-            "taxonRank": get_first("ClaRank"),
-            "kingdom": get_first("ClaKingdom"),
-            "phylum": get_first("ClaPhylum"),
-            "class": get_first("ClaClass"),
-            "order": get_first("ClaOrder"),
-            "suborder": get_first("ClaSuborder"),
-            "superfamily": get_first("ClaSuperfamily"),
-            "family": get_first("ClaFamily"),
-            "subfamily": get_first("ClaSubfamily"),
-            "genus": get_first("ClaGenus"),
-            "subgenus": get_first("ClaSubgenus"),
-            "specificEpithet": get_first("ClaSpecies"),
-            "infraspecificEpithet": get_first("ClaSubspecies"),
+            'scientificName': get_first('ClaScientificNameBuilt'),
+            'currentScientificName': get_first('ClaCurrentSciNameLocal'),
+            'taxonRank': get_first('ClaRank'),
+            'kingdom': get_first('ClaKingdom'),
+            'phylum': get_first('ClaPhylum'),
+            'class': get_first('ClaClass'),
+            'order': get_first('ClaOrder'),
+            'suborder': get_first('ClaSuborder'),
+            'superfamily': get_first('ClaSuperfamily'),
+            'family': get_first('ClaFamily'),
+            'subfamily': get_first('ClaSubfamily'),
+            'genus': get_first('ClaGenus'),
+            'subgenus': get_first('ClaSubgenus'),
+            'specificEpithet': get_first('ClaSpecies'),
+            'infraspecificEpithet': get_first('ClaSubspecies'),
         }

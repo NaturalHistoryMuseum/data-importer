@@ -1,89 +1,88 @@
 from datetime import datetime
-
-from freezegun import freeze_time
 from itertools import chain
 from pathlib import Path
 
 import msgpack
 import pytest
-from splitgill.utils import partition, parse_to_timestamp, to_timestamp, now
+from freezegun import freeze_time
+from splitgill.utils import now, partition, to_timestamp
 
 from dataimporter.lib.dbs import (
     DB,
-    Index,
+    SPLITTER,
     ChangeQueue,
+    Index,
+    InvalidRecordID,
     Store,
     make_unpacker,
-    SPLITTER,
-    InvalidRecordID,
 )
 from dataimporter.lib.model import SourceRecord
 
 
 @pytest.fixture
 def store(tmp_path: Path) -> Store:
-    st = Store(tmp_path / "database")
+    st = Store(tmp_path / 'database')
     yield st
     st.close()
 
 
 class TestDB:
     def test_name(self, tmp_path: Path):
-        db = DB(tmp_path / "database")
-        assert db.name == "database"
+        db = DB(tmp_path / 'database')
+        assert db.name == 'database'
 
     def test_empty(self, tmp_path: Path):
-        db = DB(tmp_path / "database")
+        db = DB(tmp_path / 'database')
         assert db.is_empty()
-        db.put([(b"key", b"value")])
+        db.put([(b'key', b'value')])
         assert not db.is_empty()
 
     def test_keys(self, tmp_path: Path):
-        db = DB(tmp_path / "database")
+        db = DB(tmp_path / 'database')
 
         for i in range(10):
-            db.db.put(str(i).encode("utf-8"), f"data {i}!".encode("utf-8"))
+            db.db.put(str(i).encode('utf-8'), f'data {i}!'.encode('utf-8'))
 
-        assert list(db.keys()) == [str(i).encode("utf-8") for i in range(10)]
+        assert list(db.keys()) == [str(i).encode('utf-8') for i in range(10)]
 
     def test_values(self, tmp_path: Path):
-        db = DB(tmp_path / "database")
+        db = DB(tmp_path / 'database')
 
         for i in range(10):
-            db.db.put(str(i).encode("utf-8"), f"data {i}!".encode("utf-8"))
+            db.db.put(str(i).encode('utf-8'), f'data {i}!'.encode('utf-8'))
 
-        assert list(db.values()) == [f"data {i}!".encode("utf-8") for i in range(10)]
+        assert list(db.values()) == [f'data {i}!'.encode('utf-8') for i in range(10)]
 
     def test_items(self, tmp_path: Path):
-        db = DB(tmp_path / "database")
+        db = DB(tmp_path / 'database')
 
         for i in range(10):
-            db.db.put(str(i).encode("utf-8"), f"data {i}!".encode("utf-8"))
+            db.db.put(str(i).encode('utf-8'), f'data {i}!'.encode('utf-8'))
 
         assert list(db.items()) == [
-            (str(i).encode("utf-8"), f"data {i}!".encode("utf-8")) for i in range(10)
+            (str(i).encode('utf-8'), f'data {i}!'.encode('utf-8')) for i in range(10)
         ]
 
     def test_size(self, tmp_path: Path):
-        db = DB(tmp_path / "database")
+        db = DB(tmp_path / 'database')
 
         for i in range(10):
-            db.db.put(str(i).encode("utf-8"), f"data {i}!".encode("utf-8"))
+            db.db.put(str(i).encode('utf-8'), f'data {i}!'.encode('utf-8'))
 
         assert db.size() == 10
 
     def test_clear(self, tmp_path: Path):
-        db = DB(tmp_path / "database")
+        db = DB(tmp_path / 'database')
 
         for i in range(10):
-            db.db.put(str(i).encode("utf-8"), f"data {i}!".encode("utf-8"))
+            db.db.put(str(i).encode('utf-8'), f'data {i}!'.encode('utf-8'))
 
         assert db.size() == 10
         db.clear()
         assert db.size() == 0
 
     def test_close(self, tmp_path: Path):
-        db = DB(tmp_path / "database")
+        db = DB(tmp_path / 'database')
         assert not db.db.closed
         db.close()
         assert db.db.closed
@@ -92,13 +91,13 @@ class TestDB:
 class TestStore:
     def test_invalid_id(self, store: Store):
         with pytest.raises(InvalidRecordID):
-            store.put([SourceRecord(f"record-{SPLITTER}-1", {"a": "b"}, "test")])
+            store.put([SourceRecord(f'record-{SPLITTER}-1', {'a': 'b'}, 'test')])
 
     def test_iter_and_put_many(self, store: Store):
         assert not list(store.iter())
 
         records = [
-            SourceRecord(i, {"a": "banana"}, "test")
+            SourceRecord(i, {'a': 'banana'}, 'test')
             for i in sorted(map(str, range(5000)))
         ]
 
@@ -115,34 +114,34 @@ class TestStore:
         assert list(store.iter()) == records
 
     def test_embargoes(self, store: Store):
-        with freeze_time("2020-01-01"):
+        with freeze_time('2020-01-01'):
             # check is_embargoed works when no data exists
-            assert not store.is_embargoed("e-1", now())
+            assert not store.is_embargoed('e-1', now())
 
             first_type = SourceRecord(
-                "e-1", {"a": "banana", "NhmSecEmbargoDate": "2020-05-01"}, "test"
+                'e-1', {'a': 'banana', 'NhmSecEmbargoDate': '2020-05-01'}, 'test'
             )
             assert store.put([first_type]).embargoed == 1
             assert store.get_record(first_type.id) is None
             assert store.is_embargoed(first_type.id, now())
 
             second_type = SourceRecord(
-                "e-2",
-                {"a": "banana", "NhmSecEmbargoExtensionDate": "2020-05-01"},
-                "test",
+                'e-2',
+                {'a': 'banana', 'NhmSecEmbargoExtensionDate': '2020-05-01'},
+                'test',
             )
             assert store.put([second_type]).embargoed == 1
             assert store.get_record(second_type.id) is None
             assert store.is_embargoed(second_type.id, now())
 
             both_type = SourceRecord(
-                "e-3",
+                'e-3',
                 {
-                    "a": "banana",
-                    "NhmSecEmbargoDate": "2019-12-01",
-                    "NhmSecEmbargoExtensionDate": "2020-05-01",
+                    'a': 'banana',
+                    'NhmSecEmbargoDate': '2019-12-01',
+                    'NhmSecEmbargoExtensionDate': '2020-05-01',
                 },
-                "test",
+                'test',
             )
             assert store.put([both_type]).embargoed == 1
             assert store.get_record(both_type.id) is None
@@ -150,37 +149,37 @@ class TestStore:
 
             # I assume this shouldn't happen, but anything's possible
             both_type_reversed = SourceRecord(
-                "e-4",
+                'e-4',
                 {
-                    "a": "banana",
-                    "NhmSecEmbargoDate": "2020-05-01",
-                    "NhmSecEmbargoExtensionDate": "2019-12-01",
+                    'a': 'banana',
+                    'NhmSecEmbargoDate': '2020-05-01',
+                    'NhmSecEmbargoExtensionDate': '2019-12-01',
                 },
-                "test",
+                'test',
             )
             assert store.put([both_type_reversed]).embargoed == 1
             assert store.get_record(both_type_reversed.id) is None
             assert store.is_embargoed(both_type_reversed.id, now())
 
             expired_embargo = SourceRecord(
-                "e-5",
+                'e-5',
                 {
-                    "a": "banana",
-                    "NhmSecEmbargoDate": "2019-11-01",
-                    "NhmSecEmbargoExtensionDate": "2019-12-01",
+                    'a': 'banana',
+                    'NhmSecEmbargoDate': '2019-11-01',
+                    'NhmSecEmbargoExtensionDate': '2019-12-01',
                 },
-                "test",
+                'test',
             )
             assert store.put([expired_embargo]).embargoed == 0
             assert store.get_record(expired_embargo.id) == expired_embargo
             assert not store.is_embargoed(expired_embargo.id, now())
 
-            assert list(store.iter_embargoed_ids()) == ["e-1", "e-2", "e-3", "e-4"]
+            assert list(store.iter_embargoed_ids()) == ['e-1', 'e-2', 'e-3', 'e-4']
             assert list(store.iter_embargoed_ids(timestamp=now())) == [
-                "e-1",
-                "e-2",
-                "e-3",
-                "e-4",
+                'e-1',
+                'e-2',
+                'e-3',
+                'e-4',
             ]
             assert not list(
                 store.iter_embargoed_ids(timestamp=to_timestamp(datetime(2020, 6, 1)))
@@ -192,7 +191,7 @@ class TestStore:
         assert second_type in released
         assert both_type in released
         assert both_type_reversed in released
-        assert list(store.get_records(["e-1", "e-2", "e-3", "e-4"])) == [
+        assert list(store.get_records(['e-1', 'e-2', 'e-3', 'e-4'])) == [
             first_type,
             second_type,
             both_type,
@@ -200,12 +199,12 @@ class TestStore:
         ]
 
     def test_redact(self, store: Store):
-        record = SourceRecord("r-1", {"a": "Paru smells! :O"}, "test")
+        record = SourceRecord('r-1', {'a': 'Paru smells! :O'}, 'test')
         assert store.put([record]).upserted == 1
         assert store.get_record(record.id) == record
         assert store.get_redaction_id(record.id) is None
 
-        redaction_id = "truly-horrible-content"
+        redaction_id = 'truly-horrible-content'
         assert store.redact([record.id], redaction_id) == 1
         assert store.is_redacted(record.id)
         assert store.get_record(record.id) is None
@@ -222,21 +221,21 @@ class TestStore:
         assert store.get_record(record.id) is None
 
     def test_get_record(self, store: Store):
-        records = [SourceRecord(str(i), {"a": "banana"}, "test") for i in range(40)]
+        records = [SourceRecord(str(i), {'a': 'banana'}, 'test') for i in range(40)]
 
         assert store.put(records).upserted == 40
 
-        assert store.get_record("41") is None
-        assert store.get_record("23") == records[23]
+        assert store.get_record('41') is None
+        assert store.get_record('23') == records[23]
 
         # delete a record
-        to_delete = SourceRecord("4", {}, "test-delete")
+        to_delete = SourceRecord('4', {}, 'test-delete')
         assert store.put([to_delete]).deleted == 1
-        assert store.get_record("4") is None
-        assert store.get_record("4", return_deleted=True) == to_delete
+        assert store.get_record('4') is None
+        assert store.get_record('4', return_deleted=True) == to_delete
 
     def test_get_records(self, store: Store):
-        records = [SourceRecord(str(i), {"a": "banana"}, "test") for i in range(40)]
+        records = [SourceRecord(str(i), {'a': 'banana'}, 'test') for i in range(40)]
 
         store.put(records)
 
@@ -253,12 +252,12 @@ class TestStore:
         ]
 
         # let's delete a record
-        to_delete = SourceRecord("3", {}, "test_delete")
+        to_delete = SourceRecord('3', {}, 'test_delete')
         store.put([to_delete])
-        assert list(store.get_records(["3", "5"], yield_deleted=False)) == [
+        assert list(store.get_records(['3', '5'], yield_deleted=False)) == [
             records[5],
         ]
-        assert list(store.get_records(["3", "5"], yield_deleted=True)) == [
+        assert list(store.get_records(['3', '5'], yield_deleted=True)) == [
             to_delete,
             records[5],
         ]
@@ -280,7 +279,7 @@ class TestStore:
         # part of a day!).
 
         # create a bunch of records and add them to the database
-        records = [SourceRecord(str(i), {"a": "banana"}, "test") for i in range(40)]
+        records = [SourceRecord(str(i), {'a': 'banana'}, 'test') for i in range(40)]
         store.put(records)
 
         # now request the first 10 ids but only read out the first 5 records
@@ -293,12 +292,12 @@ class TestStore:
                 break
 
         # now get record 35 and check the id is correct
-        just_35 = store.get_record("35")
-        assert just_35.id == "35"
+        just_35 = store.get_record('35')
+        assert just_35.id == '35'
         # now read record 38 using get_records and check the id is correct
-        just_38 = list(store.get_records(["38"]))
+        just_38 = list(store.get_records(['38']))
         assert len(just_38) == 1
-        assert just_38[0].id == "38"
+        assert just_38[0].id == '38'
 
     def test_get_unpacker_unpacks_list_like_objects_as_tuples(self, store: Store):
         # goes in a list
@@ -311,122 +310,122 @@ class TestStore:
     def test_has(self, store: Store):
         store.put(
             [
-                SourceRecord("1", {"a": "4"}, "test"),
-                SourceRecord("43", {"a": "f"}, "test"),
+                SourceRecord('1', {'a': '4'}, 'test'),
+                SourceRecord('43', {'a': 'f'}, 'test'),
             ]
         )
-        assert store.has("1")
-        assert store.has("43")
-        assert not store.has("4")
+        assert store.has('1')
+        assert store.has('43')
+        assert not store.has('4')
 
     def test_delete(self, store: Store):
         store.put(
             [
-                SourceRecord("1", {"a": "4"}, "test"),
-                SourceRecord("43", {"a": "f"}, "test"),
-                SourceRecord("600", {"a": "v"}, "test"),
-                SourceRecord("34", {"a": "v"}, "test"),
+                SourceRecord('1', {'a': '4'}, 'test'),
+                SourceRecord('43', {'a': 'f'}, 'test'),
+                SourceRecord('600', {'a': 'v'}, 'test'),
+                SourceRecord('34', {'a': 'v'}, 'test'),
             ]
         )
 
-        deleted = store.delete(["1", "4"], source="testdelete")
+        deleted = store.delete(['1', '4'], source='testdelete')
         assert deleted == 1
-        assert not store.has("1")
-        assert store.has("43")
+        assert not store.has('1')
+        assert store.has('43')
 
-        deleted_second_time = store.delete(["1", "43", "600"], source="testdelete2")
+        deleted_second_time = store.delete(['1', '43', '600'], source='testdelete2')
         assert deleted_second_time == 2
-        assert not store.has("1")
-        assert not store.has("43")
-        assert not store.has("600")
-        assert store.has("34")
+        assert not store.has('1')
+        assert not store.has('43')
+        assert not store.has('600')
+        assert store.has('34')
 
     def test_purge(self, store: Store):
         store.put(
             [
-                SourceRecord("1", {"a": "4"}, "test"),
-                SourceRecord("43", {"a": "f"}, "test"),
-                SourceRecord("600", {"a": "v"}, "test"),
-                SourceRecord("34", {"a": "v"}, "test"),
+                SourceRecord('1', {'a': '4'}, 'test'),
+                SourceRecord('43', {'a': 'f'}, 'test'),
+                SourceRecord('600', {'a': 'v'}, 'test'),
+                SourceRecord('34', {'a': 'v'}, 'test'),
             ]
         )
 
-        purged = store.purge(["1", "4"])
+        purged = store.purge(['1', '4'])
         assert purged == 1
-        assert not store.has("1")
-        assert not store.has("1", allow_deleted=True)
-        assert store.has("43")
+        assert not store.has('1')
+        assert not store.has('1', allow_deleted=True)
+        assert store.has('43')
 
     def test_create_index(self, store: Store):
         records = [
-            SourceRecord("record_01", {"theField": "banana"}, "test"),
-            SourceRecord("record_02", {"theField": "banana"}, "test"),
-            SourceRecord("record_03", {"theField": "orange"}, "test"),
-            SourceRecord("record_04", {"theField": "lemon"}, "test"),
+            SourceRecord('record_01', {'theField': 'banana'}, 'test'),
+            SourceRecord('record_02', {'theField': 'banana'}, 'test'),
+            SourceRecord('record_03', {'theField': 'orange'}, 'test'),
+            SourceRecord('record_04', {'theField': 'lemon'}, 'test'),
         ]
         store.put(records)
-        index = store.create_index("theField")
-        assert list(index.lookup(["banana"])) == ["record_01", "record_02"]
+        index = store.create_index('theField')
+        assert list(index.lookup(['banana'])) == ['record_01', 'record_02']
 
-        store.populate_index("theField", clear_first=True)
-        assert list(index.lookup(["banana"])) == ["record_01", "record_02"]
+        store.populate_index('theField', clear_first=True)
+        assert list(index.lookup(['banana'])) == ['record_01', 'record_02']
 
     def test_size(self, store: Store):
         assert store.size() == 0
-        store.put([SourceRecord("1", {"a": "4"}, "test")])
+        store.put([SourceRecord('1', {'a': '4'}, 'test')])
         assert store.size() == 1
         assert store.size(include_deletes=True) == 1
 
-        store.put([SourceRecord("2", {"a": "7"}, "test")])
+        store.put([SourceRecord('2', {'a': '7'}, 'test')])
         assert store.size() == 2
         assert store.size(include_deletes=True) == 2
 
-        store.put([SourceRecord("1", {}, "test")])
+        store.put([SourceRecord('1', {}, 'test')])
         assert store.size() == 1
         assert store.size(include_deletes=True) == 2
 
 
 class TestIndex:
     def test_update_and_lookup(self, tmp_path: Path):
-        index = Index(tmp_path / "index", "theField")
+        index = Index(tmp_path / 'index', 'theField')
         updates = [
-            SourceRecord("record_01", {"theField": "banana"}, "test"),
-            SourceRecord("record_02", {"theField": "banana"}, "test"),
-            SourceRecord("record_03", {"theField": "orange"}, "test"),
-            SourceRecord("record_04", {"theField": "lemon"}, "test"),
+            SourceRecord('record_01', {'theField': 'banana'}, 'test'),
+            SourceRecord('record_02', {'theField': 'banana'}, 'test'),
+            SourceRecord('record_03', {'theField': 'orange'}, 'test'),
+            SourceRecord('record_04', {'theField': 'lemon'}, 'test'),
         ]
 
         index.update(updates, [])
 
-        assert list(index.lookup(["banana"])) == ["record_01", "record_02"]
-        assert list(index.lookup(["orange"])) == ["record_03"]
-        assert list(index.lookup(["lemon"])) == ["record_04"]
-        assert list(index.lookup(["kiwi"])) == []
+        assert list(index.lookup(['banana'])) == ['record_01', 'record_02']
+        assert list(index.lookup(['orange'])) == ['record_03']
+        assert list(index.lookup(['lemon'])) == ['record_04']
+        assert list(index.lookup(['kiwi'])) == []
 
     def test_deletes(self, tmp_path: Path):
-        index = Index(tmp_path / "index", "theField")
+        index = Index(tmp_path / 'index', 'theField')
 
         records = [
-            SourceRecord("record_01", {"theField": "banana"}, "test"),
-            SourceRecord("record_02", {"theField": "banana"}, "test"),
-            SourceRecord("record_03", {"theField": "kiwi"}, "test"),
-            SourceRecord("record_04", {"theField": "banana"}, "test"),
+            SourceRecord('record_01', {'theField': 'banana'}, 'test'),
+            SourceRecord('record_02', {'theField': 'banana'}, 'test'),
+            SourceRecord('record_03', {'theField': 'kiwi'}, 'test'),
+            SourceRecord('record_04', {'theField': 'banana'}, 'test'),
         ]
 
         index.update(records, [])
-        assert list(index.lookup(["banana"])) == ["record_01", "record_02", "record_04"]
-        assert list(index.lookup(["kiwi"])) == ["record_03"]
+        assert list(index.lookup(['banana'])) == ['record_01', 'record_02', 'record_04']
+        assert list(index.lookup(['kiwi'])) == ['record_03']
 
         # delete records 1 and 4
-        deletes = [SourceRecord(f"record_0{i}", {}, "test") for i in [1, 4]]
+        deletes = [SourceRecord(f'record_0{i}', {}, 'test') for i in [1, 4]]
         index.update([], deletes)
-        assert list(index.lookup(["banana"])) == ["record_02"]
-        assert list(index.lookup(["kiwi"])) == ["record_03"]
+        assert list(index.lookup(['banana'])) == ['record_02']
+        assert list(index.lookup(['kiwi'])) == ['record_03']
 
 
 @pytest.fixture
 def queue(tmp_path: Path) -> ChangeQueue:
-    cq = ChangeQueue(tmp_path / "cq")
+    cq = ChangeQueue(tmp_path / 'cq')
     yield cq
     cq.close()
 
@@ -439,7 +438,7 @@ class TestChangeQueue:
 
     def test_put_many(self, queue: ChangeQueue):
         records = [
-            SourceRecord(i, {"a": "x"}, "test") for i in sorted(map(str, range(50)))
+            SourceRecord(i, {'a': 'x'}, 'test') for i in sorted(map(str, range(50)))
         ]
         queue.put_many(records)
         assert list(queue.iter()) == [record.id for record in records]
@@ -458,7 +457,7 @@ class TestChangeQueue:
         assert queue.size() == len(crossover)
 
     def test_is_queued(self, queue: ChangeQueue):
-        queue.put_many_ids(["record_01", "record_02"])
-        assert queue.is_queued("record_01")
-        assert queue.is_queued("record_02")
-        assert not queue.is_queued("record_05")
+        queue.put_many_ids(['record_01', 'record_02'])
+        assert queue.is_queued('record_01')
+        assert queue.is_queued('record_02')
+        assert not queue.is_queued('record_05')

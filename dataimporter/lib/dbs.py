@@ -1,8 +1,8 @@
 import shutil
-from contextlib import contextmanager, ExitStack
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional, Tuple, List, Dict
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import msgpack
 import plyvel
@@ -190,7 +190,7 @@ def iter_source_records(
     """
     unpacker = make_unpacker()
     for batch in partition(raw_data_stream, 1000):
-        unpacker.feed(b"".join(batch))
+        unpacker.feed(b''.join(batch))
         records = (SourceRecord(*params) for params in unpacker)
         if yield_deleted:
             yield from records
@@ -200,8 +200,8 @@ def iter_source_records(
 
 
 # this character is in DB keys in a couple of places and cannot be used in record IDs
-SPLITTER = "^"
-SPLITTER_BYTES = SPLITTER.encode("utf-8")
+SPLITTER = '^'
+SPLITTER_BYTES = SPLITTER.encode('utf-8')
 
 
 class InvalidRecordID(Exception):
@@ -221,10 +221,10 @@ class Store:
 
     def __init__(self, path: Path):
         self.root = path
-        self.data = DB(self.root / "data")
-        self.embargoes = DB(self.root / "embargoes")
-        self.redactions = DB(self.root / "redactions")
-        self.index_root = self.root / "indexes"
+        self.data = DB(self.root / 'data')
+        self.embargoes = DB(self.root / 'embargoes')
+        self.redactions = DB(self.root / 'redactions')
+        self.index_root = self.root / 'indexes'
         self.indexes: Dict[str, Index] = {}
         self._redaction_cache = self.get_all_redacted_ids()
 
@@ -245,7 +245,7 @@ class Store:
         :param return_deleted: whether to return deleted records or None instead
         :return: a SourceRecord object with the given ID or None
         """
-        packed_record_data = self.data.get(record_id.encode("utf-8"))
+        packed_record_data = self.data.get(record_id.encode('utf-8'))
         if packed_record_data is None:
             return None
         unpacker = make_unpacker()
@@ -270,7 +270,7 @@ class Store:
         :param yield_deleted: whether to yield deleted records or not
         :return: yields SourceRecord objects
         """
-        data = (self.data.get(record_id.encode("utf-8")) for record_id in record_ids)
+        data = (self.data.get(record_id.encode('utf-8')) for record_id in record_ids)
         yield from iter_source_records(filter(None, data), yield_deleted)
 
     def iter(self, yield_deleted: bool = False) -> Iterable[SourceRecord]:
@@ -333,7 +333,7 @@ class Store:
                     redacted += 1
                     continue
 
-                record_id = record.id.encode("utf-8")
+                record_id = record.id.encode('utf-8')
                 data = pack((record.id, record.data, record.source))
 
                 if record.is_deleted:
@@ -352,7 +352,7 @@ class Store:
                     # put a deleted version of the record into data DB
                     dwb.put(
                         record_id,
-                        pack((record.id, {}, f"{record.source} [embargoed]")),
+                        pack((record.id, {}, f'{record.source} [embargoed]')),
                     )
                     # indicate to the indexes that this record has been deleted
                     index_deletes.append(record)
@@ -412,7 +412,7 @@ class Store:
         purged = 0
 
         # create an iterable which converts each record ID into bytes
-        raw_ids = (record_id.encode("utf-8") for record_id in record_ids)
+        raw_ids = (record_id.encode('utf-8') for record_id in record_ids)
         for batch in partition(raw_ids, 1000):
             # purge from the data DB and the embargo DB
             for db in (self.data, self.embargoes):
@@ -436,7 +436,7 @@ class Store:
         purged = self.purge(record_ids)
         with self.redactions.get_writer() as wb:
             for record_id in record_ids:
-                wb.put(record_id.encode("utf-8"), redaction_id.encode("utf-8"))
+                wb.put(record_id.encode('utf-8'), redaction_id.encode('utf-8'))
         # update the redaction cache
         self._redaction_cache = self.get_all_redacted_ids()
         return purged
@@ -458,10 +458,10 @@ class Store:
         :param record_id: the record ID
         :return: None if the record is not redacted, otherwise, returns the redaction ID
         """
-        redaction_id = self.redactions.get(record_id.encode("utf-8"))
+        redaction_id = self.redactions.get(record_id.encode('utf-8'))
         if redaction_id is None:
             return None
-        return redaction_id.decode("utf-8")
+        return redaction_id.decode('utf-8')
 
     def get_all_redacted_ids(self) -> Dict[str, str]:
         """
@@ -470,11 +470,11 @@ class Store:
         :return: a dict of record IDs -> retraction IDs
         """
         return {
-            key.decode("utf-8"): value.decode("utf-8")
+            key.decode('utf-8'): value.decode('utf-8')
             for key, value in self.redactions.items()
         }
 
-    def create_index(self, field: str) -> "Index":
+    def create_index(self, field: str) -> 'Index':
         """
         Creates a new index on the given field. If no existing data is found and there
         is data in this database, the index will also be populated and therefore this
@@ -529,7 +529,7 @@ class Store:
         )
         # deal with 1000 records at a time
         for batch in partition(released, 1000):
-            self.embargoes.purge(record.id.encode("utf-8") for record in batch)
+            self.embargoes.purge(record.id.encode('utf-8') for record in batch)
             self.put(batch)
             yield from batch
 
@@ -546,7 +546,7 @@ class Store:
         if self.has(record_id):
             # this is an available record, can't be embargoed
             return False
-        packed_record_data = self.embargoes.get(record_id.encode("utf-8"))
+        packed_record_data = self.embargoes.get(record_id.encode('utf-8'))
         if packed_record_data is None:
             # the record is also not embargoed, we just don't know anything about it
             return False
@@ -560,14 +560,14 @@ class Store:
         Yields the IDs in this Store that are embargoed.
 
         :param timestamp: the threshold to check the embargoes against. If None, all
-                          record IDs currently in the embargo database are yielded
+            record IDs currently in the embargo database are yielded
         :return: yields record IDs
         """
         if timestamp is None:
-            yield from (raw_id.decode("utf-8") for raw_id in self.embargoes.keys())
+            yield from (raw_id.decode('utf-8') for raw_id in self.embargoes.keys())
         else:
             for raw_id in self.embargoes.keys():
-                record_id = raw_id.decode("utf-8")
+                record_id = raw_id.decode('utf-8')
                 if self.is_embargoed(record_id, timestamp):
                     yield record_id
 
@@ -627,14 +627,14 @@ class Index:
             with self.db.get_writer() as wb:
                 for record in updates:
                     for value in record.iter_all_values(self.field, clean=True):
-                        wb.put(f"{value}{SPLITTER}{record.id}".encode("utf-8"), b"")
+                        wb.put(f'{value}{SPLITTER}{record.id}'.encode('utf-8'), b'')
 
         # todo: find a way to make this faster, maybe in memory cache of the reverse
         #       lookups? Or just keep another DB for the reverse lookup?
         if deletes:
             # because we optimise for lookups with the foreign values, this is a bit
             # slow as we have to do a full scan of the whole keyspace
-            keys_to_delete = {record.id.encode("utf-8") for record in deletes}
+            keys_to_delete = {record.id.encode('utf-8') for record in deletes}
             self.db.purge(
                 key
                 for key in self.db.keys()
@@ -649,10 +649,10 @@ class Index:
 
     def lookup(self, values: Iterable[str]) -> Iterable[str]:
         for value in values:
-            prefix = f"{value}{SPLITTER}".encode("utf-8")
+            prefix = f'{value}{SPLITTER}'.encode('utf-8')
             prefix_length = len(prefix)
             for raw_key in self.db.keys(prefix=prefix):
-                yield raw_key[prefix_length:].decode("utf-8")
+                yield raw_key[prefix_length:].decode('utf-8')
 
 
 class ChangeQueue:
@@ -686,7 +686,7 @@ class ChangeQueue:
 
         :param record_ids: the record IDs that have changed
         """
-        self.db.put((record_id.encode("utf-8"), b"") for record_id in record_ids)
+        self.db.put((record_id.encode('utf-8'), b'') for record_id in record_ids)
 
     def iter(self) -> Iterable[str]:
         """
@@ -694,7 +694,7 @@ class ChangeQueue:
 
         :return: yields the changed int IDs from the queue
         """
-        yield from (key.decode("utf-8") for key in self.db.keys())
+        yield from (key.decode('utf-8') for key in self.db.keys())
 
     def is_queued(self, record_id: str) -> bool:
         """
@@ -703,4 +703,4 @@ class ChangeQueue:
         :param record_id: the record ID to check
         :return: True if the record ID is already in the queue, False if not
         """
-        return record_id.encode("utf-8") in self.db
+        return record_id.encode('utf-8') in self.db

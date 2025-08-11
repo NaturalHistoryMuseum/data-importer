@@ -2,29 +2,29 @@ from pathlib import Path
 
 from dataimporter.emu.views.image import ImageView
 from dataimporter.emu.views.utils import (
-    NO_PUBLISH,
-    DISALLOWED_STATUSES,
     DEPARTMENT_COLLECTION_CODES,
-    INVALID_STATUS,
+    DISALLOWED_STATUSES,
     INVALID_DEPARTMENT,
-    INVALID_TYPE,
-    is_web_published,
-    is_valid_guid,
     INVALID_GUID,
-    combine_text,
-    add_associated_media,
+    INVALID_STATUS,
+    INVALID_TYPE,
     MEDIA_ID_REF_FIELD,
+    NO_PUBLISH,
+    add_associated_media,
+    combine_text,
+    emu_date,
+    is_valid_guid,
+    is_web_published,
 )
-from dataimporter.emu.views.utils import emu_date
 from dataimporter.lib.dbs import Store
 from dataimporter.lib.model import SourceRecord
 from dataimporter.lib.view import (
-    View,
-    FilterResult,
-    SUCCESS_RESULT,
-    strip_empty,
-    make_link,
     ID,
+    SUCCESS_RESULT,
+    FilterResult,
+    View,
+    make_link,
+    strip_empty,
 )
 
 
@@ -49,7 +49,7 @@ class ArtefactView(View):
         :param record: the record to filter
         :return: a FilterResult object
         """
-        if record.get_first_value("ColRecordType") != "Artefact":
+        if record.get_first_value('ColRecordType') != 'Artefact':
             return INVALID_TYPE
 
         if not is_web_published(record):
@@ -58,10 +58,10 @@ class ArtefactView(View):
         if not is_valid_guid(record):
             return INVALID_GUID
 
-        if record.get_first_value("SecRecordStatus") in DISALLOWED_STATUSES:
+        if record.get_first_value('SecRecordStatus') in DISALLOWED_STATUSES:
             return INVALID_STATUS
 
-        if record.get_first_value("ColDepartment") not in DEPARTMENT_COLLECTION_CODES:
+        if record.get_first_value('ColDepartment') not in DEPARTMENT_COLLECTION_CODES:
             return INVALID_DEPARTMENT
 
         return SUCCESS_RESULT
@@ -74,27 +74,27 @@ class ArtefactView(View):
 
         :param record: the record to project
         :return: a dict containing the data for this record that should be displayed on
-                 the Data Portal
+            the Data Portal
         """
         # cache this for perf
         get_first = record.get_first_value
 
         # create the core data
         data = {
-            "_id": record.id,
-            "created": emu_date(
-                get_first("AdmDateInserted"), get_first("AdmTimeInserted")
+            '_id': record.id,
+            'created': emu_date(
+                get_first('AdmDateInserted'), get_first('AdmTimeInserted')
             ),
-            "modified": emu_date(
-                get_first("AdmDateModified"), get_first("AdmTimeModified")
+            'modified': emu_date(
+                get_first('AdmDateModified'), get_first('AdmTimeModified')
             ),
-            "artefactName": get_first("PalArtObjectName"),
+            'artefactName': get_first('PalArtObjectName'),
             # seems to not be populated in any of the current artefact records
-            "artefactType": get_first("PalArtType"),
-            "artefactDescription": combine_text(
-                record.iter_all_values("PalArtDescription")
+            'artefactType': get_first('PalArtType'),
+            'artefactDescription': combine_text(
+                record.iter_all_values('PalArtDescription')
             ),
-            "scientificName": get_first("IdeCurrentScientificName"),
+            'scientificName': get_first('IdeCurrentScientificName'),
         }
 
         # add multimedia links

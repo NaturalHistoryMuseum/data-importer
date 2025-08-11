@@ -4,55 +4,55 @@ from pathlib import Path
 from typing import Optional
 
 from dataimporter.emu.views.utils import (
-    NO_PUBLISH,
-    DISALLOWED_STATUSES,
     DEPARTMENT_COLLECTION_CODES,
-    INVALID_STATUS,
+    DISALLOWED_STATUSES,
     INVALID_DEPARTMENT,
-    INVALID_TYPE,
-    is_web_published,
-    is_valid_guid,
     INVALID_GUID,
+    INVALID_STATUS,
     INVALID_SUB_DEPARTMENT,
+    INVALID_TYPE,
+    NO_PUBLISH,
+    emu_date,
+    is_valid_guid,
+    is_web_published,
 )
-from dataimporter.emu.views.utils import emu_date
 from dataimporter.lib.dbs import Store
 from dataimporter.lib.model import SourceRecord
 from dataimporter.lib.view import (
-    View,
-    FilterResult,
-    SUCCESS_RESULT,
-    strip_empty,
-    make_link,
     ID,
+    SUCCESS_RESULT,
+    FilterResult,
+    View,
+    make_link,
+    strip_empty,
 )
 
-INVALID_PROJECT = FilterResult(False, "Invalid project")
-ON_LOAN = FilterResult(False, "On loan")
+INVALID_PROJECT = FilterResult(False, 'Invalid project')
+ON_LOAN = FilterResult(False, 'On loan')
 
 # a regex to check if the current location summary string indicates that the item is on
 # loan. This is pretty broad currently as it just looks for a use of the word "loan" but
 # better to be overstrict than loosey goosey
-on_loan_regex = re.compile(r"\bloan\b", re.I)
+on_loan_regex = re.compile(r'\bloan\b', re.I)
 
 # the EMu field on the prep records which links to the specimen voucher record
-SPECIMEN_ID_REF_FIELD = "EntPreSpecimenRef"
+SPECIMEN_ID_REF_FIELD = 'EntPreSpecimenRef'
 # the EMu field on mammal part prep records which links to the specimen voucher
 # record
-PARENT_SPECIMEN_ID_REF_FIELD = "RegRegistrationParentRef"
+PARENT_SPECIMEN_ID_REF_FIELD = 'RegRegistrationParentRef'
 
 # the Portal fields which are copied from the specimen to the prep data dict
 MAPPED_SPECIMEN_FIELDS = [
-    "associatedMedia",
-    "associatedMediaCount",
-    "barcode",
-    "scientificName",
-    "order",
-    "identifiedBy",
+    'associatedMedia',
+    'associatedMediaCount',
+    'barcode',
+    'scientificName',
+    'order',
+    'identifiedBy',
     # this is a ColSite substitute which uses sumPreciseLocation
-    "locality",
-    "decimalLatitude",
-    "decimalLongitude",
+    'locality',
+    'decimalLatitude',
+    'decimalLongitude',
 ]
 
 
@@ -65,11 +65,11 @@ def is_on_loan(record: SourceRecord) -> bool:
     """
     # this field contains the IRN of the current location and 3250522 is the IRN of the
     # "on loan" location
-    if record.get_first_value("LocPermanentLocationRef") == "3250522":
+    if record.get_first_value('LocPermanentLocationRef') == '3250522':
         return True
     # check if the current location summary matches the on loan regex
     if on_loan_regex.search(
-        record.get_first_value("LocCurrentSummaryData", default="")
+        record.get_first_value('LocCurrentSummaryData', default='')
     ):
         return True
     return False
@@ -110,19 +110,19 @@ class PreparationView(View):
         :param record: the record to filter
         :return: a FilterResult object
         """
-        record_type = record.get_first_value("ColRecordType", lower=True)
-        sub_department = record.get_first_value("ColSubDepartment", lower=True)
+        record_type = record.get_first_value('ColRecordType', lower=True)
+        sub_department = record.get_first_value('ColSubDepartment', lower=True)
 
-        if record_type == "preparation":
+        if record_type == 'preparation':
             # if the record is a prep, it must be a molecular collections prep
-            if sub_department != "molecular collections":
+            if sub_department != 'molecular collections':
                 return INVALID_SUB_DEPARTMENT
-        elif record_type == "mammal group part":
+        elif record_type == 'mammal group part':
             # if the record is a mammal group part, it must be a mammals record and be
             # a DToL project record
-            if sub_department != "ls mammals":
+            if sub_department != 'ls mammals':
                 return INVALID_SUB_DEPARTMENT
-            if record.get_first_value("NhmSecProjectName") != "Darwin Tree of Life":
+            if record.get_first_value('NhmSecProjectName') != 'Darwin Tree of Life':
                 return INVALID_PROJECT
         else:
             # any other type is invalid
@@ -134,10 +134,10 @@ class PreparationView(View):
         if not is_valid_guid(record):
             return INVALID_GUID
 
-        if record.get_first_value("SecRecordStatus") in DISALLOWED_STATUSES:
+        if record.get_first_value('SecRecordStatus') in DISALLOWED_STATUSES:
             return INVALID_STATUS
 
-        if record.get_first_value("ColDepartment") not in DEPARTMENT_COLLECTION_CODES:
+        if record.get_first_value('ColDepartment') not in DEPARTMENT_COLLECTION_CODES:
             return INVALID_DEPARTMENT
 
         if is_on_loan(record):
@@ -153,31 +153,31 @@ class PreparationView(View):
 
         :param record: the record to project
         :return: a dict containing the data for this record that should be displayed on
-                 the Data Portal
+            the Data Portal
         """
         # cache these for perf
         ga = record.get_all_values
         gf = record.get_first_value
 
         data = {
-            "_id": record.id,
-            "project": ga("NhmSecProjectName"),
-            "identifier": gf("EntPreNumber"),
-            "preparationType": gf("EntPrePreparationKind", "PreType"),
-            "preservation": gf("EntPreStorageMedium", "CatPreservative"),
-            "preparationContents": gf("EntPreContents", "PrtType", "PreBodyPart"),
-            "preparationProcess": get_preparation_process(record),
-            "preparationDate": gf("EntPreDate"),
-            "purpose": get_purpose(record),
-            "occurrenceID": gf("AdmGUIDPreferredValue"),
-            "created": emu_date(gf("AdmDateInserted"), gf("AdmTimeInserted")),
-            "modified": emu_date(gf("AdmDateModified"), gf("AdmTimeModified")),
+            '_id': record.id,
+            'project': ga('NhmSecProjectName'),
+            'identifier': gf('EntPreNumber'),
+            'preparationType': gf('EntPrePreparationKind', 'PreType'),
+            'preservation': gf('EntPreStorageMedium', 'CatPreservative'),
+            'preparationContents': gf('EntPreContents', 'PrtType', 'PreBodyPart'),
+            'preparationProcess': get_preparation_process(record),
+            'preparationDate': gf('EntPreDate'),
+            'purpose': get_purpose(record),
+            'occurrenceID': gf('AdmGUIDPreferredValue'),
+            'created': emu_date(gf('AdmDateInserted'), gf('AdmTimeInserted')),
+            'modified': emu_date(gf('AdmDateModified'), gf('AdmTimeModified')),
         }
 
         # add specimen data if available
         voucher_data = self.get_voucher_data(record)
         if voucher_data:
-            data["associatedOccurrences"] = f"Voucher: {voucher_data['occurrenceID']}"
+            data['associatedOccurrences'] = f'Voucher: {voucher_data["occurrenceID"]}'
             data.update(
                 (field, value)
                 for field in MAPPED_SPECIMEN_FIELDS
@@ -207,8 +207,8 @@ class PreparationView(View):
 
             refs = [self.voucher_spec_link.owner_ref, self.voucher_prep_link.owner_ref]
             if (
-                record.get_first_value("ColRecordType", lower=True)
-                == "mammal group part"
+                record.get_first_value('ColRecordType', lower=True)
+                == 'mammal group part'
             ):
                 # adding this last means it will ultimately be checked first cause stack
                 refs.append(self.voucher_parent_link.owner_ref)
@@ -240,11 +240,11 @@ def get_preparation_process(record: SourceRecord) -> Optional[str]:
 
     :return: the string value, or None if there is no EntPrePreparationMethod value
     """
-    process = record.get_first_value("EntPrePreparationMethod")
+    process = record.get_first_value('EntPrePreparationMethod')
     if not process:
         return None
     else:
-        return re.sub(r"^killing agent:?\s*", "", process, count=1, flags=re.I)
+        return re.sub(r'^killing agent:?\s*', '', process, count=1, flags=re.I)
 
 
 def get_purpose(record: SourceRecord) -> Optional[str]:
@@ -257,10 +257,10 @@ def get_purpose(record: SourceRecord) -> Optional[str]:
     :return: the purpose value or None if it was not found
     """
     # find all the note text fields
-    note_fields = [key for key in record.data.keys() if key.startswith("NteText")]
+    note_fields = [key for key in record.data.keys() if key.startswith('NteText')]
     if note_fields:
         for value in record.iter_all_values(*note_fields):
-            if value.lower().startswith("purpose of specimen:"):
+            if value.lower().startswith('purpose of specimen:'):
                 # "purpose of specimen:" is 20 chars long
                 return value[20:].strip()
 

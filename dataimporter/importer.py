@@ -35,29 +35,29 @@ from dataimporter.lib.view import View
 
 class StoreNotFound(Exception):
     def __init__(self, name: str):
-        super().__init__(f"Store {name} not found")
+        super().__init__(f'Store {name} not found')
         self.name = name
 
 
 class ViewNotFound(Exception):
     def __init__(self, name: str):
-        super().__init__(f"View {name} not found")
+        super().__init__(f'View {name} not found')
         self.name = name
 
 
 class ViewIsNotPublished(Exception):
     def __init__(self, view: View):
-        super().__init__(f"View {view.name} does not have a Splitgill database")
+        super().__init__(f'View {view.name} does not have a Splitgill database')
         self.view = view.name
 
 
 class ImporterAlreadyRunning(Exception):
     def __init__(self):
-        super().__init__("A data importer process is already running")
+        super().__init__('A data importer process is already running')
 
 
 @contextmanager
-def use_importer(config: Config) -> Generator["DataImporter", Any, None]:
+def use_importer(config: Config) -> Generator['DataImporter', Any, None]:
     """
     Creates a new DataImporter instance and yields it. Only one instance of the
     DataImporter class can operate on a given data directory at one time and this
@@ -102,59 +102,59 @@ class DataImporter:
         # make sure the data path exists
         self.config.data_path.mkdir(exist_ok=True)
         # create all the paths for data storage
-        self.stores_path = config.data_path / "stores"
-        self.views_path = config.data_path / "views"
+        self.stores_path = config.data_path / 'stores'
+        self.views_path = config.data_path / 'views'
         # make sure they exist
         self.stores_path.mkdir(exist_ok=True)
         self.views_path.mkdir(exist_ok=True)
 
         # create the stores we need (note not eaudit!)
-        ecatalogue_store = Store(self.stores_path / "ecatalogue")
-        emultimedia_store = Store(self.stores_path / "emultimedia")
-        etaxonomy_store = Store(self.stores_path / "etaxonomy")
-        gbif_store = Store(self.stores_path / "gbif")
+        ecatalogue_store = Store(self.stores_path / 'ecatalogue')
+        emultimedia_store = Store(self.stores_path / 'emultimedia')
+        etaxonomy_store = Store(self.stores_path / 'etaxonomy')
+        gbif_store = Store(self.stores_path / 'gbif')
         self.stores = [ecatalogue_store, emultimedia_store, etaxonomy_store, gbif_store]
 
         # create the views we need
         # mss published name does not have the sg_prefix on the front so that it can
         # be separated from the data portal's resources (it becomes impossible to clash
         # names by creating a resource called "mss")
-        mss_view = MSSView(self.views_path / "mss", emultimedia_store, "mss")
+        mss_view = MSSView(self.views_path / 'mss', emultimedia_store, 'mss')
         image_view = ImageView(
-            self.views_path / "image", emultimedia_store, config.iiif_base_url
+            self.views_path / 'image', emultimedia_store, config.iiif_base_url
         )
-        taxonomy_view = TaxonomyView(self.views_path / "taxonomy", etaxonomy_store)
-        gbif_view = GBIFView(self.views_path / "gbif", gbif_store)
+        taxonomy_view = TaxonomyView(self.views_path / 'taxonomy', etaxonomy_store)
+        gbif_view = GBIFView(self.views_path / 'gbif', gbif_store)
         artefact_view = ArtefactView(
-            self.views_path / "artefact",
+            self.views_path / 'artefact',
             ecatalogue_store,
             image_view,
-            f"{config.sg_prefix}{config.artefact_id}",
+            f'{config.sg_prefix}{config.artefact_id}',
         )
         indexlot_view = IndexLotView(
-            self.views_path / "indexlot",
+            self.views_path / 'indexlot',
             ecatalogue_store,
             image_view,
             taxonomy_view,
-            f"{config.sg_prefix}{config.indexlot_id}",
+            f'{config.sg_prefix}{config.indexlot_id}',
         )
         mammal_part_view = MammalPartView(
-            self.views_path / "mammalpart", ecatalogue_store
+            self.views_path / 'mammalpart', ecatalogue_store
         )
         specimen_view = SpecimenView(
-            self.views_path / "specimen",
+            self.views_path / 'specimen',
             ecatalogue_store,
             image_view,
             taxonomy_view,
             gbif_view,
             mammal_part_view,
-            f"{config.sg_prefix}{config.specimen_id}",
+            f'{config.sg_prefix}{config.specimen_id}',
         )
         prep_view = PreparationView(
-            self.views_path / "preparation",
+            self.views_path / 'preparation',
             ecatalogue_store,
             specimen_view,
-            f"{config.sg_prefix}{config.preparation_id}",
+            f'{config.sg_prefix}{config.preparation_id}',
         )
         self.views = [
             image_view,
@@ -169,7 +169,7 @@ class DataImporter:
         ]
 
         # this is where store the last date we have fully imported from EMu
-        self.emu_status = EMuStatus(config.data_path / "emu_last_date.txt")
+        self.emu_status = EMuStatus(config.data_path / 'emu_last_date.txt')
 
     def get_store(self, name: str) -> Store:
         """
@@ -244,13 +244,13 @@ class DataImporter:
 
         next_day_dump_set = dump_sets[0]
 
-        store_names = {store.name for store in self.stores if store.name != "gbif"}
+        store_names = {store.name for store in self.stores if store.name != 'gbif'}
         for dump in next_day_dump_set.dumps:
             # normal tables are immediately processable, but if the dump is from
             # the eaudit table we need to do some additional work because each
             # audit record refers to a potentially different table from which it
             # is deleting a record
-            if dump.table != "eaudit":
+            if dump.table != 'eaudit':
                 self.queue_changes(dump.read(), dump.table)
             else:
                 # wrap the dump stream in a filter to only allow through records
@@ -261,7 +261,7 @@ class DataImporter:
                 )
                 # queue the changes to each table's database in turn
                 for table, records in groupby(
-                    filtered_dump, key=lambda record: record.data["AudTable"]
+                    filtered_dump, key=lambda record: record.data['AudTable']
                 ):
                     # convert the raw audit records into delete records as we
                     # queue them
@@ -277,11 +277,11 @@ class DataImporter:
         """
         self.queue_changes(
             get_changed_records(
-                self.get_store("gbif"),
+                self.get_store('gbif'),
                 self.config.gbif_username,
                 self.config.gbif_password,
             ),
-            "gbif",
+            'gbif',
         )
 
     def redact_records(
@@ -339,7 +339,7 @@ class DataImporter:
             for record in changed_records
         )
 
-        database.ingest(records, commit=False, modified_field="modified")
+        database.ingest(records, commit=False, modified_field='modified')
         # send the options anyway, even if there's no change to them
         database.update_options(PARSING_OPTIONS, commit=False)
         committed = database.commit()
@@ -381,7 +381,7 @@ class DataImporter:
             max_num_segments=1,
         )
 
-    def __enter__(self) -> "DataImporter":
+    def __enter__(self) -> 'DataImporter':
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -418,8 +418,8 @@ class EMuStatus:
         if not self.path.exists():
             return FIRST_VERSION
 
-        date_as_str = self.path.read_text(encoding="utf-8").strip()
-        return datetime.strptime(date_as_str, "%d-%m-%Y").date()
+        date_as_str = self.path.read_text(encoding='utf-8').strip()
+        return datetime.strptime(date_as_str, '%d-%m-%Y').date()
 
     def update(self, last_queued: date):
         """
@@ -427,8 +427,8 @@ class EMuStatus:
 
         :param last_queued: the date to write
         """
-        date_as_str = last_queued.strftime("%d-%m-%Y")
-        self.path.write_text(date_as_str, encoding="utf-8")
+        date_as_str = last_queued.strftime('%d-%m-%Y')
+        self.path.write_text(date_as_str, encoding='utf-8')
 
     def clear(self):
         """

@@ -5,7 +5,7 @@ from dataimporter.importer import use_importer
 from dataimporter.lib.config import Config
 
 
-@click.group("ext")
+@click.group('ext')
 def ext_group():
     pass
 
@@ -19,13 +19,13 @@ def gbif(config: Config):
     from these GBIF records to their associated specimen records.
     """
     if not config.gbif_username or not config.gbif_password:
-        console.log("[red]gbif_username and gbif_password must be set")
+        console.log('[red]gbif_username and gbif_password must be set')
 
     with use_importer(config) as importer:
-        console.log("Queuing new GBIF changes")
+        console.log('Queuing new GBIF changes')
         importer.queue_gbif_changes()
-        console.log("Updating specimen data in MongoDB")
-        importer.add_to_mongo("specimen")
-        console.log("Syncing specimen changes to Elasticsearch")
-        importer.sync_to_elasticsearch("specimen")
-        console.log("Done")
+        console.log('Updating specimen data in MongoDB')
+        importer.add_to_mongo('specimen')
+        console.log('Syncing specimen changes to Elasticsearch')
+        importer.sync_to_elasticsearch('specimen')
+        console.log('Done')

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Union, Tuple, Iterable, Optional, Dict, Any
+from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
 from splitgill.utils import parse_to_timestamp
 
@@ -58,7 +58,7 @@ class SourceRecord:
 
         :param other: the other object
         :return: True if they're the same, False if not, or NotImplemented if the other
-                 object isn't a SourceRecord
+            object isn't a SourceRecord
         """
         if isinstance(other, SourceRecord):
             return self.id == other.id and self.data == other.data
@@ -73,10 +73,10 @@ class SourceRecord:
         """
         embargo = None
         for value in self.iter_all_values(
-            "NhmSecEmbargoDate", "NhmSecEmbargoExtensionDate"
+            'NhmSecEmbargoDate', 'NhmSecEmbargoExtensionDate'
         ):
             try:
-                date = parse_to_timestamp(value, "%Y-%m-%d")
+                date = parse_to_timestamp(value, '%Y-%m-%d')
                 if embargo is None or date > embargo:
                     embargo = date
             except ValueError:
@@ -169,7 +169,7 @@ class SourceRecord:
         :param fields: the fields to extract a value from
         :param clean: whether to remove empty strings (default: True)
         :param default: the value to return if no values are found for the fields given
-                        (default: None)
+            (default: None)
         :param lower: whether to lowercase the value or not before returning it
         :return: the first value from the given fields, or the default
         """

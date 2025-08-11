@@ -1,17 +1,16 @@
 from dataimporter.emu.views.utils import (
-    NO_PUBLISH,
     DISALLOWED_STATUSES,
-    INVALID_STATUS,
     INVALID_DEPARTMENT,
-    INVALID_TYPE,
-    is_web_published,
+    INVALID_STATUS,
     INVALID_SUB_DEPARTMENT,
+    INVALID_TYPE,
+    NO_PUBLISH,
+    is_web_published,
 )
 from dataimporter.lib.model import SourceRecord
-from dataimporter.lib.view import View, FilterResult, SUCCESS_RESULT, strip_empty
+from dataimporter.lib.view import SUCCESS_RESULT, FilterResult, View, strip_empty
 
-
-MISSING_KIND_OF_OBJECT = FilterResult(False, "Missing CatKindOfObject")
+MISSING_KIND_OF_OBJECT = FilterResult(False, 'Missing CatKindOfObject')
 
 
 class MammalPartView(View):
@@ -30,19 +29,19 @@ class MammalPartView(View):
         if not is_web_published(record):
             return NO_PUBLISH
 
-        if record.get_first_value("ColRecordType", lower=True) != "mammal group part":
+        if record.get_first_value('ColRecordType', lower=True) != 'mammal group part':
             return INVALID_TYPE
 
-        if record.get_first_value("SecRecordStatus") in DISALLOWED_STATUSES:
+        if record.get_first_value('SecRecordStatus') in DISALLOWED_STATUSES:
             return INVALID_STATUS
 
-        if record.get_first_value("ColDepartment", lower=True) != "zoology":
+        if record.get_first_value('ColDepartment', lower=True) != 'zoology':
             return INVALID_DEPARTMENT
 
-        if record.get_first_value("ColSubDepartment", lower=True) != "ls mammals":
+        if record.get_first_value('ColSubDepartment', lower=True) != 'ls mammals':
             return INVALID_SUB_DEPARTMENT
 
-        if "CatKindOfObject" not in record:
+        if 'CatKindOfObject' not in record:
             return MISSING_KIND_OF_OBJECT
 
         return SUCCESS_RESULT
@@ -55,9 +54,9 @@ class MammalPartView(View):
 
         :param record: the record to project
         :return: a dict containing the data for this record that should be displayed on
-                 the Data Portal
+            the Data Portal
         """
         # todo: fields names
         return {
-            "part": record.get_first_value("CatKindOfObject", "PrtType"),
+            'part': record.get_first_value('CatKindOfObject', 'PrtType'),
         }

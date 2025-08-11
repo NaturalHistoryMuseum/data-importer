@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+title: NHM Data Importer
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - name: Natural History Museum
+    city: London
+    country: GB
+    alias: NHM
+    email: data@nhm.ac.uk
+repository-code: 'https://github.com/NaturalHistoryMuseum/data-importer'
+abstract: Pipeline for importing data from EMu into the NHM Data Portal.
+keywords:
+  - data
+license: GPL-3.0-or-later
+version: 1.2.0
