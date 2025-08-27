@@ -34,14 +34,24 @@ class MSSView(View):
         if record.get_first_value('MulMimeType') != 'image':
             return MULTIMEDIA_NOT_IMAGE
 
+        if not record.get_first_value('DocIdentifier'):
+            return MULTIMEDIA_NO_IDENTIFIER
+
+        return SUCCESS_RESULT
+
+    def is_publishable(self, record: SourceRecord) -> FilterResult:
+        """
+        Filters the given record, determining whether it matches the publishing rules
+        for MSS records.
+
+        :param record: the record to filter
+        :return: a FilterResult object
+        """
         if not is_valid_guid(record):
             return INVALID_GUID
 
         if not is_web_published(record):
             return NO_PUBLISH
-
-        if not record.get_first_value('DocIdentifier'):
-            return MULTIMEDIA_NO_IDENTIFIER
 
         return SUCCESS_RESULT
 

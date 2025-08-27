@@ -61,6 +61,19 @@ class IndexLotView(View):
         if record.get_first_value('ColRecordType') != 'Index Lot':
             return INVALID_TYPE
 
+        if record.get_first_value('ColDepartment') not in DEPARTMENT_COLLECTION_CODES:
+            return INVALID_DEPARTMENT
+
+        return SUCCESS_RESULT
+
+    def is_publishable(self, record: SourceRecord) -> FilterResult:
+        """
+        Filters the given record, determining whether it matches the publishing rules
+        for the index lots resource.
+
+        :param record: the record to filter
+        :return: a FilterResult object
+        """
         if not is_web_published(record):
             return NO_PUBLISH
 
@@ -69,9 +82,6 @@ class IndexLotView(View):
 
         if record.get_first_value('SecRecordStatus') in DISALLOWED_STATUSES:
             return INVALID_STATUS
-
-        if record.get_first_value('ColDepartment') not in DEPARTMENT_COLLECTION_CODES:
-            return INVALID_DEPARTMENT
 
         return SUCCESS_RESULT
 

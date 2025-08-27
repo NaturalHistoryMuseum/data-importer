@@ -33,18 +33,28 @@ class ThreeDView(View):
         if record.get_first_value('MulDocumentType') != 'U':
             return MULTIMEDIA_NOT_URL
 
-        if not is_valid_guid(record):
-            return INVALID_GUID
-
-        if not is_web_published(record):
-            return NO_PUBLISH
-
         if record.get_first_value('DetPublisher', lower=True) not in VALID_PUBLISHERS:
             return INVALID_PUBLISHER
 
         # TODO: do we really need this?
         if record.get_first_value('DetResourceType') != 'Specimen':
             return NOT_SPECIMEN
+
+        return SUCCESS_RESULT
+
+    def is_publishable(self, record: SourceRecord) -> FilterResult:
+        """
+        Filters the given record, determining whether it matches the publishing rules
+        for 3D resource records.
+
+        :param record: the record to filter
+        :return: a FilterResult object
+        """
+        if not is_valid_guid(record):
+            return INVALID_GUID
+
+        if not is_web_published(record):
+            return NO_PUBLISH
 
         return SUCCESS_RESULT
 

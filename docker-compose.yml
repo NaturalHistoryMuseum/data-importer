@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   # runs the tests
   test:
@@ -16,6 +14,7 @@ services:
     volumes:
       - ./tests:/usr/src/app/tests
       - ./docker/config.yml:/usr/src/app/docker/config.yml
+      - ./dataimporter:/usr/src/app/dataimporter
 
   # serves the docs locally with realtime auto-reloading
   docs:

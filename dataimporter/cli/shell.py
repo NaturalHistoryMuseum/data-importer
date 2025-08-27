@@ -60,8 +60,14 @@ def check_membership(importer: DataImporter, name: str, record_id: Union[str, in
     if record is None:
         console.print('record not found', style='red')
         return
-    result = view.is_member(record)
-    if result:
-        print(f'{record_id} is a member of {name}')
+    member_result = view.is_member(record)
+    publish_result = view.is_publishable(record)
+    if member_result and publish_result:
+        print(f'{record_id} is a currently published member of {name}')
+    elif member_result and not publish_result:
+        print(
+            f'{record_id} is a member of {name}, but is not published due to '
+            f'{publish_result.reason}'
+        )
     else:
-        print(f"{record_id} is not a member of {name} due to '{result.reason}'")
+        print(f"{record_id} is not a member of {name} due to '{member_result.reason}'")

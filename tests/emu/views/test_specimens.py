@@ -29,6 +29,7 @@ from tests.helpers.samples.mammalpart import (
 )
 from tests.helpers.samples.specimen import SAMPLE_SPECIMEN_DATA, SAMPLE_SPECIMEN_ID
 from tests.helpers.samples.taxonomy import SAMPLE_TAXONOMY_DATA, SAMPLE_TAXONOMY_ID
+from tests.helpers.utils import is_member_error, is_publishable_error
 
 
 @pytest.mark.parametrize(
@@ -87,21 +88,37 @@ def test_clean_determination_names():
     ) == (None, 'banana', 'lemon')
 
 
-is_member_scenarios: List[Tuple[dict, FilterResult]] = [
-    ({'ColRecordType': 'Artefact'}, INVALID_TYPE),
-    ({'AdmPublishWebNoPasswordFlag': 'n'}, NO_PUBLISH),
-    ({'AdmGUIDPreferredValue': 'not a valid guid!'}, INVALID_GUID),
-    ({'SecRecordStatus': 'INVALID'}, INVALID_STATUS),
-    ({'ColDepartment': 'DDI'}, INVALID_DEPARTMENT),
-    ({}, SUCCESS_RESULT),
+is_publishable_member_scenarios: List[
+    Tuple[dict, FilterResult, FilterResult, FilterResult]
+] = [
+    ({'ColRecordType': 'Artefact'}, *is_member_error(INVALID_TYPE)),
+    ({'AdmPublishWebNoPasswordFlag': 'n'}, *is_publishable_error(NO_PUBLISH)),
+    (
+        {'AdmGUIDPreferredValue': 'not a valid guid!'},
+        *is_publishable_error(INVALID_GUID),
+    ),
+    ({'SecRecordStatus': 'INVALID'}, *is_publishable_error(INVALID_STATUS)),
+    ({'ColDepartment': 'DDI'}, *is_member_error(INVALID_DEPARTMENT)),
+    ({}, SUCCESS_RESULT, SUCCESS_RESULT, SUCCESS_RESULT),
 ]
 
 
-@pytest.mark.parametrize('overrides, result', is_member_scenarios)
-def test_is_member(overrides: dict, result: FilterResult, specimen_view: SpecimenView):
+@pytest.mark.parametrize(
+    'overrides, member_result, publishable_result, publishable_member_result',
+    is_publishable_member_scenarios,
+)
+def test_is_publishable_member(
+    overrides: dict,
+    member_result: FilterResult,
+    publishable_result: FilterResult,
+    publishable_member_result: FilterResult,
+    specimen_view: SpecimenView,
+):
     data = {**SAMPLE_SPECIMEN_DATA, **overrides}
     record = SourceRecord(SAMPLE_SPECIMEN_ID, data, 'test')
-    assert specimen_view.is_member(record) == result
+    assert specimen_view.is_member(record) == member_result
+    assert specimen_view.is_publishable(record) == publishable_result
+    assert specimen_view.is_publishable_member(record) == publishable_member_result
 
 
 def test_transform_no_linked_data(specimen_view: SpecimenView):

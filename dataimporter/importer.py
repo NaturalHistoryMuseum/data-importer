@@ -334,7 +334,7 @@ class DataImporter:
             changed_records = view.iter_changed()
         records = (
             Record(record.id, view.transform(record))
-            if record
+            if record and view.is_publishable(record)
             else Record.delete(record.id)
             for record in changed_records
         )
