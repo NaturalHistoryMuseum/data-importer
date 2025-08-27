@@ -38,7 +38,7 @@ is_publishable_member_scenarios: List[
     'overrides, member_result, publishable_result, publishable_member_result',
     is_publishable_member_scenarios,
 )
-def test_is_member(
+def test_is_publishable_member(
     overrides: dict,
     member_result: FilterResult,
     publishable_result: FilterResult,

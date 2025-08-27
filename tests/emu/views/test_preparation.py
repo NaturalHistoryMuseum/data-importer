@@ -55,7 +55,7 @@ mol_prep_is_publishable_member_scenarios: List[
     'overrides, member_result, publishable_result, publishable_member_result',
     mol_prep_is_publishable_member_scenarios,
 )
-def test_is_member_mol_prep(
+def test_is_publishable_member_mol_prep(
     overrides: dict,
     member_result: FilterResult,
     publishable_result: FilterResult,
@@ -98,7 +98,7 @@ mammal_part_prep_is_publishable_member_scenarios: List[
     'overrides, member_result, publishable_result, publishable_member_result',
     mammal_part_prep_is_publishable_member_scenarios,
 )
-def test_is_member_mammal_part_prep(
+def test_is_publishable_member_mammal_part_prep(
     overrides: dict,
     member_result: FilterResult,
     publishable_result: FilterResult,
