@@ -27,57 +27,89 @@ from tests.helpers.samples.preparation import (
     SAMPLE_PREPARATION_ID,
 )
 from tests.helpers.samples.specimen import SAMPLE_SPECIMEN_DATA, SAMPLE_SPECIMEN_ID
+from tests.helpers.utils import is_member_error, is_publishable_error
 
-mol_prep_is_member_scenarios: List[Tuple[dict, FilterResult]] = [
-    ({'ColRecordType': 'Specimen'}, INVALID_TYPE),
+mol_prep_is_publishable_member_scenarios: List[
+    Tuple[dict, FilterResult, FilterResult, FilterResult]
+] = [
+    ({'ColRecordType': 'Specimen'}, *is_member_error(INVALID_TYPE)),
     # this is a check to make sure a mammal part in molecular collections doesn't come
     # through
-    ({'ColRecordType': 'Mammal Group Part'}, INVALID_SUB_DEPARTMENT),
-    ({'AdmPublishWebNoPasswordFlag': 'n'}, NO_PUBLISH),
-    ({'AdmGUIDPreferredValue': 'not a valid guid!'}, INVALID_GUID),
-    ({'SecRecordStatus': 'INVALID'}, INVALID_STATUS),
-    ({'ColDepartment': 'DDI'}, INVALID_DEPARTMENT),
-    ({'ColSubDepartment': 'Informatics'}, INVALID_SUB_DEPARTMENT),
-    ({'ColSubDepartment': 'LS Mammals'}, INVALID_SUB_DEPARTMENT),
-    ({'LocPermanentLocationRef': '3250522'}, ON_LOAN),
-    ({'LocCurrentSummaryData': 'ON LOAN'}, ON_LOAN),
-    ({}, SUCCESS_RESULT),
+    ({'ColRecordType': 'Mammal Group Part'}, *is_member_error(INVALID_SUB_DEPARTMENT)),
+    ({'AdmPublishWebNoPasswordFlag': 'n'}, *is_publishable_error(NO_PUBLISH)),
+    (
+        {'AdmGUIDPreferredValue': 'not a valid guid!'},
+        *is_publishable_error(INVALID_GUID),
+    ),
+    ({'SecRecordStatus': 'INVALID'}, *is_publishable_error(INVALID_STATUS)),
+    ({'ColDepartment': 'DDI'}, *is_member_error(INVALID_DEPARTMENT)),
+    ({'ColSubDepartment': 'Informatics'}, *is_member_error(INVALID_SUB_DEPARTMENT)),
+    ({'ColSubDepartment': 'LS Mammals'}, *is_member_error(INVALID_SUB_DEPARTMENT)),
+    ({'LocPermanentLocationRef': '3250522'}, *is_publishable_error(ON_LOAN)),
+    ({'LocCurrentSummaryData': 'ON LOAN'}, *is_publishable_error(ON_LOAN)),
+    ({}, SUCCESS_RESULT, SUCCESS_RESULT, SUCCESS_RESULT),
 ]
 
 
-@pytest.mark.parametrize('overrides, result', mol_prep_is_member_scenarios)
+@pytest.mark.parametrize(
+    'overrides, member_result, publishable_result, publishable_member_result',
+    mol_prep_is_publishable_member_scenarios,
+)
 def test_is_member_mol_prep(
-    overrides: dict, result: FilterResult, preparation_view: PreparationView
+    overrides: dict,
+    member_result: FilterResult,
+    publishable_result: FilterResult,
+    publishable_member_result: FilterResult,
+    preparation_view: PreparationView,
 ):
     data = {**SAMPLE_PREPARATION_DATA, **overrides}
     record = SourceRecord(SAMPLE_PREPARATION_ID, data, 'test')
-    assert preparation_view.is_member(record) == result
+    assert preparation_view.is_member(record) == member_result
+    assert preparation_view.is_publishable(record) == publishable_result
+    assert preparation_view.is_publishable_member(record) == publishable_member_result
 
 
-mammal_part_prep_is_member_scenarios: List[Tuple[dict, FilterResult]] = [
-    ({'ColRecordType': 'Specimen'}, INVALID_TYPE),
-    ({'AdmPublishWebNoPasswordFlag': 'n'}, NO_PUBLISH),
-    ({'AdmGUIDPreferredValue': 'not a valid guid!'}, INVALID_GUID),
-    ({'SecRecordStatus': 'INVALID'}, INVALID_STATUS),
-    ({'ColDepartment': 'DDI'}, INVALID_DEPARTMENT),
-    ({'ColSubDepartment': 'Informatics'}, INVALID_SUB_DEPARTMENT),
-    ({'ColSubDepartment': 'Molecular Collections'}, INVALID_SUB_DEPARTMENT),
-    ({'NhmSecProjectName': 'Life of Darwin Tree'}, INVALID_PROJECT),
+mammal_part_prep_is_publishable_member_scenarios: List[
+    Tuple[dict, FilterResult, FilterResult, FilterResult]
+] = [
+    ({'ColRecordType': 'Specimen'}, *is_member_error(INVALID_TYPE)),
+    ({'AdmPublishWebNoPasswordFlag': 'n'}, *is_publishable_error(NO_PUBLISH)),
+    (
+        {'AdmGUIDPreferredValue': 'not a valid guid!'},
+        *is_publishable_error(INVALID_GUID),
+    ),
+    ({'SecRecordStatus': 'INVALID'}, *is_publishable_error(INVALID_STATUS)),
+    ({'ColDepartment': 'DDI'}, *is_member_error(INVALID_DEPARTMENT)),
+    ({'ColSubDepartment': 'Informatics'}, *is_member_error(INVALID_SUB_DEPARTMENT)),
+    (
+        {'ColSubDepartment': 'Molecular Collections'},
+        *is_member_error(INVALID_SUB_DEPARTMENT),
+    ),
+    ({'NhmSecProjectName': 'Life of Darwin Tree'}, *is_member_error(INVALID_PROJECT)),
     # this is a check to make sure a prep in LS Mammals doesn't come through
-    ({'ColRecordType': 'Preparation'}, INVALID_SUB_DEPARTMENT),
-    ({'LocPermanentLocationRef': '3250522'}, ON_LOAN),
-    ({'LocCurrentSummaryData': 'ON LOAN'}, ON_LOAN),
-    ({}, SUCCESS_RESULT),
+    ({'ColRecordType': 'Preparation'}, *is_member_error(INVALID_SUB_DEPARTMENT)),
+    ({'LocPermanentLocationRef': '3250522'}, *is_publishable_error(ON_LOAN)),
+    ({'LocCurrentSummaryData': 'ON LOAN'}, *is_publishable_error(ON_LOAN)),
+    ({}, SUCCESS_RESULT, SUCCESS_RESULT, SUCCESS_RESULT),
 ]
 
 
-@pytest.mark.parametrize('overrides, result', mammal_part_prep_is_member_scenarios)
+@pytest.mark.parametrize(
+    'overrides, member_result, publishable_result, publishable_member_result',
+    mammal_part_prep_is_publishable_member_scenarios,
+)
 def test_is_member_mammal_part_prep(
-    overrides: dict, result: FilterResult, preparation_view: PreparationView
+    overrides: dict,
+    member_result: FilterResult,
+    publishable_result: FilterResult,
+    publishable_member_result: FilterResult,
+    preparation_view: PreparationView,
 ):
     data = {**SAMPLE_MAMMAL_PREPARATION_DATA, **overrides}
     record = SourceRecord(SAMPLE_MAMMAL_PREPARATION_ID, data, 'test')
-    assert preparation_view.is_member(record) == result
+    assert preparation_view.is_member(record) == member_result
+    assert preparation_view.is_publishable(record) == publishable_result
+    assert preparation_view.is_publishable_member(record) == publishable_member_result
 
 
 def test_transform_mol_prep(preparation_view: PreparationView):
