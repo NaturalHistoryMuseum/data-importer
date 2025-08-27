@@ -42,6 +42,16 @@ class ImageView(View):
         if record.get_first_value('MulMimeType') != 'image':
             return MULTIMEDIA_NOT_IMAGE
 
+        return SUCCESS_RESULT
+
+    def is_publishable(self, record: SourceRecord) -> FilterResult:
+        """
+        Filters the given record, determining whether it matches the publishing rules
+        for images.
+
+        :param record: the record to filter
+        :return: a FilterResult object
+        """
         if not is_valid_guid(record):
             return INVALID_GUID
 

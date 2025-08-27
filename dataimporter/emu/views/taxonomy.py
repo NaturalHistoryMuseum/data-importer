@@ -11,9 +11,10 @@ class TaxonomyView(View):
     that go through this view are merged into other record types.
     """
 
-    def is_member(self, record: SourceRecord) -> FilterResult:
+    def is_publishable(self, record: SourceRecord) -> FilterResult:
         """
-        Filters the given record, determining whether it is a taxonomy record or not.
+        Filters the given record, determining whether it matches the publishing rules
+        for taxonomy records.
 
         :param record: the record to filter
         :return: a FilterResult object

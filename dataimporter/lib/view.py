@@ -107,6 +107,35 @@ class View:
         """
         return SUCCESS_RESULT
 
+    def is_publishable(self, record: SourceRecord) -> FilterResult:
+        """
+        Given a record, determine whether it is published based on the rules of this
+        view. Return a FilterResult with a success=True attribute if yes, otherwise
+        return a FilterResult with a success=False attribute and a reason describing why
+        the record should not be published.
+
+        By default, this function returns a FilterResult with success=True.
+
+        :param record: the SourceRecord to check
+        :return: a FilterResult object
+        """
+        return SUCCESS_RESULT
+
+    def is_publishable_member(self, record: SourceRecord) -> FilterResult:
+        """
+        Given a record, determine whether it is first a member of this view and then is
+        publishable under the rules of this view. This functionality was previously
+        entirely contained within is_member, but has since been split into separate
+        methods.
+
+        :param record: the SourceRecord to check
+        :return: a FilterResult object
+        """
+        check_member = self.is_member(record)
+        if not check_member:
+            return check_member
+        return self.is_publishable(record)
+
     def transform(self, record: SourceRecord) -> dict:
         """
         Given a record, return a dict which will be ingested by Splitgill. This is
