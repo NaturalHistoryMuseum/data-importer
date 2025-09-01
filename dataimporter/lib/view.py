@@ -158,7 +158,7 @@ class View:
         yield from (
             record
             for record in self.store.get_records(ids, yield_deleted=False)
-            if self.is_member(record)
+            if self.is_publishable_member(record)
         )
 
     def get(self, record_id: str) -> Optional[SourceRecord]:
@@ -170,7 +170,7 @@ class View:
         :return: None or a SourceRecord object
         """
         record = self.store.get_record(record_id, return_deleted=False)
-        if record is not None and self.is_member(record):
+        if record is not None and self.is_publishable_member(record):
             return record
         return None
 
