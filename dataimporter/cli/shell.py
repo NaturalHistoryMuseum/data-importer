@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Union
+from typing import Dict, List, Tuple, Union
 
 from dataimporter.cli.utils import console
 from dataimporter.importer import DataImporter
@@ -73,3 +73,60 @@ def check_membership(importer: DataImporter, name: str, record_id: Union[str, in
         console.print(
             f"{record_id} is not a member of {name} due to '{member_result.reason}'"
         )
+
+
+def find_unsuitable_records(
+    importer: DataImporter, view_name: str, skip_deleted: bool = True
+) -> Dict[str, List[Tuple[str, str]]]:
+    """
+    Finds and returns lists of records in a view that are no longer members or no longer
+    match the publishing rules.Effectively a dry run of purge_unsuitable_records.
+
+    :param importer: a DataImporter instance
+    :param view_name: name of the view
+    :param skip_deleted: whether to skip deleted records when iterating over mongo
+        records (True, default), or return a report on these too (False)
+    :return: a dict
+    """
+    non_publishable_records = []
+    non_member_records = []
+    view = importer.get_view(view_name)
+    db = importer.get_database(view_name)
+    total = 0
+    deleted = 0
+    missing_source = 0
+    not_member = 0
+    not_publishable = 0
+    acceptable = 0
+    if skip_deleted:
+        filter_kwargs = {'filter': {'data._id': {'$exists': True}}}
+    else:
+        filter_kwargs = {}
+    for mongo_record in db.iter_records(**filter_kwargs):
+        total += 1
+        if mongo_record.is_deleted:
+            deleted += 1
+            continue
+        source_record = view.store.get_record(mongo_record.id)
+        if not source_record:
+            missing_source += 1
+            continue
+        is_member = view.is_member(source_record)
+        if not is_member:
+            not_member += 1
+            continue
+        is_publishable = view.is_publishable(source_record)
+        if not is_publishable:
+            not_publishable += 1
+            non_publishable_records.append([source_record.id, is_publishable.reason])
+            continue
+        acceptable += 1
+    console.print(
+        f'total: {total} | deleted: {deleted} | missing: {missing_source} | not '
+        f'members: {not_member} | not publishable: {not_publishable} | acceptable: '
+        f'{acceptable}'
+    )
+    return {
+        'not_publishable': non_publishable_records,
+        'not_member': non_member_records,
+    }
