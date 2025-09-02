@@ -21,6 +21,7 @@ def setup_env(importer: DataImporter) -> dict:
         'pmd': partial(print_record_data, importer, 'emultimedia'),
         'pgd': partial(print_record_data, importer, 'gbif'),
         'cm': partial(check_membership, importer),
+        'find_unsuitable': partial(find_unsuitable_records, importer),
     }
 
 
