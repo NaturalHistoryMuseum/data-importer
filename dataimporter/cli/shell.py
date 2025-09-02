@@ -21,6 +21,7 @@ def setup_env(importer: DataImporter) -> dict:
         'pmd': partial(print_record_data, importer, 'emultimedia'),
         'pgd': partial(print_record_data, importer, 'gbif'),
         'cm': partial(check_membership, importer),
+        'find_unsuitable': partial(find_unsuitable_records, importer),
     }
 
 
@@ -114,6 +115,7 @@ def find_unsuitable_records(
         is_member = view.is_member(source_record)
         if not is_member:
             not_member += 1
+            non_member_records.append([source_record.id, is_member.reason])
             continue
         is_publishable = view.is_publishable(source_record)
         if not is_publishable:
