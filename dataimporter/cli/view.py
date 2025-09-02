@@ -86,7 +86,7 @@ def sync(view: str, config: Config, resync: bool = False):
 
 @view_group.command('purge')
 @click.argument('view', type=str)
-@with_config
+@with_config()
 def purge(view: str, config: Config):
     """
     Purge non-member and non-publishable records from a view.
