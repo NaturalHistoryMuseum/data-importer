@@ -230,7 +230,7 @@ class PreparationView(View):
 
                 parent = self.store.get_record(parent_id)
                 if parent:
-                    if self.specimen_view.is_member(parent):
+                    if self.specimen_view.is_publishable_member(parent):
                         # we found a specimen, return the data from it
                         return self.specimen_view.transform(parent)
                     else:

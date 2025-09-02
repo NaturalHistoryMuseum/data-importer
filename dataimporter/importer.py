@@ -3,7 +3,7 @@ from datetime import date, datetime
 from functools import partial
 from itertools import groupby
 from pathlib import Path
-from typing import Any, Generator, Iterable, List, Optional, Union
+from typing import Any, Generator, Iterable, List, Optional, Tuple, Union
 
 from filelock import FileLock, Timeout
 from splitgill.indexing.syncing import BulkOptions
@@ -380,6 +380,39 @@ class DataImporter:
             wait_for_completion=True,
             max_num_segments=1,
         )
+
+    def purge_unsuitable_records(self, view_name: str) -> Tuple[int, int, int]:
+        """
+        Delete existing records that no longer match the is_member and is_publishable
+        rules for this view. Depublished records should be handled by the regular ingest
+        process anyway, but this can be used for ad-hoc purging. It will also handle the
+        rarer case of records that are no longer members.
+
+        :param view_name: the name of the view to purge records from
+        :return: the number of non-member records found, the number of non-publishable
+            records found, and the total count of records deleted by this method
+        """
+        view = self.get_view(view_name)
+        database = self.get_database(view)
+        to_delete = []
+        not_member_count = 0
+        not_published_count = 0
+        # ignore deleted records (i.e. records without an _id field)
+        for mongo_record in database.iter_records(
+            filter={'data._id': {'$exists': True}}
+        ):
+            source_record = view.store.get_record(mongo_record.id)
+            if not source_record:
+                continue
+            if not view.is_member(source_record):
+                not_member_count += 1
+                to_delete.append(Record.delete(source_record.id))
+            if not view.is_publishable(source_record):
+                not_published_count += 1
+                to_delete.append(Record.delete(source_record.id))
+
+        commit_result = database.ingest(to_delete, modified_field='modified')
+        return not_member_count, not_published_count, commit_result.updated
 
     def __enter__(self) -> 'DataImporter':
         return self
