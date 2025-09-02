@@ -114,6 +114,7 @@ def find_unsuitable_records(
         is_member = view.is_member(source_record)
         if not is_member:
             not_member += 1
+            non_member_records.append([source_record.id, is_member.reason])
             continue
         is_publishable = view.is_publishable(source_record)
         if not is_publishable:
