@@ -2,7 +2,7 @@
 
 # Data Importer
 
-[![Tests](https://img.shields.io/github/actions/workflow/status/NaturalHistoryMuseum/data-importer/main.yml?branch=main&style=flat-square)](https://github.com/NaturalHistoryMuseum/data-importer/actions/workflows/main.yml)
+[![Tests](https://img.shields.io/github/actions/workflow/status/NaturalHistoryMuseum/data-importer/tests.yml?branch=main&style=flat-square)](https://github.com/NaturalHistoryMuseum/data-importer/actions/workflows/tests.yml)
 [![Coveralls](https://img.shields.io/coveralls/github/NaturalHistoryMuseum/data-importer/main?style=flat-square)](https://coveralls.io/github/NaturalHistoryMuseum/data-importer)
 [![Python version](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11-blue?style=flat-square)](https://www.python.org/downloads)
 [![Docs](https://img.shields.io/readthedocs/data-importer?style=flat-square)](https://data-importer.readthedocs.io)
