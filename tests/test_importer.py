@@ -652,6 +652,7 @@ class TestDataImporter:
             for i in range(1, 9)
         ]
         first_dump_date = date(2025, 1, 1)
+
         # create an ecatalogue dump with 8 artefacts
         create_dump(
             config.dumps_path,
@@ -659,33 +660,38 @@ class TestDataImporter:
             first_dump_date,
             *artefact_records,
         )
+
+        target_record = artefact_records[0]
+
         # create dump that depublishes one of those records
-        second_dump_date = date(2025, 1, 3)
-        updated_record = artefact_records[0]
-        updated_record['SecRecordStatus'] = 'Retired'
-        create_dump(config.dumps_path, 'ecatalogue', second_dump_date, updated_record)
+        depub_dump_date = date(2025, 1, 3)
+        depub_record = target_record.copy()
+        depub_record['AdmPublishWebNoPasswordFlag'] = 'N'
+        create_dump(config.dumps_path, 'ecatalogue', depub_dump_date, depub_record)
 
         with use_importer(config) as importer, freeze_time('2025-01-02') as frozen_time:
             # import the first dump and check all 8 records are present
             importer.queue_emu_changes()
             importer.add_to_mongo(name)
             database = importer.get_database(importer.get_view(name))
+            first_db_version = database.get_committed_version()
+            importer.sync_to_elasticsearch(name)
+            first_es_version = database.get_elasticsearch_version()
+            search_base = database.search()
+
             assert database.data_collection.count_documents({}) == 8
             mongo_record = database.data_collection.find_one(
-                {'id': updated_record['irn']}
+                {'id': target_record['irn']}
             )
             assert mongo_record is not None
             assert len(mongo_record['data']) == 2
             assert 'diffs' not in mongo_record
 
-            importer.sync_to_elasticsearch(name)
-            first_version = database.get_elasticsearch_version()
-            search_base = database.search()
             assert search_base.count() == 8
             assert (
                 search_base.filter(
                     'term',
-                    **{keyword('artefactName'): updated_record['PalArtObjectName']},
+                    **{keyword('artefactName'): target_record['PalArtObjectName']},
                 ).count()
                 == 1
             )
@@ -696,28 +702,33 @@ class TestDataImporter:
 
             importer.queue_emu_changes()
             importer.add_to_mongo(name)
-            database = importer.get_database(importer.get_view(name))
+            second_db_version = database.get_committed_version()
+            assert second_db_version != first_db_version
+            importer.sync_to_elasticsearch(name)
+            second_es_version = database.get_elasticsearch_version()
+            assert second_es_version != first_es_version
+
             # it still exists in mongo; it hasn't been redacted
             assert database.data_collection.count_documents({}) == 8
             # but there shouldn't be any data in it
             updated_mongo_record = database.data_collection.find_one(
-                {'id': updated_record['irn']}
+                {'id': target_record['irn']}
             )
             assert updated_mongo_record is not None
             assert len(updated_mongo_record['data']) == 0
             assert len(updated_mongo_record['diffs']) == 1
 
-            importer.sync_to_elasticsearch(name)
+            # it shouldn't be in current elasticsearch
             assert search_base.count() == 7
             assert (
                 search_base.filter(
                     'term',
-                    **{keyword('artefactName'): updated_record['PalArtObjectName']},
+                    **{keyword('artefactName'): target_record['PalArtObjectName']},
                 ).count()
                 == 0
             )
             # check it still exists in the previous version
-            assert database.search(first_version).count() == 8
+            assert database.search(first_es_version).count() == 8
 
     @pytest.mark.usefixtures('reset_mongo', 'reset_elasticsearch')
     def test_republish_records(self, config: Config):
