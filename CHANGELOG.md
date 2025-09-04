@@ -1,3 +1,39 @@
+## v2.0.0 (2025-09-04)
+
+### Breaking Changes
+
+- split is_member into is_member and is_publishable
+
+### Feature
+
+- add find_unsuitable_records to shell env
+- add convenience shell function for finding unsuitable records
+- add cli command for purge_unsuitable_records
+- add importer method to purge unsuitable records
+- add more information to check_membership output
+
+### Fix
+
+- add parentheses to decorator
+- add non-member records to their array
+- use console.print instead of bare print
+- check if prep parent is publishable member
+- yield publishable members from view.find and view.get
+
+### Tests
+
+- rearrange test_depublish to match test_republish
+- add test for republishing records
+- add test for purge_unsuitable_records
+- add tests for is_publishable and is_publishable_member defaults
+- rename is_member tests
+- add test for depublished records
+- amend tests for is_member changes
+
+### Chores/Misc
+
+- mount folder on test image
+
 ## v1.2.1 (2025-08-11)
 
 ### Docs
