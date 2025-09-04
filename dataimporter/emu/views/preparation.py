@@ -128,6 +128,19 @@ class PreparationView(View):
             # any other type is invalid
             return INVALID_TYPE
 
+        if record.get_first_value('ColDepartment') not in DEPARTMENT_COLLECTION_CODES:
+            return INVALID_DEPARTMENT
+
+        return SUCCESS_RESULT
+
+    def is_publishable(self, record: SourceRecord) -> FilterResult:
+        """
+        Filters the given record, determining whether it matches the publishing rules
+        for preps records.
+
+        :param record: the record to filter
+        :return: a FilterResult object
+        """
         if not is_web_published(record):
             return NO_PUBLISH
 
@@ -136,9 +149,6 @@ class PreparationView(View):
 
         if record.get_first_value('SecRecordStatus') in DISALLOWED_STATUSES:
             return INVALID_STATUS
-
-        if record.get_first_value('ColDepartment') not in DEPARTMENT_COLLECTION_CODES:
-            return INVALID_DEPARTMENT
 
         if is_on_loan(record):
             return ON_LOAN
@@ -220,7 +230,7 @@ class PreparationView(View):
 
                 parent = self.store.get_record(parent_id)
                 if parent:
-                    if self.specimen_view.is_member(parent):
+                    if self.specimen_view.is_publishable_member(parent):
                         # we found a specimen, return the data from it
                         return self.specimen_view.transform(parent)
                     else:

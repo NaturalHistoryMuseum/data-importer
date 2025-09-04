@@ -7,18 +7,32 @@ from dataimporter.emu.views.utils import NO_PUBLISH
 from dataimporter.lib.model import SourceRecord
 from dataimporter.lib.view import SUCCESS_RESULT, FilterResult
 from tests.helpers.samples.taxonomy import SAMPLE_TAXONOMY_DATA, SAMPLE_TAXONOMY_ID
+from tests.helpers.utils import is_publishable_error
 
-is_member_scenarios: List[Tuple[dict, FilterResult]] = [
-    ({'AdmPublishWebNoPasswordFlag': 'n'}, NO_PUBLISH),
-    ({}, SUCCESS_RESULT),
+is_publishable_member_scenarios: List[
+    Tuple[dict, FilterResult, FilterResult, FilterResult]
+] = [
+    ({'AdmPublishWebNoPasswordFlag': 'n'}, *is_publishable_error(NO_PUBLISH)),
+    ({}, SUCCESS_RESULT, SUCCESS_RESULT, SUCCESS_RESULT),
 ]
 
 
-@pytest.mark.parametrize('overrides, result', is_member_scenarios)
-def test_is_member(overrides: dict, result: FilterResult, taxonomy_view: TaxonomyView):
+@pytest.mark.parametrize(
+    'overrides, member_result, publishable_result, publishable_member_result',
+    is_publishable_member_scenarios,
+)
+def test_is_publishable_member(
+    overrides: dict,
+    member_result: FilterResult,
+    publishable_result: FilterResult,
+    publishable_member_result: FilterResult,
+    taxonomy_view: TaxonomyView,
+):
     data = {**SAMPLE_TAXONOMY_DATA, **overrides}
     record = SourceRecord(SAMPLE_TAXONOMY_ID, data, 'test')
-    assert taxonomy_view.is_member(record) == result
+    assert taxonomy_view.is_member(record) == member_result
+    assert taxonomy_view.is_publishable(record) == publishable_result
+    assert taxonomy_view.is_publishable_member(record) == publishable_member_result
 
 
 def test_make_data(taxonomy_view: TaxonomyView):

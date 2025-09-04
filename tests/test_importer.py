@@ -1,10 +1,11 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
 from freezegun import freeze_time
+from splitgill.model import Record
 from splitgill.search import keyword
 from splitgill.utils import to_timestamp
 
@@ -637,6 +638,358 @@ class TestDataImporter:
         assert importer.get_store('ecatalogue').has('1')
         assert not importer.get_store('ecatalogue').has('2')
         assert not importer.get_store('ecatalogue').has('3')
+
+    @pytest.mark.usefixtures('reset_mongo', 'reset_elasticsearch')
+    def test_depublish_records(self, config: Config):
+        name = 'artefact'
+        # create some artefact records
+        artefact_records = [
+            create_ecatalogue(
+                str(i),
+                EcatalogueType[name],
+                PalArtObjectName=f'{i} beans',
+            )
+            for i in range(1, 9)
+        ]
+        first_dump_date = date(2025, 1, 1)
+
+        # create an ecatalogue dump with 8 artefacts
+        create_dump(
+            config.dumps_path,
+            'ecatalogue',
+            first_dump_date,
+            *artefact_records,
+        )
+
+        target_record = artefact_records[0]
+
+        # create dump that depublishes one of those records
+        depub_dump_date = date(2025, 1, 3)
+        depub_record = target_record.copy()
+        depub_record['AdmPublishWebNoPasswordFlag'] = 'N'
+        create_dump(config.dumps_path, 'ecatalogue', depub_dump_date, depub_record)
+
+        with use_importer(config) as importer, freeze_time('2025-01-02') as frozen_time:
+            # import the first dump and check all 8 records are present
+            importer.queue_emu_changes()
+            importer.add_to_mongo(name)
+            database = importer.get_database(importer.get_view(name))
+            first_db_version = database.get_committed_version()
+            importer.sync_to_elasticsearch(name)
+            first_es_version = database.get_elasticsearch_version()
+            search_base = database.search()
+
+            assert database.data_collection.count_documents({}) == 8
+            mongo_record = database.data_collection.find_one(
+                {'id': target_record['irn']}
+            )
+            assert mongo_record is not None
+            assert len(mongo_record['data']) == 2
+            assert 'diffs' not in mongo_record
+
+            assert search_base.count() == 8
+            assert (
+                search_base.filter(
+                    'term',
+                    **{keyword('artefactName'): target_record['PalArtObjectName']},
+                ).count()
+                == 1
+            )
+
+            # import the second dump and check that one has been removed from the
+            # current version
+            frozen_time.tick(timedelta(days=2))  # advance forward 2 days
+
+            importer.queue_emu_changes()
+            importer.add_to_mongo(name)
+            second_db_version = database.get_committed_version()
+            assert second_db_version != first_db_version
+            importer.sync_to_elasticsearch(name)
+            second_es_version = database.get_elasticsearch_version()
+            assert second_es_version != first_es_version
+
+            # it still exists in mongo; it hasn't been redacted
+            assert database.data_collection.count_documents({}) == 8
+            # but there shouldn't be any data in it
+            updated_mongo_record = database.data_collection.find_one(
+                {'id': target_record['irn']}
+            )
+            assert updated_mongo_record is not None
+            assert len(updated_mongo_record['data']) == 0
+            assert len(updated_mongo_record['diffs']) == 1
+
+            # it shouldn't be in current elasticsearch
+            assert search_base.count() == 7
+            assert (
+                search_base.filter(
+                    'term',
+                    **{keyword('artefactName'): target_record['PalArtObjectName']},
+                ).count()
+                == 0
+            )
+            # check it still exists in the previous version
+            assert database.search(first_es_version).count() == 8
+
+    @pytest.mark.usefixtures('reset_mongo', 'reset_elasticsearch')
+    def test_republish_records(self, config: Config):
+        name = 'artefact'
+        # create some artefact records
+        artefact_records = [
+            create_ecatalogue(
+                str(i),
+                EcatalogueType[name],
+                PalArtObjectName=f'{i} beans',
+            )
+            for i in range(1, 9)
+        ]
+        first_dump_date = date(2025, 1, 1)
+
+        # create an ecatalogue dump with 8 artefacts
+        create_dump(
+            config.dumps_path,
+            'ecatalogue',
+            first_dump_date,
+            *artefact_records,
+        )
+
+        target_record = artefact_records[0]
+
+        # create dump that depublishes one of those records
+        depub_dump_date = date(2025, 1, 3)
+        depub_record = target_record.copy()
+        depub_record['AdmPublishWebNoPasswordFlag'] = 'N'
+        create_dump(config.dumps_path, 'ecatalogue', depub_dump_date, depub_record)
+
+        # create a third dump that REpublishes that record
+        repub_dump_date = date(2025, 1, 5)
+        repub_record = target_record.copy()
+        repub_record['AdmPublishWebNoPasswordFlag'] = 'Y'
+        create_dump(config.dumps_path, 'ecatalogue', repub_dump_date, repub_record)
+
+        with use_importer(config) as importer, freeze_time('2025-01-02') as frozen_time:
+            # import the first dump and check all 8 records are present
+            importer.queue_emu_changes()
+            importer.add_to_mongo(name)
+            database = importer.get_database(importer.get_view(name))
+            first_db_version = database.get_committed_version()
+            importer.sync_to_elasticsearch(name)
+            first_es_version = database.get_elasticsearch_version()
+            search_base = database.search()
+
+            assert database.data_collection.count_documents({}) == 8
+            mongo_record = database.data_collection.find_one(
+                {'id': target_record['irn']}
+            )
+            assert mongo_record is not None
+            assert len(mongo_record['data']) > 0
+            assert 'diffs' not in mongo_record
+
+            assert search_base.count() == 8
+            assert (
+                search_base.filter(
+                    'term',
+                    **{keyword('artefactName'): target_record['PalArtObjectName']},
+                ).count()
+                == 1
+            )
+
+            frozen_time.tick(timedelta(days=2))  # advance forward 2 days
+
+            # import the second dump and check that one has been removed from the
+            # current version
+            importer.queue_emu_changes()
+            importer.add_to_mongo(name)
+            second_db_version = database.get_committed_version()
+            assert second_db_version != first_db_version
+            importer.sync_to_elasticsearch(name)
+            second_es_version = database.get_elasticsearch_version()
+            assert second_es_version != first_es_version
+
+            # it still exists in mongo; it hasn't been redacted
+            assert database.data_collection.count_documents({}) == 8
+            # but there shouldn't be any data in it
+            depub_mongo_record = database.data_collection.find_one(
+                {'id': target_record['irn']}
+            )
+            assert depub_mongo_record is not None
+            assert len(depub_mongo_record['data']) == 0
+            assert len(depub_mongo_record['diffs']) == 1
+
+            # it shouldn't be in current elasticsearch
+            assert search_base.count() == 7
+            assert (
+                search_base.filter(
+                    'term',
+                    **{keyword('artefactName'): target_record['PalArtObjectName']},
+                ).count()
+                == 0
+            )
+            # check it still exists in the previous version
+            assert database.search(first_es_version).count() == 8
+
+            frozen_time.tick(timedelta(days=2))  # advance forward 2 days
+
+            # import the third dump and check that it has been added back
+            importer.queue_emu_changes()
+            importer.add_to_mongo(name)
+            third_db_version = database.get_committed_version()
+            assert third_db_version != second_db_version
+            importer.sync_to_elasticsearch(name)
+            third_es_version = database.get_elasticsearch_version()
+            assert third_es_version != second_es_version
+
+            assert database.data_collection.count_documents({}) == 8
+            # there should now be data in the mongo record again
+            repub_mongo_record = database.data_collection.find_one(
+                {'id': target_record['irn']}
+            )
+            assert repub_mongo_record is not None
+            assert len(repub_mongo_record['data']) > 0
+            assert len(repub_mongo_record['diffs']) == 2
+
+            assert search_base.count() == 8
+            assert (
+                search_base.filter(
+                    'term',
+                    **{keyword('artefactName'): target_record['PalArtObjectName']},
+                ).count()
+                == 1
+            )
+            # check the previous versions are still correct
+            assert database.search(first_es_version).count() == 8
+            assert database.search(second_es_version).count() == 7
+
+    @pytest.mark.usefixtures('reset_mongo', 'reset_elasticsearch')
+    def test_purge_records(self, config: Config):
+        name = 'artefact'
+        # create some artefact records
+        artefact_records = [
+            create_ecatalogue(
+                str(i),
+                EcatalogueType[name],
+                PalArtObjectName=f'{i} beans',
+            )
+            for i in range(1, 9)
+        ]
+        first_dump_date = date(2025, 1, 1)
+        # create an ecatalogue dump with 8 artefacts
+        create_dump(
+            config.dumps_path,
+            'ecatalogue',
+            first_dump_date,
+            *artefact_records,
+        )
+        # make two records unpublishable and one no longer an artefact
+        depublished_record_1 = artefact_records[0]
+        depublished_record_1['SecRecordStatus'] = 'Retired'
+        depublished_record_2 = artefact_records[1]
+        depublished_record_2['AdmPublishWebNoPasswordFlag'] = 'N'
+        non_member_record = artefact_records[2]
+        non_member_record['ColRecordType'] = 'Banana'
+        test_records = [depublished_record_1, depublished_record_2, non_member_record]
+        # update the name for all of them so mongo recognises it as a change later
+        for ix, tr in enumerate(test_records):
+            tr.update({'PalArtObjectName': f'{ix} beanz'})
+        second_dump = create_dump(
+            config.dumps_path, 'ecatalogue', date(2025, 1, 3), *test_records
+        )
+
+        with use_importer(config) as importer, freeze_time('2025-01-02') as frozen_time:
+            view = importer.get_view(name)
+            db = importer.get_database(view)
+
+            # import the first dump and check all 8 records are present
+            importer.queue_emu_changes()
+            importer.add_to_mongo(name)
+            database = importer.get_database(importer.get_view(name))
+            importer.sync_to_elasticsearch(name)
+            first_db_version = database.get_committed_version()
+            first_es_version = database.get_elasticsearch_version()
+            search_base = database.search()
+
+            assert database.data_collection.count_documents({}) == 8
+            assert search_base.count() == 8
+
+            for test_record in test_records:
+                mongo_record = database.data_collection.find_one(
+                    {'id': test_record['irn']}
+                )
+                assert mongo_record is not None
+                assert len(mongo_record['data']) > 0
+                assert 'diffs' not in mongo_record
+                assert (
+                    search_base.filter(
+                        'term',
+                        **{keyword('_id'): test_record['irn']},
+                    ).count()
+                    == 1
+                )
+
+            frozen_time.tick(timedelta(days=2))  # advance forward 2 days
+
+            # force update the two invalid records (doing a normal ingest would
+            # automatically remove the depublished record)
+            source_records = [
+                SourceRecord(r['irn'], r, second_dump.name) for r in test_records
+            ]
+            view.store.put(source_records)
+            records = [Record(r.id, view.transform(r)) for r in source_records]
+            db.ingest(records, modified_field='modified')
+            second_db_version = db.get_committed_version()
+            assert second_db_version != first_db_version
+            importer.sync_to_elasticsearch(name)
+            second_es_version = db.get_elasticsearch_version()
+            assert second_es_version != first_es_version
+
+            # check all 8 records are still present and contain data
+            assert database.data_collection.count_documents({}) == 8
+            assert search_base.count() == 8
+            for test_record in test_records:
+                mongo_record = database.data_collection.find_one(
+                    {'id': test_record['irn']}
+                )
+                assert mongo_record is not None
+                assert len(mongo_record['data']) > 0
+                # check the source record has been updated
+                source_record = view.store.get_record(mongo_record['id'])
+                assert not view.is_publishable_member(source_record)
+                assert (
+                    search_base.filter(
+                        'term',
+                        **{keyword('artefactName'): test_record['PalArtObjectName']},
+                    ).count()
+                    == 1
+                )
+
+            frozen_time.tick(timedelta(days=1))  # advance forward 1 day
+
+            # now purge and check that they're all deleted
+            non_member_count, non_publishable_count, total_deleted = (
+                importer.purge_unsuitable_records(name)
+            )
+            final_db_version = db.get_committed_version()
+            assert final_db_version != second_db_version
+            importer.sync_to_elasticsearch(name)
+            final_es_version = db.get_elasticsearch_version()
+            assert final_es_version != second_es_version
+            assert non_member_count == 1
+            assert non_publishable_count == 2
+            assert total_deleted == 3
+            # they should still exist in mongo
+            assert database.data_collection.count_documents({}) == 8
+            # but they shouldn't have any current data
+            for test_record in test_records:
+                mongo_record = database.data_collection.find_one(
+                    {'id': test_record['irn']}
+                )
+                assert mongo_record is not None
+                assert len(mongo_record['data']) == 0
+                assert len(mongo_record['diffs']) == 2
+            # they shouldn't exist in current elasticsearch
+            assert search_base.count() == 5
+            # but they should in the previous versions
+            assert database.search(first_es_version).count() == 8
+            assert database.search(second_es_version).count() == 8
 
 
 class TestEMuStatus:

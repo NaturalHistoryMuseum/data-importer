@@ -17,22 +17,39 @@ from dataimporter.lib.view import SUCCESS_RESULT, FilterResult
 from tests.helpers.samples.image import SAMPLE_IMAGE_DATA, SAMPLE_IMAGE_ID
 from tests.helpers.samples.indexlot import SAMPLE_INDEXLOT_DATA, SAMPLE_INDEXLOT_ID
 from tests.helpers.samples.taxonomy import SAMPLE_TAXONOMY_DATA, SAMPLE_TAXONOMY_ID
+from tests.helpers.utils import is_member_error, is_publishable_error
 
-is_member_scenarios: List[Tuple[dict, FilterResult]] = [
-    ({'ColRecordType': 'Specimen'}, INVALID_TYPE),
-    ({'AdmPublishWebNoPasswordFlag': 'n'}, NO_PUBLISH),
-    ({'AdmGUIDPreferredValue': 'not a valid guid!'}, INVALID_GUID),
-    ({'SecRecordStatus': 'INVALID'}, INVALID_STATUS),
-    ({'ColDepartment': 'DDI'}, INVALID_DEPARTMENT),
-    ({}, SUCCESS_RESULT),
+is_publishable_member_scenarios: List[
+    Tuple[dict, FilterResult, FilterResult, FilterResult]
+] = [
+    ({'ColRecordType': 'Specimen'}, *is_member_error(INVALID_TYPE)),
+    ({'ColDepartment': 'DDI'}, *is_member_error(INVALID_DEPARTMENT)),
+    ({'AdmPublishWebNoPasswordFlag': 'n'}, *is_publishable_error(NO_PUBLISH)),
+    (
+        {'AdmGUIDPreferredValue': 'not a valid guid!'},
+        *is_publishable_error(INVALID_GUID),
+    ),
+    ({'SecRecordStatus': 'INVALID'}, *is_publishable_error(INVALID_STATUS)),
+    ({}, SUCCESS_RESULT, SUCCESS_RESULT, SUCCESS_RESULT),
 ]
 
 
-@pytest.mark.parametrize('overrides, result', is_member_scenarios)
-def test_is_member(overrides: dict, result: FilterResult, indexlot_view: IndexLotView):
+@pytest.mark.parametrize(
+    'overrides, member_result, publishable_result, publishable_member_result',
+    is_publishable_member_scenarios,
+)
+def test_is_publishable_member(
+    overrides: dict,
+    member_result: FilterResult,
+    publishable_result: FilterResult,
+    publishable_member_result: FilterResult,
+    indexlot_view: IndexLotView,
+):
     data = {**SAMPLE_INDEXLOT_DATA, **overrides}
     record = SourceRecord(SAMPLE_INDEXLOT_ID, data, 'test')
-    assert indexlot_view.is_member(record) == result
+    assert indexlot_view.is_member(record) == member_result
+    assert indexlot_view.is_publishable(record) == publishable_result
+    assert indexlot_view.is_publishable_member(record) == publishable_member_result
 
 
 def test_transform_no_images_no_taxonomy(indexlot_view: IndexLotView):

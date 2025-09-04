@@ -11,21 +11,38 @@ from dataimporter.emu.views.utils import INVALID_GUID, NO_PUBLISH
 from dataimporter.lib.model import SourceRecord
 from dataimporter.lib.view import SUCCESS_RESULT, FilterResult
 from tests.helpers.samples.image import SAMPLE_IMAGE_DATA, SAMPLE_IMAGE_ID
+from tests.helpers.utils import is_member_error, is_publishable_error
 
-is_member_scenarios: List[Tuple[dict, FilterResult]] = [
-    ({'MulMimeType': 'Document'}, MULTIMEDIA_NOT_IMAGE),
-    ({'AdmGUIDPreferredValue': 'not a valid guid!'}, INVALID_GUID),
-    ({'AdmPublishWebNoPasswordFlag': 'n'}, NO_PUBLISH),
-    ({'DocIdentifier': None}, MULTIMEDIA_NO_IDENTIFIER),
-    ({}, SUCCESS_RESULT),
+is_publishable_member_scenarios: List[
+    Tuple[dict, FilterResult, FilterResult, FilterResult]
+] = [
+    ({'MulMimeType': 'Document'}, *is_member_error(MULTIMEDIA_NOT_IMAGE)),
+    ({'DocIdentifier': None}, *is_member_error(MULTIMEDIA_NO_IDENTIFIER)),
+    (
+        {'AdmGUIDPreferredValue': 'not a valid guid!'},
+        *is_publishable_error(INVALID_GUID),
+    ),
+    ({'AdmPublishWebNoPasswordFlag': 'n'}, *is_publishable_error(NO_PUBLISH)),
+    ({}, SUCCESS_RESULT, SUCCESS_RESULT, SUCCESS_RESULT),
 ]
 
 
-@pytest.mark.parametrize('overrides, result', is_member_scenarios)
-def test_is_member(overrides: dict, result: FilterResult, mss_view: MSSView):
+@pytest.mark.parametrize(
+    'overrides, member_result, publishable_result, publishable_member_result',
+    is_publishable_member_scenarios,
+)
+def test_is_publishable_member(
+    overrides: dict,
+    member_result: FilterResult,
+    publishable_result: FilterResult,
+    publishable_member_result: FilterResult,
+    mss_view: MSSView,
+):
     data = {**SAMPLE_IMAGE_DATA, **overrides}
     record = SourceRecord(SAMPLE_IMAGE_ID, data, 'test')
-    assert mss_view.is_member(record) == result
+    assert mss_view.is_member(record) == member_result
+    assert mss_view.is_publishable(record) == publishable_result
+    assert mss_view.is_publishable_member(record) == publishable_member_result
 
 
 def test_transform(mss_view: MSSView):

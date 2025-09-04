@@ -1,5 +1,5 @@
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from freezegun import freeze_time
@@ -27,6 +27,24 @@ class TestView:
     def test_is_member(self, view: View):
         # default success
         assert view.is_member(MagicMock())
+
+    def test_is_publishable(self, view: View):
+        # default success
+        assert view.is_publishable(MagicMock())
+
+    def test_is_publishable_member(self, view: View):
+        # default success
+        assert view.is_publishable_member(MagicMock())
+
+    def test_is_publishable_member_returns_member_error(self, view: View):
+        with patch.object(view, 'is_member', return_value=FilterResult(False, 'bad')):
+            assert not view.is_publishable_member(MagicMock())
+
+    def test_is_publishable_member_returns_publishable_error(self, view: View):
+        with patch.object(
+            view, 'is_publishable', return_value=FilterResult(False, 'bad')
+        ):
+            assert not view.is_publishable_member(MagicMock())
 
     def test_transform(self, view: View):
         assert view.transform(SourceRecord('1', {'a': 'b'}, 'test')) == {'a': 'b'}

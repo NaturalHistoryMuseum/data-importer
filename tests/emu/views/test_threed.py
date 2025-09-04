@@ -17,28 +17,47 @@ from tests.helpers.samples.threed import (
     SF_SAMPLE_3D_DATA,
     SF_SAMPLE_3D_ID,
 )
+from tests.helpers.utils import is_member_error, is_publishable_error
 
-is_member_scenarios: List[Tuple[dict, FilterResult]] = [
-    ({'MulDocumentType': 'I'}, MULTIMEDIA_NOT_URL),
-    ({'AdmGUIDPreferredValue': 'not a valid guid!'}, INVALID_GUID),
-    ({'AdmPublishWebNoPasswordFlag': 'n'}, NO_PUBLISH),
-    ({'DetPublisher': 'banana'}, INVALID_PUBLISHER),
-    ({'DetResourceType': 'Document'}, NOT_SPECIMEN),
-    ({}, SUCCESS_RESULT),
+is_publishable_member_scenarios: List[
+    Tuple[dict, FilterResult, FilterResult, FilterResult]
+] = [
+    ({'MulDocumentType': 'I'}, *is_member_error(MULTIMEDIA_NOT_URL)),
+    (
+        {'AdmGUIDPreferredValue': 'not a valid guid!'},
+        *is_publishable_error(INVALID_GUID),
+    ),
+    ({'AdmPublishWebNoPasswordFlag': 'n'}, *is_publishable_error(NO_PUBLISH)),
+    ({'DetPublisher': 'banana'}, *is_member_error(INVALID_PUBLISHER)),
+    ({'DetResourceType': 'Document'}, *is_member_error(NOT_SPECIMEN)),
+    ({}, SUCCESS_RESULT, SUCCESS_RESULT, SUCCESS_RESULT),
 ]
 
 
-@pytest.mark.parametrize('overrides, result', is_member_scenarios)
-def test_is_member(overrides: dict, result: FilterResult, three_d_view: ThreeDView):
+@pytest.mark.parametrize(
+    'overrides, member_result, publishable_result, publishable_member_result',
+    is_publishable_member_scenarios,
+)
+def test_is_publishable_member(
+    overrides: dict,
+    member_result: FilterResult,
+    publishable_result: FilterResult,
+    publishable_member_result: FilterResult,
+    three_d_view: ThreeDView,
+):
     # check with a sketchfab sample
     sf_data = {**SF_SAMPLE_3D_DATA, **overrides}
     sf_record = SourceRecord(SF_SAMPLE_3D_ID, sf_data, 'test')
-    assert three_d_view.is_member(sf_record) == result
+    assert three_d_view.is_member(sf_record) == member_result
+    assert three_d_view.is_publishable(sf_record) == publishable_result
+    assert three_d_view.is_publishable_member(sf_record) == publishable_member_result
 
     # check with a morphosource sample
     ms_data = {**MS_SAMPLE_3D_DATA, **overrides}
     ms_record = SourceRecord(MS_SAMPLE_3D_ID, ms_data, 'test')
-    assert three_d_view.is_member(ms_record) == result
+    assert three_d_view.is_member(ms_record) == member_result
+    assert three_d_view.is_publishable(ms_record) == publishable_result
+    assert three_d_view.is_publishable_member(ms_record) == publishable_member_result
 
 
 def test_transform_sketchfab(three_d_view: ThreeDView):

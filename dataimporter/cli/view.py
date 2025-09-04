@@ -82,3 +82,24 @@ def sync(view: str, config: Config, resync: bool = False):
         console.log(f'Syncing changes from {view} view to elasticsearch')
         importer.sync_to_elasticsearch(view, resync=resync)
         console.log(f'Finished with {view}')
+
+
+@view_group.command('purge')
+@click.argument('view', type=str)
+@with_config()
+def purge(view: str, config: Config):
+    """
+    Purge non-member and non-publishable records from a view.
+
+    Non-publishable records should be handled by the ingest process, but the occurrence
+    of records that stop being members of a view should be much rarer so this needs to
+    be run on a semi-regular basis to account for those.
+    """
+    with use_importer(config) as importer:
+        console.log(f'Purging non-member and non-publishable records from {view}')
+        non_member, non_publishable, total_deleted = importer.purge_unsuitable_records(
+            view
+        )
+        console.log(f'{non_member} non-member records found')
+        console.log(f'{non_publishable} non-publishable records found')
+        console.log(f'{total_deleted} records deleted')

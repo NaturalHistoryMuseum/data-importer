@@ -26,14 +26,9 @@ class MammalPartView(View):
         :param record: the record to filter
         :return: a FilterResult object
         """
-        if not is_web_published(record):
-            return NO_PUBLISH
 
         if record.get_first_value('ColRecordType', lower=True) != 'mammal group part':
             return INVALID_TYPE
-
-        if record.get_first_value('SecRecordStatus') in DISALLOWED_STATUSES:
-            return INVALID_STATUS
 
         if record.get_first_value('ColDepartment', lower=True) != 'zoology':
             return INVALID_DEPARTMENT
@@ -43,6 +38,22 @@ class MammalPartView(View):
 
         if 'CatKindOfObject' not in record:
             return MISSING_KIND_OF_OBJECT
+
+        return SUCCESS_RESULT
+
+    def is_publishable(self, record: SourceRecord) -> FilterResult:
+        """
+        Filters the given record, determining whether it matches the publishing rules
+        for mammal parts.
+
+        :param record: the record to filter
+        :return: a FilterResult object
+        """
+        if not is_web_published(record):
+            return NO_PUBLISH
+
+        if record.get_first_value('SecRecordStatus') in DISALLOWED_STATUSES:
+            return INVALID_STATUS
 
         return SUCCESS_RESULT
 
