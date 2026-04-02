@@ -29,6 +29,7 @@ from dataimporter.lib.view import (
 
 INVALID_PROJECT = FilterResult(False, 'Invalid project')
 ON_LOAN = FilterResult(False, 'On loan')
+UNPUBLISHED_PROJECT = FilterResult(False, 'Unpublished project')
 
 # a regex to check if the current location summary string indicates that the item is on
 # loan. This is pretty broad currently as it just looks for a use of the word "loan" but
@@ -54,6 +55,9 @@ MAPPED_SPECIMEN_FIELDS = [
     'decimalLatitude',
     'decimalLongitude',
 ]
+
+# projects to filter out
+UNPUBLISHED_PROJECT_NAMES = {'Darwin Tree of Life', 'Darwin Tree of Life Project'}
 
 
 def is_on_loan(record: SourceRecord) -> bool:
@@ -152,6 +156,12 @@ class PreparationView(View):
 
         if is_on_loan(record):
             return ON_LOAN
+
+        projects = record.get_all_values(
+            'NhmSecProjectName', 'DigDigitisationProgramme', reduce=False
+        )
+        if projects and any([p in UNPUBLISHED_PROJECT_NAMES for p in projects]):
+            return UNPUBLISHED_PROJECT
 
         return SUCCESS_RESULT
 
