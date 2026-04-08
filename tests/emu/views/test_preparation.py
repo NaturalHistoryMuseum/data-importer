@@ -6,6 +6,7 @@ from dataimporter.emu.views.preparation import (
     INVALID_PROJECT,
     INVALID_SUB_DEPARTMENT,
     ON_LOAN,
+    UNPUBLISHED_PROJECT,
     PreparationView,
     get_preparation_process,
     is_on_loan,
@@ -21,6 +22,8 @@ from dataimporter.emu.views.utils import (
 from dataimporter.lib.model import SourceRecord
 from dataimporter.lib.view import SUCCESS_RESULT, FilterResult
 from tests.helpers.samples.preparation import (
+    SAMPLE_DTOL_PREPARATION_DATA,
+    SAMPLE_DTOL_PREPARATION_ID,
     SAMPLE_MAMMAL_PREPARATION_DATA,
     SAMPLE_MAMMAL_PREPARATION_ID,
     SAMPLE_PREPARATION_DATA,
@@ -28,6 +31,20 @@ from tests.helpers.samples.preparation import (
 )
 from tests.helpers.samples.specimen import SAMPLE_SPECIMEN_DATA, SAMPLE_SPECIMEN_ID
 from tests.helpers.utils import is_member_error, is_publishable_error
+
+
+def _dtol_is_member_error(
+    filter_error: FilterResult,
+) -> Tuple[FilterResult, FilterResult, FilterResult]:
+    """
+    All dtol records are currently unpublishable, so all DToL records (including all
+    mammal part preps) are currently invalid.
+
+    This can be replaced with is_member_error in all scenarios that use it once the
+    project can be published.
+    """
+    return filter_error, UNPUBLISHED_PROJECT, filter_error
+
 
 mol_prep_is_publishable_member_scenarios: List[
     Tuple[dict, FilterResult, FilterResult, FilterResult]
@@ -69,28 +86,84 @@ def test_is_publishable_member_mol_prep(
     assert preparation_view.is_publishable_member(record) == publishable_member_result
 
 
-mammal_part_prep_is_publishable_member_scenarios: List[
+dtol_mol_prep_is_publishable_member_scenarios: List[
     Tuple[dict, FilterResult, FilterResult, FilterResult]
 ] = [
-    ({'ColRecordType': 'Specimen'}, *is_member_error(INVALID_TYPE)),
+    ({'ColRecordType': 'Specimen'}, *_dtol_is_member_error(INVALID_TYPE)),
+    # this is a check to make sure a mammal part in molecular collections doesn't come
+    # through
+    (
+        {'ColRecordType': 'Mammal Group Part'},
+        *_dtol_is_member_error(INVALID_SUB_DEPARTMENT),
+    ),
     ({'AdmPublishWebNoPasswordFlag': 'n'}, *is_publishable_error(NO_PUBLISH)),
     (
         {'AdmGUIDPreferredValue': 'not a valid guid!'},
         *is_publishable_error(INVALID_GUID),
     ),
     ({'SecRecordStatus': 'INVALID'}, *is_publishable_error(INVALID_STATUS)),
-    ({'ColDepartment': 'DDI'}, *is_member_error(INVALID_DEPARTMENT)),
-    ({'ColSubDepartment': 'Informatics'}, *is_member_error(INVALID_SUB_DEPARTMENT)),
+    ({'ColDepartment': 'DDI'}, *_dtol_is_member_error(INVALID_DEPARTMENT)),
     (
-        {'ColSubDepartment': 'Molecular Collections'},
-        *is_member_error(INVALID_SUB_DEPARTMENT),
+        {'ColSubDepartment': 'Informatics'},
+        *_dtol_is_member_error(INVALID_SUB_DEPARTMENT),
     ),
-    ({'NhmSecProjectName': 'Life of Darwin Tree'}, *is_member_error(INVALID_PROJECT)),
-    # this is a check to make sure a prep in LS Mammals doesn't come through
-    ({'ColRecordType': 'Preparation'}, *is_member_error(INVALID_SUB_DEPARTMENT)),
+    (
+        {'ColSubDepartment': 'LS Mammals'},
+        *_dtol_is_member_error(INVALID_SUB_DEPARTMENT),
+    ),
     ({'LocPermanentLocationRef': '3250522'}, *is_publishable_error(ON_LOAN)),
     ({'LocCurrentSummaryData': 'ON LOAN'}, *is_publishable_error(ON_LOAN)),
-    ({}, SUCCESS_RESULT, SUCCESS_RESULT, SUCCESS_RESULT),
+    ({}, SUCCESS_RESULT, UNPUBLISHED_PROJECT, UNPUBLISHED_PROJECT),
+]
+
+
+@pytest.mark.parametrize(
+    'overrides, member_result, publishable_result, publishable_member_result',
+    dtol_mol_prep_is_publishable_member_scenarios,
+)
+def test_is_publishable_member_dtol_mol_prep(
+    overrides: dict,
+    member_result: FilterResult,
+    publishable_result: FilterResult,
+    publishable_member_result: FilterResult,
+    preparation_view: PreparationView,
+):
+    data = {**SAMPLE_DTOL_PREPARATION_DATA, **overrides}
+    record = SourceRecord(SAMPLE_DTOL_PREPARATION_ID, data, 'test')
+    assert preparation_view.is_member(record) == member_result
+    assert preparation_view.is_publishable(record) == publishable_result
+    assert preparation_view.is_publishable_member(record) == publishable_member_result
+
+
+mammal_part_prep_is_publishable_member_scenarios: List[
+    Tuple[dict, FilterResult, FilterResult, FilterResult]
+] = [
+    ({'ColRecordType': 'Specimen'}, *_dtol_is_member_error(INVALID_TYPE)),
+    ({'AdmPublishWebNoPasswordFlag': 'n'}, *is_publishable_error(NO_PUBLISH)),
+    (
+        {'AdmGUIDPreferredValue': 'not a valid guid!'},
+        *is_publishable_error(INVALID_GUID),
+    ),
+    ({'SecRecordStatus': 'INVALID'}, *is_publishable_error(INVALID_STATUS)),
+    ({'ColDepartment': 'DDI'}, *_dtol_is_member_error(INVALID_DEPARTMENT)),
+    (
+        {'ColSubDepartment': 'Informatics'},
+        *_dtol_is_member_error(INVALID_SUB_DEPARTMENT),
+    ),
+    (
+        {'ColSubDepartment': 'Molecular Collections'},
+        *_dtol_is_member_error(INVALID_SUB_DEPARTMENT),
+    ),
+    # this one is in a different project so it doesn't fail the publish check
+    ({'NhmSecProjectName': 'Life of Darwin Tree'}, *is_member_error(INVALID_PROJECT)),
+    # this is a check to make sure a prep in LS Mammals doesn't come through
+    (
+        {'ColRecordType': 'Preparation'},
+        *_dtol_is_member_error(INVALID_SUB_DEPARTMENT),
+    ),
+    ({'LocPermanentLocationRef': '3250522'}, *is_publishable_error(ON_LOAN)),
+    ({'LocCurrentSummaryData': 'ON LOAN'}, *is_publishable_error(ON_LOAN)),
+    ({}, SUCCESS_RESULT, UNPUBLISHED_PROJECT, UNPUBLISHED_PROJECT),
 ]
 
 
@@ -114,6 +187,25 @@ def test_is_publishable_member_mammal_part_prep(
 
 def test_transform_mol_prep(preparation_view: PreparationView):
     record = SourceRecord(SAMPLE_PREPARATION_ID, SAMPLE_PREPARATION_DATA, 'test')
+
+    data = preparation_view.transform(record)
+    assert data == {
+        '_id': record.id,
+        'project': 'Lincolnshire Plants: Past and Future',
+        'identifier': '247278675',
+        'preparationType': 'DNA',
+        'preservation': 'Liquid Nitrogen',
+        'preparationProcess': 'Flash Freezing: Liquid Nitrogen',
+        'occurrenceID': '6c3b6da6-ae71-4e37-8b4a-a3d9f961c791',
+        'created': '2020-01-18T15:03:07+00:00',
+        'modified': '2025-10-21T11:38:42+00:00',
+    }
+
+
+def test_transform_dtol_mol_prep(preparation_view: PreparationView):
+    record = SourceRecord(
+        SAMPLE_DTOL_PREPARATION_ID, SAMPLE_DTOL_PREPARATION_DATA, 'test'
+    )
 
     data = preparation_view.transform(record)
     assert data == {
@@ -152,7 +244,9 @@ def test_transform_mammal_part(preparation_view: PreparationView):
 def test_transform_mol_prep_with_voucher_direct(
     preparation_view: PreparationView, specimen_view: SpecimenView
 ):
-    record = SourceRecord(SAMPLE_PREPARATION_ID, SAMPLE_PREPARATION_DATA, 'test')
+    record = SourceRecord(
+        SAMPLE_DTOL_PREPARATION_ID, SAMPLE_DTOL_PREPARATION_DATA, 'test'
+    )
 
     # add a specimen record to the specimen view's store
     specimen_record = SourceRecord(SAMPLE_SPECIMEN_ID, SAMPLE_SPECIMEN_DATA, 'test')
@@ -185,12 +279,14 @@ def test_transform_mol_prep_with_voucher_indirect(
     preparation_view: PreparationView, specimen_view: SpecimenView
 ):
     # replace the parent ref ID with parentPrep
-    prep_data = SAMPLE_PREPARATION_DATA.copy()
+    prep_data = SAMPLE_DTOL_PREPARATION_DATA.copy()
     prep_data['EntPreSpecimenRef'] = 'parentPrep'
-    record = SourceRecord(SAMPLE_PREPARATION_ID, prep_data, 'test')
+    record = SourceRecord(SAMPLE_DTOL_PREPARATION_ID, prep_data, 'test')
 
     # add another prep as the parent with parentPrep as the ID
-    parent_prep_record = SourceRecord('parentPrep', SAMPLE_PREPARATION_DATA, 'test')
+    parent_prep_record = SourceRecord(
+        'parentPrep', SAMPLE_DTOL_PREPARATION_DATA, 'test'
+    )
     preparation_view.store.put([parent_prep_record])
 
     # add a specimen record to the specimen view's store
@@ -262,7 +358,9 @@ def test_transform_mammal_part_with_voucher_indirect(
     record = SourceRecord(SAMPLE_MAMMAL_PREPARATION_ID, prep_data, 'test')
 
     # add another prep as the parent with parentPrep as the ID
-    parent_prep_record = SourceRecord('parentPrep', SAMPLE_PREPARATION_DATA, 'test')
+    parent_prep_record = SourceRecord(
+        'parentPrep', SAMPLE_DTOL_PREPARATION_DATA, 'test'
+    )
     preparation_view.store.put([parent_prep_record])
 
     # add a specimen record to the specimen view's store

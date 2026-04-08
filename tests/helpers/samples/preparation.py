@@ -3,7 +3,8 @@ from tests.helpers.samples.specimen import SAMPLE_SPECIMEN_ID
 
 # this is taken from ecatalogue.export.20231008.gz but with the EntPreSpecimenRef field
 # replaced with a single reference to the SAMPLE_SPECIMEN_ID
-raw_prep_data = f"""
+# this is specifically from the DToL project
+raw_prep_data_dtol = f"""
 rownum=3645
 irn:1=9968955
 SummaryData:1=no Collection Kind for preparation (irn 9968955)
@@ -68,6 +69,83 @@ SecDepartment:1=Entomology
 SecLookupRoot:1=Entomology
 NhmSecOpenDataPolicyException:1=none
 NhmSecProjectName:1=Darwin Tree of Life
+"""
+
+SAMPLE_DTOL_PREPARATION_ID, SAMPLE_DTOL_PREPARATION_DATA = read_emu_extract(
+    raw_prep_data_dtol
+)
+
+# this is taken from ecatalogue.export.20260121.gz but with the EntPreSpecimenRef field
+# replaced with a single reference to the SAMPLE_SPECIMEN_ID
+raw_prep_data = f"""
+irn:1=9113675
+SummaryData:1=Botany, Molecular Collections, , BM
+ExtendedData:1=9113675
+ExtendedData:2=Botany, Molecular Collections, , BM
+ColDepartment:1=Botany
+ColSubDepartment:1=Molecular Collections
+ColRecordType:1=Preparation
+GeneralCatalogueNumber:1=irn: 9113675
+EntIdeQualifiedNameAutomatic:1=Yes
+EntPreSpecimenTaxonLocal:1=Dryopteris affinis (Lowe) Fraser-Jenk. subsp. affinis; Dryopteridaceae; Polypodiales; Polypodiopsida; Plantae
+EntPreSpecimenRef:1={SAMPLE_SPECIMEN_ID}
+EntPreSpecimenRefLocal:1={SAMPLE_SPECIMEN_ID}
+EntPreSpecimenLocationLocalRef:1=14683
+EntPreSpecimenTaxonLocalRef:1=4549618
+EntPrePreparationKind:1=DNA
+EntPrePreparationMethod:1=Flash Freezing: Liquid Nitrogen
+EntPreStorageMedium:1=Liquid Nitrogen
+EntPreNumber:1=247278675
+EntPreTaxonSummaryDataLocal:1=Dryopteris affinis (Lowe) Fraser-Jenk. subsp. affinis; Dryopteridaceae; Polypodiales; Polypodiopsida; Plantae
+EntPreSpecimenCollNameLocal:1=2
+RegSpecimenStatus:1=Currently held
+RegProjectRef:1=786
+RegProjectRefLocal:1=786
+RegProjectSummaryDataLocal:1=Lincolnshire Plants: Past and Future - Contemporary; Databasing Project
+RegHerbariumCurrentRef:1=5002152
+RegHerbariumCurrentRefLocal:1=5002152
+RegHerbariumCurrentOrgAcroLocal:1=BM
+TraNumberofItemsIncorporated:1=0
+LocCurrentLocationRef:1=251953
+LocCurrentLocationRefLocal:1=251953
+LocCurrentSummaryData:1=Molecular Collections Facility; South Kensington; North West Tower; B; NW.B.28
+LocCurrentLocationLevel1Local:1=South Kensington
+LocCurrentLocationLevel2Local:1=North West Tower
+LocCurrentLocationLevel3Local:1=B
+LocDateMoved=2020-01-20
+LocTimeMoved=15:31:
+LocIndependentlyMoveable:1=Yes
+LocPermanentLocationRef:1=251953
+LocPermanentLocationRefLocal:1=251953
+LocPermanentSummaryData:1=Molecular Collections Facility; South Kensington; North West Tower; B; NW.B.28
+LocPermanentDynamicSummaryLocal:1=Molecular Collections Facility; South Kensington; North West Tower; B; NW.B.28
+AdmPublishWebNoPasswordFlag:1=Y
+AdmPublishWebNoPassword:1=Yes
+AdmPublishWebPasswordFlag:1=Y
+AdmPublishWebPassword:1=Yes
+AdmGUIDPreferredType:1=UUID4
+AdmGUIDPreferredValue:1=6c3b6da6-ae71-4e37-8b4a-a3d9f961c791
+AdmGUIDIsPreferred:1=Yes
+AdmGUIDType:1=UUID4
+AdmGUIDValue:1=6c3b6da6-ae71-4e37-8b4a-a3d9f961c791
+AdmInsertedBy:1=Hillery Warner
+AdmDateInserted=2020-01-18
+AdmImportIdentifier:1=Lincolnshire Plants DNA Vial Preparations
+AdmTimeInserted=15:03:07.000
+AdmSystemIdentifier:1=hillw-200118-1458
+AdmModifiedBy:1=Matthew Besley
+AdmDateModified=2025-10-21
+AdmTimeModified=11:38:42.000
+AdmDateRecordModified=2025-10-21
+AdmTimeRecordModified=11:38:42.000
+SecRecordStatus:1=Active
+SecCanDisplay:1=Group Default
+SecCanEdit:1=Group Default
+SecCanDelete:1=Group Default
+SecDepartment:1=Botany
+SecLookupRoot:1=Botany
+NhmSecOpenDataPolicyException:1=none
+NhmSecProjectName:1=Lincolnshire Plants: Past and Future
 """
 
 SAMPLE_PREPARATION_ID, SAMPLE_PREPARATION_DATA = read_emu_extract(raw_prep_data)
