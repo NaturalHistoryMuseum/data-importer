@@ -54,6 +54,7 @@ MAPPED_SPECIMEN_FIELDS = [
     'locality',
     'decimalLatitude',
     'decimalLongitude',
+    'samplingProtocol',
 ]
 
 # projects to filter out
